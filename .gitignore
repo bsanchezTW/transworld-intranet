@@ -1,0 +1,53 @@
+# Dependencias (usar npm install en cada entorno)
+node_modules/
+
+# Variables de entorno y secretos
+.env
+.env.*
+!.env.example
+.env.local
+.env.*.local
+*.pem
+*.key
+credentials.json
+serviceAccount*.json
+
+# Subidas y contenido dinámico (local / legacy)
+uploads/
+public/uploads/
+public/content/
+src/public/content/
+
+# Logs y caché
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Cobertura y builds
+coverage/
+dist/
+build/
+.cache/
+tmp/
+temp/
+
+# Archivos del sistema / IDE
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+Thumbs.db
+desktop.ini
+~$*
+*.tmp
+*.code-workspace
+.vscode/
+.idea/
+.cursor/*
+!.cursor/rules/
+
+# Opcional: descomenta si migras imágenes pesadas a SharePoint
+# src/public/img/

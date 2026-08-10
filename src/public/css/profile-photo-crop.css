@@ -1,0 +1,410 @@
+/* Vista previa + modal de recorte (registro, perfil, etc.) */
+.profile-photo-upload {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.profile-photo-upload > label {
+  display: block;
+  margin-bottom: 14px;
+}
+
+.profile-photo-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ── Contenedor único consolidado ── */
+.profile-photo-preview {
+  position: relative;
+  overflow: hidden;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  /* Ajusta el tamaño aquí */
+  width: 128px;
+  height: 128px;
+
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.profile-photo-preview--dark {
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.profile-photo-preview--light {
+  border: 3px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+/* ── Placeholder e imagen ocupan exactamente el mismo espacio ── */
+.profile-photo-placeholder,
+.profile-photo-preview img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.profile-photo-preview img {
+  object-fit: cover;
+  display: block;
+}
+
+/* ── Oculta el placeholder cuando hay foto ── */
+.profile-photo-preview img:not([hidden]) ~ .profile-photo-placeholder {
+  display: none;
+}
+
+.profile-photo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-photo-placeholder svg {
+  width: 52px;
+  height: 52px;
+  opacity: 0.65;
+}
+
+.profile-photo-preview--dark .profile-photo-placeholder svg {
+  color: #cbd5e0;
+}
+
+.profile-photo-preview--light .profile-photo-placeholder svg {
+  color: #94a3b8;
+}
+
+.profile-photo-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.profile-photo-hint {
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.profile-photo-hint--dark {
+  color: #cbd5e0;
+}
+
+.profile-photo-hint--light {
+  color: #64748b;
+}
+
+.btn-photo-select,
+.btn-photo-change {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.btn-photo-select:hover,
+.btn-photo-change:hover {
+  transform: translateY(-1px);
+}
+
+.btn-photo-select--dark,
+.btn-photo-change--dark {
+  background: #ffffff;
+  color: #0f4c81;
+}
+
+.btn-photo-select--dark:hover,
+.btn-photo-change--dark:hover {
+  background: #f1f5f9;
+}
+
+.btn-photo-select--light,
+.btn-photo-change--light {
+  background: linear-gradient(135deg, #0f4c81 0%, #0069c2 100%);
+  color: #fff;
+}
+
+.foto-crop-overlay {
+  --crop-modal-bg: var(--modal-bg, #ffffff);
+  --crop-modal-text: var(--modal-text, #1a202c);
+  --crop-modal-heading: var(--modal-heading, #0f4c81);
+  --crop-modal-muted: var(--modal-muted, #475467);
+  --crop-modal-border: var(--modal-border, #dbe5ef);
+  --crop-modal-primary: var(--modal-primary, #0f4c81);
+  --crop-modal-primary-hover: var(--modal-primary-hover, #0b3a63);
+  --crop-stage-h: 320px;
+
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--modal-overlay-bg, rgba(0, 0, 0, 0.72));
+  z-index: 10000;
+  padding: 24px 16px;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.foto-crop-overlay.is-open {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.foto-crop-modal {
+  background: var(--crop-modal-bg);
+  color: var(--crop-modal-text);
+  border-radius: var(--modal-radius, 12px);
+  width: min(520px, 100%);
+  max-width: 100%;
+  max-height: min(90vh, 720px);
+  margin: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  box-shadow: 0 20px 48px rgba(0, 20, 40, 0.28);
+  border: 1px solid var(--crop-modal-border);
+}
+
+.foto-crop-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--crop-modal-border);
+}
+
+.foto-crop-header h3 {
+  margin: 0;
+  padding: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--crop-modal-heading);
+}
+
+.foto-crop-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #64748b;
+  padding: 4px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.foto-crop-close:hover {
+  color: #1a202c;
+  background: #f1f5f9;
+}
+
+.foto-crop-body {
+  flex: 0 0 auto;
+  padding: 12px 16px;
+  background: #111827;
+  min-height: 0;
+}
+
+/* Escenario de recorte: tamaño fijo; la imagen nunca estira el modal */
+.foto-crop-stage,
+.foto-crop-canvas {
+  width: 100%;
+  height: var(--crop-stage-h);
+  max-height: var(--crop-stage-h);
+  background: #0b1220;
+  overflow: hidden;
+  position: relative;
+  border-radius: 8px;
+}
+
+.foto-crop-stage img,
+.foto-crop-canvas img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.foto-crop-stage .cropper-container,
+.foto-crop-canvas .cropper-container {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.foto-crop-modal > .foto-crop-hint {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 12px 20px 0;
+  text-align: left;
+}
+
+.foto-crop-hint {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--crop-modal-muted);
+}
+
+.foto-crop-footer,
+.foto-crop-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 16px 20px;
+  border-top: 1px solid var(--crop-modal-border);
+  flex-wrap: wrap;
+  background: var(--crop-modal-bg);
+}
+
+.foto-crop-overlay .btn-crop-cancel,
+.foto-crop-overlay .btn-crop-save {
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: inherit;
+  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 40px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.foto-crop-overlay .btn-crop-cancel {
+  background: #ffffff;
+  color: #4a5568;
+  border-color: #cbd5e0;
+}
+
+.foto-crop-overlay .btn-crop-cancel:hover {
+  background: #f8fafc;
+  color: #1a202c;
+}
+
+.foto-crop-overlay .btn-crop-save {
+  background: var(--crop-modal-primary);
+  color: #ffffff;
+}
+
+.foto-crop-overlay .btn-crop-save:hover:not(:disabled) {
+  background: var(--crop-modal-primary-hover);
+  color: #ffffff;
+}
+
+.foto-crop-overlay .btn-crop-save:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.foto-crop-error {
+  display: none;
+  flex: 0 0 auto;
+  margin: 0 20px 12px;
+  padding: 10px 14px;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.foto-crop-error.is-visible {
+  display: block;
+}
+
+html[data-theme="dark"] .foto-crop-overlay {
+  --crop-modal-bg: #1a2332;
+  --crop-modal-text: #e2e8f0;
+  --crop-modal-heading: #a8d4ff;
+  --crop-modal-muted: #94a3b8;
+  --crop-modal-border: #3b4a65;
+  --crop-modal-primary: #79b4e8;
+  --crop-modal-primary-hover: #a9cff2;
+}
+
+html[data-theme="dark"] .foto-crop-close {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .foto-crop-close:hover {
+  color: #f8fafc;
+  background: #243147;
+}
+
+html[data-theme="dark"] .foto-crop-overlay .btn-crop-cancel {
+  background: #243147;
+  color: #e2e8f0;
+  border-color: #3b4a65;
+}
+
+html[data-theme="dark"] .foto-crop-overlay .btn-crop-cancel:hover {
+  background: #2d3f56;
+  color: #ffffff;
+}
+
+html[data-theme="dark"] .foto-crop-overlay .btn-crop-save {
+  color: #0b1a2a;
+}
+
+html[data-theme="dark"] .foto-crop-error {
+  background: #3f1d1d;
+  color: #fecaca;
+  border-color: #7f1d1d;
+}
+
+@media (max-width: 768px) {
+  .foto-crop-modal {
+    display: flex;
+    flex-direction: column;
+    max-height: 100dvh;
+  }
+
+  .foto-crop-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .foto-crop-stage,
+  .foto-crop-canvas {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    max-height: none;
+  }
+
+  .foto-crop-footer,
+  .foto-crop-actions {
+    justify-content: stretch;
+  }
+
+  .foto-crop-overlay .btn-crop-cancel,
+  .foto-crop-overlay .btn-crop-save {
+    flex: 1;
+  }
+}

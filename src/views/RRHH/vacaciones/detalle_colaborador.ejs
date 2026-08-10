@@ -1,0 +1,159 @@
+<link rel="stylesheet" href="/css/vacaciones.css">
+
+<%
+  const nombre = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || ('#' + profile.id);
+  const isPeru = (profile.employment_country || 'CL') === 'PE';
+%>
+
+<div class="vac-wrap">
+  <div class="vac-header">
+    <div>
+      <h2 class="vac-title"><%= nombre %> <span class="vac-country"><%= countryLabel %></span></h2>
+      <p class="vac-subtitle">
+        Ingreso: <%= profile.hire_date ? new Date(profile.hire_date).toISOString().split('T')[0] : 'no registrado' %>
+        · Jornada: <%= profile.work_days_per_week || 5 %> días/semana
+        · Disponible: <strong><%= summary.available %></strong>
+      </p>
+    </div>
+    <a href="/RRHH/vacaciones/gestion" class="vac-link-volver">← Volver a gestión</a>
+  </div>
+
+  <% if (typeof success !== 'undefined' && success) { %>
+    <div class="vac-alert vac-alert-success"><%= success %></div>
+  <% } %>
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="vac-alert vac-alert-error"><%= error %></div>
+  <% } %>
+
+  <% if (summary && summary.accumulationAlert) { %>
+    <div class="vac-alert vac-alert-info"><%= summary.accumulationMessage %></div>
+  <% } %>
+
+  <% if (!profile.hire_date) { %>
+    <div class="vac-alert vac-alert-info">
+      Este colaborador no tiene fecha de ingreso. Edítalo en
+      <a href="/RRHH/personal?editar=<%= profile.id %>">Personal</a> para calcular sus vacaciones.
+    </div>
+  <% } %>
+
+  <div class="vac-balance-grid">
+    <div class="vac-stat"><div class="vac-stat-label">Disponible</div><div class="vac-stat-value"><%= summary.available %></div></div>
+    <div class="vac-stat"><div class="vac-stat-label">Devengado</div><div class="vac-stat-value"><%= summary.entitled %></div></div>
+    <div class="vac-stat"><div class="vac-stat-label">Usado</div><div class="vac-stat-value"><%= summary.used %></div></div>
+    <div class="vac-stat"><div class="vac-stat-label">Ajustes</div><div class="vac-stat-value"><%= summary.adjusted %></div></div>
+  </div>
+
+  <div class="vac-panel">
+    <div class="vac-panel-head">Períodos y ajuste manual de saldo</div>
+    <% if (!periods || periods.length === 0) { %>
+      <p class="vac-empty">Sin períodos calculados.</p>
+    <% } else { %>
+      <table class="vac-table">
+        <thead>
+          <tr>
+            <th>Período</th><th>Devengado</th><th>Ajuste</th><th>Usado</th><th>Disponible</th>
+            <% if (isPeru) { %><th>Bloques P/F</th><% } %>
+            <th>Récord</th><th>Vence</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% periods.forEach(p => { %>
+            <tr>
+              <td><%= p.periodStartFmt %> → <%= p.periodEndFmt %></td>
+              <td><%= p.recordMet === false ? '0 (no cumplido)' : p.entitled %></td>
+              <td><%= p.adjusted %></td>
+              <td><%= p.used %></td>
+              <td><strong><%= p.available %></strong></td>
+              <% if (isPeru) { %>
+                <td><%= p.protectedBlockUsed %> / <%= p.flexibleBlockUsed %></td>
+              <% } %>
+              <td><%= p.recordMet === false ? ('No — ' + (p.record_notes || '')) : 'Cumplido' %></td>
+              <td><%= p.noExpiry ? 'No caduca' : (p.expired ? 'Vencido' : (p.expiresAtFmt || '-')) %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+
+      <% if (isPeru) { %>
+      <form class="vac-form" action="/RRHH/vacaciones/gestion/<%= profile.id %>/periodo/<%= periods[0].id %>/record" method="POST" id="recordForm">
+        <div class="vac-panel-head" style="margin-top:1rem;">Récord vacacional (art. 10 D.L. 713)</div>
+        <div class="campo">
+          <label>
+            <input type="checkbox" name="record_met" value="1" checked id="record_met_check">
+            Récord cumplido para el período seleccionado
+          </label>
+        </div>
+        <div class="campo">
+          <label for="record_period_id">Período</label>
+          <select id="record_period_id" name="record_period_id" onchange="document.getElementById('recordForm').action='/RRHH/vacaciones/gestion/<%= profile.id %>/periodo/' + this.value + '/record'">
+            <% periods.forEach(p => { %>
+              <option value="<%= p.id %>"><%= p.periodStartFmt %> → <%= p.periodEndFmt %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="campo">
+          <label for="record_notes">Motivo (obligatorio si no cumple)</label>
+          <input type="text" id="record_notes" name="record_notes" placeholder="Ej: faltas injustificadas superiores al límite">
+        </div>
+        <button type="submit" class="vac-btn vac-btn-primary">Actualizar récord</button>
+      </form>
+      <script>
+        (function () {
+          const cb = document.getElementById('record_met_check');
+          const notes = document.getElementById('record_notes');
+          if (!cb || !notes) return;
+          cb.addEventListener('change', function () {
+            notes.required = !cb.checked;
+          });
+        })();
+      </script>
+      <% } %>
+
+      <form class="vac-form" action="/RRHH/vacaciones/gestion/<%= profile.id %>/ajustar" method="POST">
+        <div class="vac-form-grid-2">
+          <div class="campo">
+            <label for="period_id">Período</label>
+            <select id="period_id" name="period_id" required>
+              <% periods.forEach(p => { %>
+                <option value="<%= p.id %>"><%= p.periodStartFmt %> → <%= p.periodEndFmt %> (disp. <%= p.available %>)</option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="campo">
+            <label for="days_delta">Días (+ suma / − resta)</label>
+            <input type="number" id="days_delta" name="days_delta" step="0.5" placeholder="Ej: 2 o -1.5" required>
+          </div>
+        </div>
+        <div class="campo">
+          <label for="reason">Motivo del ajuste *</label>
+          <input type="text" id="reason" name="reason" required placeholder="Ej: corrección de saldo inicial">
+        </div>
+        <button type="submit" class="vac-btn vac-btn-primary">Aplicar ajuste</button>
+      </form>
+    <% } %>
+  </div>
+
+  <div class="vac-panel">
+    <div class="vac-panel-head">Historial de solicitudes</div>
+    <% if (!requests || requests.length === 0) { %>
+      <p class="vac-empty">Sin solicitudes.</p>
+    <% } else { %>
+      <table class="vac-table">
+        <thead>
+          <tr><th>Período</th><th>Días</th><th>Estado</th><th>Revisor</th><th>Notas</th></tr>
+        </thead>
+        <tbody>
+          <% requests.forEach(r => { %>
+            <tr>
+              <td><%= r.startDateFmt %> → <%= r.endDateFmt %></td>
+              <td><%= r.days %> <%= r.dayUnit %></td>
+              <td><span class="<%= r.statusBadge %>"><%= r.statusLabel %></span></td>
+              <td><%= r.reviewerName || '-' %></td>
+              <td><%= r.reviewer_notes || r.requester_notes || '-' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</div>

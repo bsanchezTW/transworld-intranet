@@ -1,0 +1,80 @@
+<%
+/* Esta vista se renderiza dentro de layout.ejs: solo debe aportar el fragmento
+   de la página. Antes repetía <!DOCTYPE>/<html>/<head>/<body>, lo que anidaba
+   un documento dentro de otro. */
+const puedeSubir = typeof isAdministrador !== 'undefined' && isAdministrador;
+%>
+
+<link rel="stylesheet" href="/css/rrhh.css?v=20260729a">
+
+<div class="contenedor">
+  <div class="page-header page-header--toolbar">
+    <div class="page-header__text">
+      <h2 class="page-title">Organigrama</h2>
+      <p class="page-description">Estructura general y departamentos de Transworld.</p>
+    </div>
+    <div class="page-header-actions">
+      <a href="/RRHH" class="boton-volver">← Volver a RRHH</a>
+    </div>
+  </div>
+
+  <% if (organigramaUrl) { %>
+    <a href="<%= organigramaUrl %>" target="_blank" rel="noopener noreferrer"
+       class="organigrama-link" title="Abrir en tamaño completo">
+      <img src="<%= organigramaUrl %>" alt="Organigrama de Transworld" class="organigrama-full">
+    </a>
+  <% } else { %>
+    <div class="organigrama-vacio">
+      <%- include('../partials/icon', { name: 'chart' }) %>
+      <p>Aún no se ha subido un organigrama.</p>
+    </div>
+  <% } %>
+
+  <% if (puedeSubir) { %>
+    <section class="upload-section">
+      <h3>Actualizar organigrama</h3>
+      <p class="upload-section__ayuda">
+        Al confirmar, el organigrama actual será reemplazado inmediatamente.
+      </p>
+
+      <form action="/RRHH/organigrama/subir" method="POST" enctype="multipart/form-data" class="upload-form">
+        <div>
+          <input id="input-organigrama"
+                 class="upload-input sr-only"
+                 type="file"
+                 name="organigrama"
+                 accept="image/*,application/pdf"
+                 required
+                 data-organigrama-input>
+          <label for="input-organigrama" class="btn-custom-upload">
+            <%- include('../partials/icon', { name: 'upload' }) %>
+            Seleccionar archivo
+          </label>
+        </div>
+
+        <span id="nombre-archivo" class="nombre-archivo-seleccionado" hidden data-organigrama-nombre></span>
+
+        <button type="submit" class="btn-confirmar" hidden data-organigrama-enviar>
+          Confirmar cambio
+        </button>
+      </form>
+    </section>
+
+    <script>
+      // Muestra el archivo elegido y solo entonces habilita el envío.
+      (function () {
+        var input = document.querySelector('[data-organigrama-input]');
+        var nombre = document.querySelector('[data-organigrama-nombre]');
+        var enviar = document.querySelector('[data-organigrama-enviar]');
+        if (!input || !nombre || !enviar) return;
+
+        input.addEventListener('change', function () {
+          var hayArchivo = Boolean(input.files && input.files.length);
+          nombre.textContent = hayArchivo ? input.files[0].name : '';
+          nombre.hidden = !hayArchivo;
+          enviar.hidden = !hayArchivo;
+        });
+      })();
+    </script>
+  <% } %>
+</div>

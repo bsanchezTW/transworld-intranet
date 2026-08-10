@@ -1,0 +1,489 @@
+<%- include('header-cursos') %>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
+  .cursos-main-content, .cursos-main-content * { font-family: 'Montserrat', sans-serif !important; }
+
+  :root { --text: #333; --muted-text: #6b6b6b; --line: #e6e6e6; --h-brown: #000000 !important; --h-safety: #000000 !important; }
+
+  .cursos-main-content a[class*="btn"], .cursos-main-content a[class*="boton"], .cursos-main-content button, #btnPrincipal, #btnResultados { background-color: #003a70 !important; color: #ffffff !important; border-color: #003a70 !important; }
+  .cursos-main-content a[class*="btn"]:hover, .cursos-main-content a[class*="boton"]:hover, .cursos-main-content button:hover, #btnPrincipal:hover, #btnResultados:hover { background-color: #002850 !important; border-color: #002850 !important; transform: translateY(-2px); }
+
+  /* BOTÓN CURSO COMPLETADO */
+  .cursos-main-content .btn-completado {
+    background-color: #598bbd !important;
+    border-color: #598bbd !important;
+    color: #ffffff !important;
+  }
+  .cursos-main-content .btn-completado:hover {
+    background-color: #4673a1 !important;
+    border-color: #4673a1 !important;
+  }
+
+  .soluciones-block { display: flex; flex-direction: column; align-items: center; text-align: center; margin: 30px auto 50px auto; max-width: 750px; }
+  .soluciones-text h2 { margin: 0 0 15px; font-size: 26px; font-weight: 700; color: var(--h-brown); }
+
+  .grid-categorias { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; margin: 20px auto 20px auto; align-items: start; justify-content: center; max-width: 1000px; }
+  .cat-card { display: flex; flex-direction: column; align-items: center; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eef3f9; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s, border 0.3s; position: relative; }
+  .cat-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+  .cat-card.active { border: 2px solid #003a70; box-shadow: 0 8px 25px rgba(0,58,112,0.2); transform: translateY(-4px); }
+  .cat-card img { width: 100%; height: 220px; object-fit: cover; }
+  .cat-card-header { padding: 20px; width: 100%; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; }
+  .cat-card-header h3 { margin: 0; font-size: 18px; font-weight: 700; color: #003a70; }
+  .toggle-icon { font-size: 16px; font-weight: bold; color: #003a70; transition: transform 0.3s ease; }
+  .cat-card.active .toggle-icon { transform: rotate(180deg); }
+
+  .btn-edit-sub { position: absolute; top: 15px; right: 15px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; cursor: pointer; z-index: 10; color: #003a70; font-weight: 700; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s; }
+  .btn-edit-sub:hover { background: #f8fafc; transform: scale(1.05); border-color: #003a70; }
+
+  .cursos-display-area { display: none; margin: -10px auto 50px auto; max-width: 1000px; background: #f8fbff; border: 1px solid #eef3f9; border-radius: 10px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); animation: fadeIn 0.4s ease-in-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  .cursos-display-area h3 { color: #003a70; margin-top: 0; margin-bottom: 20px; border-bottom: 2px solid #eef3f9; padding-bottom: 10px; }
+  .cursos-grid-list { display: none; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 15px; }
+  .cursos-grid-list.active { display: grid; }
+
+  .btn-prueba { background-color: var(--h-brown); color: white; border: none; padding: 12px 15px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.3s; line-height: 1.4; display: flex; align-items: center; min-height: 60px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+  .btn-prueba:hover { background-color: #333; transform: translateY(-2px); }
+
+  .sep { height: 1px; background: var(--line); margin: 50px auto; max-width: 1000px; }
+  .section-title { text-align: center; font-size: 26px; font-weight: 700; color: var(--h-brown); margin: 0 0 40px 0; }
+  .marcas-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px 30px; align-items: center; justify-items: center; margin: 0 auto 50px auto; max-width: 1000px; }
+  .marcas-grid img { max-width: 140px; max-height: 60px; object-fit: contain; }
+
+  .videos-empty-container { width: 100%; min-height: 150px; border: 2px dashed #ccc; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #999; font-style: italic; box-sizing: border-box; }
+  .modal-rules-list { padding-left: 20px; color: #555; line-height: 1.6; margin-bottom: 25px; }
+  .modal-rules-list li { margin-bottom: 10px; }
+  
+  /* ESTILOS MATERIAL DE ESTUDIO */
+  .material-header-container .btn-primario { padding: 12px 24px; font-size: 1rem; font-weight: 700; border: none; border-radius: 8px; cursor: pointer; color: #fff; transition: background 0.2s, transform 0.2s; }
+  .material-header-container .btn-primario:hover { background: #002850 !important; transform: translateY(-2px); }
+  .material-header-container { 
+    display: flex;
+    justify-content: space-between; 
+    align-items: center; 
+    max-width: 1000px; 
+    margin: 0 auto 20px auto; 
+    flex-wrap: wrap; 
+    gap: 15px;
+    padding: 0 10px;
+  }
+  
+  .material-grid { 
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    max-width: 1000px; 
+    margin: 0 auto 50px auto; 
+    padding: 0 10px;
+  }
+  
+  .material-card { 
+    background: #ffffff; 
+    border: 1px solid #e2e8f0; 
+    border-radius: 10px;
+    padding: 20px;
+    display: flex; 
+    flex-direction: column;
+    gap: 15px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  
+  .material-card:hover { 
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0, 58, 112, 0.08);
+    border-color: #cbd5e1;
+  }
+
+  .material-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .material-icon { 
+    font-size: 1.8rem;
+    line-height: 1;
+    color: #003a70;
+    background: #f1f5f9;
+    padding: 10px;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
+  .material-text {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .material-nombre { 
+    text-decoration: none; 
+    color: #1e293b;
+    font-weight: 700; 
+    font-size: 1.05rem;
+    line-height: 1.3;
+    word-break: break-word;
+    transition: color 0.2s ease;
+  }
+  
+  .material-nombre:hover { 
+    color: #003a70;
+  }
+
+  .material-fecha {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+  
+  .material-actions { 
+    display: flex; 
+    gap: 10px; 
+    margin-top: auto;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 15px;
+    justify-content: flex-end;
+  }
+
+  .btn-material {
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: background-color 0.2s ease, color 0.2s ease;
+      border: 1px solid transparent;
+  }
+
+  .btn-descargar {
+      background-color: #f1f5f9;
+      color: #003a70;
+      border-color: #cbd5e1;
+      width: 100%;
+      justify-content: center;
+      margin-bottom: 10px;
+  }
+
+  .btn-descargar:hover {
+      background-color: #e2e8f0;
+      color: #002a52;
+  }
+
+  .btn-mat-edit {
+      background-color: #ffffff;
+      color: #f59e0b;
+      border-color: #f59e0b;
+  }
+  .btn-mat-edit:hover {
+      background-color: #f59e0b;
+      color: #ffffff;
+  }
+
+  .btn-mat-del {
+      background-color: #ffffff;
+      color: #ef4444;
+      border-color: #ef4444;
+  }
+  .btn-mat-del:hover {
+      background-color: #ef4444;
+      color: #ffffff;
+  }
+  @media (max-width: 900px) { .grid-categorias { grid-template-columns: 1fr; } .marcas-grid { grid-template-columns: repeat(2, 1fr); } }
+</style>
+
+<section class="soluciones-block">
+  <div class="soluciones-text">
+    <h2>Fibra Óptica</h2>
+  </div>
+</section>
+
+<section class="grid-categorias">
+  <% if (Object.keys(cursosAgrupados).length === 0) { %>
+    <p style="text-align:center; width:100%; color:#666;">No hay cursos disponibles para esta sección en la base de datos.</p>
+  <% } %>
+
+  <% Object.keys(cursosAgrupados).forEach((subseccion, index) => { 
+       let idLista = 'lista-' + index;
+       let cursosLista = cursosAgrupados[subseccion];
+       
+       let imgUrl = cursosLista[0].image_url;
+       if (!imgUrl) {
+           let textoNorm = subseccion.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+           if (textoNorm.includes('conectividad')) imgUrl = '/img/fibra1.png';
+           else if (textoNorm.includes('medicion')) imgUrl = '/img/fibra2.png';
+           else imgUrl = '/img/fondo-home.png';
+       }
+  %>
+    <div class="cat-card" id="card-<%= index %>" onclick="mostrarCursos('<%= idLista %>', this, '<%= subseccion %>')">
+      
+      <% if (typeof can !== 'undefined' && can.cursos_write) { %>
+        <button class="btn-edit-sub" onclick="event.stopPropagation(); abrirModalEditarSub('<%= subseccion %>', '<%= imgUrl %>')">Editar</button>
+      <% } %>
+
+      <img src="<%= imgUrl %>" alt="<%= subseccion %>" onerror="this.src='/img/fondo-home.png'" style="object-fit: contain; padding: 20px; background: #fcfcfc;" />
+      <div class="cat-card-header">
+        <h3><%= subseccion %></h3>
+        <span class="toggle-icon">▼</span>
+      </div>
+    </div>
+  <% }) %>
+</section>
+
+<div id="areaDespliegueCursos" class="cursos-display-area">
+  <h3 id="tituloAreaCursos">Cursos Disponibles</h3>
+  
+  <% Object.keys(cursosAgrupados).forEach((subseccion, index) => { 
+       let idLista = 'lista-' + index;
+       let cursosLista = cursosAgrupados[subseccion];
+  %>
+    <div id="<%= idLista %>" class="cursos-grid-list">
+      <% cursosLista.forEach(curso => { 
+           let completado = typeof progresoUsuario !== 'undefined' && progresoUsuario[curso.id] && progresoUsuario[curso.id].status === 'evaluated';
+           let btnClass = completado ? 'btn-prueba btn-completado' : 'btn-prueba';
+      %>
+        <button class="<%= btnClass %>" onclick="abrirModalReglas('<%= curso.title %>', <%= curso.id %>)">
+          <span style="flex: 1; text-align: left;"><%= curso.title %></span>
+          <% if (completado) { %> 
+            <span title="Curso Aprobado" style="margin-left: 10px; font-weight: bold; font-size: 1.3rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.15);">✓</span> 
+          <% } %>
+        </button>
+      <% }) %>
+    </div>
+  <% }) %>
+</div>
+
+<div class="sep"></div>
+
+<h2 class="section-title">Marcas</h2>
+<section class="marcas-grid">
+  <img src="/img/zttlogo.png" alt="ZTT" onerror="this.src='/img/fondo-home.png'"/>
+  <img src="/img/3zlogo.png" alt="3Z" onerror="this.src='/img/fondo-home.png'"/>
+  <img src="/img/flukenetworkslogo.png" alt="Fluke Networks" onerror="this.src='/img/fondo-home.png'"/>
+  <img src="/img/grandwaylogo.png" alt="Grandway" onerror="this.src='/img/fondo-home.png'"/>
+</section>
+
+<div class="sep"></div>
+
+<div class="material-header-container">
+  <h2 class="section-title" style="margin: 0; text-align: left;">Material de estudio</h2>
+  <% if (typeof can !== 'undefined' && can.cursos_write) { %>
+    <button class="btn-primario" onclick="abrirModalNuevoMaterial('Equipamiento Activo')" style="margin:0; background: #003a70;">+ Subir Archivo</button>
+  <% } %>
+</div>
+
+<section class="material-grid">
+  <% if (typeof materiales !== 'undefined' && materiales.length > 0) { %>
+    <% materiales.forEach(mat => { %>
+      <div class="material-card">
+        <a href="<%= mat.file_url %>" target="_blank" class="material-link" title="Descargar o ver archivo">
+          <%= mat.name %>
+        </a>
+        
+        <% if (typeof can !== 'undefined' && can.cursos_write) { %>
+          <div class="material-actions">
+            <button type="button" class="btn-secundario" onclick="abrirModalEditarMaterial('<%= mat.id %>', '<%= mat.name.replace(/'/g, "\\'") %>')" title="Editar nombre o archivo">Editar</button>
+            <form action="/cursos/material/eliminar/<%= mat.id %>" method="POST" style="margin: 0;" onsubmit="return confirm('¿Seguro que deseas eliminar este material? Se borrará de la nube permanentemente.');">
+              <input type="hidden" name="return_url" class="mat_return_url">
+              <button type="submit" class="btn-danger" title="Eliminar">Eliminar</button>
+            </form>
+          </div>
+        <% } %>
+      </div>
+    <% }) %>
+  <% } else { %>
+    <div class="videos-empty-container" style="grid-column: 1 / -1;">
+      <p>No hay material de estudio disponible por el momento...</p>
+    </div>
+  <% } %>
+</section>
+
+<div id="modalNuevoMaterial" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalNuevoMaterialTitle" aria-hidden="true">
+  <div class="modal-content">
+    <button type="button" class="modal-close" data-modal-close aria-label="Cerrar">&times;</button>
+    <h3 id="modalNuevoMaterialTitle" class="modal-title">Subir Nuevo Material</h3>
+    <form action="/cursos/material/nuevo" method="POST" enctype="multipart/form-data" class="modal-form">
+        <input type="hidden" name="seccion" id="new_mat_seccion">
+        <input type="hidden" name="return_url" class="mat_return_url">
+
+        <label for="new_mat_name">Nombre del Archivo</label>
+        <input type="text" id="new_mat_name" name="name" required placeholder="Ej: Manual de Antenas">
+
+        <label for="new_mat_file">Archivo (PDF, Word, Excel, Video, etc.)</label>
+        <input type="file" id="new_mat_file" name="archivo" required>
+
+        <div class="modal-actions">
+            <button type="button" class="btn-secundario" data-modal-close>Cancelar</button>
+            <button type="submit" class="btn-primario">Subir Archivo</button>
+        </div>
+    </form>
+  </div>
+</div>
+
+<div id="modalEditarMaterial" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalEditarMaterialTitle" aria-hidden="true">
+  <div class="modal-content">
+    <button type="button" class="modal-close" data-modal-close aria-label="Cerrar">&times;</button>
+    <h3 id="modalEditarMaterialTitle" class="modal-title">Editar Material</h3>
+    <form id="formEditarMaterial" method="POST" enctype="multipart/form-data" class="modal-form">
+        <input type="hidden" name="return_url" class="mat_return_url">
+
+        <label for="edit_mat_nombre">Nombre del Archivo</label>
+        <input type="text" name="name" id="edit_mat_nombre" required>
+
+        <label for="edit_mat_file">Reemplazar Archivo (Opcional)</label>
+        <input type="file" id="edit_mat_file" name="archivo">
+        <small style="color: #64748b;">Si no subes nada, se mantendrá el archivo original.</small>
+
+        <div class="modal-actions">
+            <button type="button" class="btn-secundario" data-modal-close>Cancelar</button>
+            <button type="submit" class="btn-primario">Guardar Cambios</button>
+        </div>
+    </form>
+  </div>
+</div>
+
+<div id="modalReglasCurso" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalCursoTitulo" aria-hidden="true">
+  <div class="modal-content">
+    <button type="button" class="modal-close" data-modal-close aria-label="Cerrar">&times;</button>
+    <h3 id="modalCursoTitulo" class="modal-title">Reglas del Curso</h3>
+    <p class="modal-description">Antes de comenzar, por favor lee atentamente:</p>
+    <ul class="modal-rules-list">
+      <li>Deberás visualizar el material de estudio completo antes de poder acceder a la evaluación.</li>
+      <li>El tiempo de visualización será registrado por el sistema automáticamente.</li>
+      <li>Una vez iniciada la prueba final, no podrás pausarla.</li>
+      <li>Este curso no tiene limitaciones de intentos.</li>
+      <li>La nota mínima de aprobación exigida por Transworld es de un 80% de respuestas correctas.</li>
+    </ul>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-secundario" data-modal-close>Cancelar</button>
+      <a href="javascript:void(0)" class="btn-primario" id="btnVerResultados" style="display: none;">Ver resultados</a>
+      <a href="javascript:void(0)" class="btn-primario" id="btnAccionPrincipal">Iniciar curso</a>
+    </div>
+  </div>
+</div>
+
+<div id="modalEditarSub" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalEditarSubTitle" aria-hidden="true">
+  <div class="modal-content">
+    <button type="button" class="modal-close" data-modal-close aria-label="Cerrar">&times;</button>
+    <h3 id="modalEditarSubTitle" class="modal-title">Editar Subsección</h3>
+    <form action="/cursos/editar-subseccion" method="POST" enctype="multipart/form-data" class="modal-form">
+        <input type="hidden" name="old_name" id="edit_old_name">
+        <input type="hidden" name="current_url" id="edit_current_url">
+        <input type="hidden" name="return_url" id="edit_return_url">
+
+        <label for="edit_new_name">Nombre de la Subsección</label>
+        <input type="text" name="new_name" id="edit_new_name" required>
+
+        <label for="edit_sub_img">Imagen de Portada (Opcional)</label>
+        <input type="file" id="edit_sub_img" name="imagen" accept="image/*">
+        <small style="color: #64748b;">Si no subes nada, se mantendrá la imagen actual.</small>
+
+        <div class="modal-actions">
+            <button type="button" class="btn-secundario" data-modal-close>Cancelar</button>
+            <button type="submit" class="btn-primario">Guardar Cambios</button>
+        </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const modal = document.getElementById('modalReglasCurso');
+  const tituloModal = document.getElementById('modalCursoTitulo');
+  const progresoData = <%- JSON.stringify(typeof progresoUsuario !== 'undefined' ? progresoUsuario : {}) %>;
+
+  function mostrarCursos(idLista, cardElement, titulo) {
+    const area = document.getElementById('areaDespliegueCursos');
+    const tituloArea = document.getElementById('tituloAreaCursos');
+    const listas = document.querySelectorAll('.cursos-grid-list');
+    const tarjetas = document.querySelectorAll('.cat-card');
+    
+    if (cardElement.classList.contains('active')) {
+       cardElement.classList.remove('active');
+       area.style.display = 'none';
+       listas.forEach(l => l.classList.remove('active'));
+       return;
+    }
+
+    tarjetas.forEach(t => t.classList.remove('active'));
+    listas.forEach(l => l.classList.remove('active'));
+
+    cardElement.classList.add('active');
+    document.getElementById(idLista).classList.add('active');
+    tituloArea.innerText = `Cursos de ${titulo}`;
+    area.style.display = 'block';
+    
+    setTimeout(() => { area.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 50);
+  }
+
+  window.addEventListener('pageshow', function(event) { if (event.persisted) window.location.reload(); });
+
+  function abrirModalReglas(nombreCurso, idCurso) {
+    tituloModal.innerText = nombreCurso;
+    const btnPrincipal = document.getElementById('btnAccionPrincipal');
+    const btnResultados = document.getElementById('btnVerResultados');
+    const estadoCurso = progresoData[idCurso];
+
+    btnPrincipal.onclick = null;
+    btnResultados.style.display = 'none';
+    if (estadoCurso && estadoCurso.status === 'evaluated') {
+        btnResultados.style.display = 'inline-block';
+        btnResultados.href = `/cursos/evaluacion/${idCurso}`;
+        btnPrincipal.innerText = 'Repetir curso';
+        btnPrincipal.href = 'javascript:void(0)';
+        btnPrincipal.onclick = function() {
+            if(confirm("¿Seguro que deseas repetir este curso? Se reiniciará tu progreso de video para que lo veas nuevamente.")) {
+                fetch(`/cursos/api/reintentar/${idCurso}`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => { if(data.success) window.location.href = `/cursos/reproductor/${idCurso}`; })
+                .catch(e => alert("Error al reiniciar."));
+            }
+        };
+    } else if (estadoCurso && estadoCurso.seconds_watched > 0) {
+        btnPrincipal.innerText = 'Reanudar curso';
+        btnPrincipal.href = `/cursos/reproductor/${idCurso}`;
+    } else {
+        btnPrincipal.innerText = 'Iniciar curso';
+        btnPrincipal.href = `/cursos/reproductor/${idCurso}`;
+    }
+    IntranetModal.open(modal);
+  }
+
+  function cerrarModalReglas() { IntranetModal.close(modal); }
+
+  function abrirModalEditarSub(oldName, currentUrl) {
+      document.getElementById('edit_old_name').value = oldName;
+      document.getElementById('edit_new_name').value = oldName;
+      document.getElementById('edit_current_url').value = currentUrl;
+      document.getElementById('edit_return_url').value = window.location.pathname; 
+      IntranetModal.open('modalEditarSub');
+  }
+  function cerrarModalEditarSub() { IntranetModal.close('modalEditarSub'); }
+
+  function abrirModalNuevoMaterial(seccion) {
+      document.getElementById('new_mat_seccion').value = seccion;
+      document.querySelectorAll('.mat_return_url').forEach((el) => {
+        el.value = window.location.pathname;
+      });
+      IntranetModal.open('modalNuevoMaterial');
+  }
+  function cerrarModalNuevoMaterial() { IntranetModal.close('modalNuevoMaterial'); }
+
+  function abrirModalEditarMaterial(id, nombre) {
+      document.getElementById('formEditarMaterial').action = '/cursos/material/editar/' + id;
+      document.getElementById('edit_mat_nombre').value = nombre;
+      document.querySelectorAll('.mat_return_url').forEach((el) => {
+        el.value = window.location.pathname;
+      });
+      IntranetModal.open('modalEditarMaterial');
+  }
+  function cerrarModalEditarMaterial() { IntranetModal.close('modalEditarMaterial'); }
+
+  window.addEventListener('click', function(event) {
+    if (event.target === modal) cerrarModalReglas();
+    if (event.target === document.getElementById('modalEditarSub')) cerrarModalEditarSub();
+  });
+</script>

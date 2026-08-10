@@ -1,0 +1,855 @@
+<%
+  function titleCase(s) {
+    if (!s) return '';
+    const capitalize = (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+    return String(s)
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((word) =>
+        word.split('-').map((segment) => capitalize(segment)).join('-')
+      )
+      .join(' ');
+  }
+
+  function formatDateShort(dateString) {
+    const d = new Date(dateString);
+    const dia = d.getDate();
+    const mes = d.toLocaleString('es-CL', { month: 'short' });
+    return `${dia}-${mes.replace('.', '')}`;
+  }
+
+  function formatNewsDate(dateString) {
+    return formatDateShort(dateString).replace('-', ' ').toUpperCase();
+  }
+
+  function getInitials(name) {
+    if (!name) return '?';
+    const parts = String(name).trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return parts[0][0].toUpperCase();
+  }
+
+  function financeTrendClass(tendencia) {
+    if (tendencia === 'alcista') return 'home-indicator--up';
+    if (tendencia === 'bajista') return 'home-indicator--down';
+    return 'home-indicator--equal';
+  }
+
+  function financeTrendSymbol(tendencia) {
+    if (tendencia === 'alcista') return '↑';
+    if (tendencia === 'bajista') return '↓';
+    return '−';
+  }
+
+  const mesCorto = new Date(2000, new Date().getMonth(), 1)
+    .toLocaleString('es-CL', { month: 'short' })
+    .replace('.', '');
+
+  const mesNum = new Date().getMonth() + 1;
+  let cumpleaniosOrdenados = [];
+  if (typeof cumpleaniosMes !== 'undefined' && cumpleaniosMes) {
+    cumpleaniosOrdenados = [...cumpleaniosMes].sort((a, b) => {
+      const dHoy = (typeof diaHoy !== 'undefined') ? diaHoy : new Date().getDate();
+      const aPasado = a.dia < dHoy;
+      const bPasado = b.dia < dHoy;
+      if (aPasado !== bPasado) return aPasado ? 1 : -1;
+      return a.dia - b.dia;
+    });
+  }
+
+  const listaNoticias = (typeof noticiasLista !== 'undefined' && noticiasLista) ? noticiasLista : [];
+  const destacada = (typeof noticiaDestacada !== 'undefined' && noticiaDestacada) ? noticiaDestacada : null;
+  const tieneDestacada = Boolean(destacada);
+
+  const nombresDiasMenu = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+  let diaActualMenu = new Date().getDay();
+  if (diaActualMenu === 0 || diaActualMenu === 6) diaActualMenu = 1;
+
+  const imagenesGaleria = (typeof eventosCarousel !== 'undefined' && eventosCarousel)
+    ? eventosCarousel
+    : [];
+
+  const saludoTexto = (typeof saludo !== 'undefined' && saludo) ? saludo : 'Hola';
+  const nombreSaludo = (typeof nombrePila !== 'undefined' && nombrePila) ? nombrePila : '';
+  const fechaEncabezado = (typeof fechaLarga !== 'undefined' && fechaLarga) ? fechaLarga : '';
+
+  const dolarUrl = 'https://si3.bcentral.cl/indicadoressiete/secure/Serie.aspx?gcode=PRE_TCO&param=RABmAFYAWQB3AGYAaQBuAEkALQAzADUAbgBNAGgAaAAkADUAVwBQAC4AbQBYADAARwBOAGUAYwBjACMAQQBaAHAARgBhAGcAUABTAGUAdwA1ADQAMQA0AE0AawBLAF8AdQBDACQASABzAG0AXwA2AHQAawBvAFcAZwBKAEwAegBzAF8AbgBMAHIAYgBDAC4ARQA3AFUAVwB4AFIAWQBhAEEAOABkAHkAZwAxAEEARAA=';
+  const euroUrl = 'https://si3.bcentral.cl/IndicadoresSiete/secure/Serie.aspx?gcode=PRE_EUR&param=cgBnAE8AOQBlAGcAIwBiAFUALQBsAEcAYgBOAEkASQBCAEcAegBFAFkAeABkADgASAA2AG8AdgB2AFMAUgBYADIAQwBzAEEARQBMAG8ASgBWADQATABrAGQAZAB1ADIAeQBBAFAAZwBhADIAbABWAHcAXwBXAGgATAAkAFIAVAB1AEIAbAB3AFoAdQBRAFgAZwA5AHgAdgAwACQATwBZADcAMwAuAGIARwBFAFIASwAuAHQA';
+  const ufUrl = 'https://si3.bcentral.cl/IndicadoresSiete/secure/Serie.aspx?gcode=UF&param=RABmAFYAWQB3AGYAaQBuAEkALQAzADUAbgBNAGgAaAAkADUAVwBQAC4AbQBYADAARwBOAGUAYwBjACMAQQBaAHAARgBhAGcAUABTAGUAYwBsAEMAMQA0AE0AawBLAF8AdQBDACQASABzAG0AXwA2AHQAawBvAFcAZwBKAEwAegBzAF8AbgBMAHIAYgBDAC4ARQA3AFUAVwB4AFIAWQBhAEEAOABkAHkAZwAxAEEARAA=';
+%>
+
+<div class="home-page">
+
+  <!-- Encabezado: saludo + indicadores financieros -->
+  <div class="home-hero">
+    <div class="home-hero__intro">
+      <h1 class="home-hero__greeting"><%= saludoTexto %><%= nombreSaludo ? ', ' + nombreSaludo : '' %></h1>
+      <span class="home-hero__meta"><%= fechaEncabezado ? fechaEncabezado + ' · ' : '' %>Huechuraba, Santiago</span>
+    </div>
+
+    <div class="home-hero__indicators" role="list" aria-label="Indicadores financieros">
+      <a href="<%= dolarUrl %>" target="_blank" rel="noopener noreferrer" class="home-indicator <%= financeTrendClass(finanzas.dolar.tendencia) %>" role="listitem">
+        <span class="home-indicator__label">USD</span>
+        <span class="home-indicator__value"><%= (finanzas.dolar && finanzas.dolar.valor) ? finanzas.dolar.valor : '---' %></span>
+        <span class="home-indicator__trend" aria-hidden="true"><%= financeTrendSymbol(finanzas.dolar.tendencia) %></span>
+      </a>
+      <a href="<%= euroUrl %>" target="_blank" rel="noopener noreferrer" class="home-indicator <%= financeTrendClass(finanzas.euro.tendencia) %>" role="listitem">
+        <span class="home-indicator__label">EUR</span>
+        <span class="home-indicator__value"><%= (finanzas.euro && finanzas.euro.valor) ? finanzas.euro.valor : '---' %></span>
+        <span class="home-indicator__trend" aria-hidden="true"><%= financeTrendSymbol(finanzas.euro.tendencia) %></span>
+      </a>
+      <a href="<%= ufUrl %>" target="_blank" rel="noopener noreferrer" class="home-indicator <%= financeTrendClass(finanzas.uf.tendencia) %>" role="listitem">
+        <span class="home-indicator__label">UF</span>
+        <span class="home-indicator__value"><%= (finanzas.uf && finanzas.uf.valor) ? finanzas.uf.valor : '---' %></span>
+        <span class="home-indicator__trend" aria-hidden="true"><%= financeTrendSymbol(finanzas.uf.tendencia) %></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="home-dash">
+
+    <!-- ── Columna principal ── -->
+    <div class="home-dash__main">
+
+      <!-- Accesos rápidos -->
+      <section class="home-section home-quick-section" aria-label="Accesos rápidos">
+        <div class="home-quick">
+          <a href="https://www.transworld.cl/" target="_blank" rel="noopener noreferrer" class="home-quick__item">
+            <span class="home-quick__glyph home-quick__glyph--brand home-quick__glyph--logo">
+              <img src="/img/favicon.png" alt="" class="home-quick__glyph-img">
+            </span>
+            <span class="home-quick__label">transworld.cl</span>
+          </a>
+          <a href="/cursos" class="home-quick__item">
+            <span class="home-quick__glyph home-quick__glyph--green home-quick__glyph--logo">
+              <img src="/img/academy-logo.png" alt="" class="home-quick__glyph-img">
+            </span>
+            <span class="home-quick__label">Academy</span>
+          </a>
+          <a href="https://transworld.mirexmas.com/" target="_blank" rel="noopener noreferrer" class="home-quick__item">
+            <span class="home-quick__glyph home-quick__glyph--sky home-quick__glyph--logo">
+              <img src="/img/rex-logo.png" alt="" class="home-quick__glyph-img">
+            </span>
+            <span class="home-quick__label">Rex+</span>
+          </a>
+          <a href="https://www.achs.cl/" target="_blank" rel="noopener noreferrer" class="home-quick__item">
+            <span class="home-quick__glyph home-quick__glyph--mint home-quick__glyph--logo">
+              <img src="/img/achs.png" alt="" class="home-quick__glyph-img">
+            </span>
+            <span class="home-quick__label">ACHS</span>
+          </a>
+          <a href="https://www.cajalosandes.cl/" target="_blank" rel="noopener noreferrer" class="home-quick__item">
+            <span class="home-quick__glyph home-quick__glyph--indigo home-quick__glyph--logo">
+              <img src="/img/cajalosandes.png" alt="" class="home-quick__glyph-img">
+            </span>
+            <span class="home-quick__label">Caja L.A.</span>
+          </a>
+          <a href="/sistemas/tickets" class="home-quick__item ticket-notif-target">
+            <span class="home-quick__glyph home-quick__glyph--muted">✚</span>
+            <span class="home-quick__label">Tickets</span>
+          </a>
+        </div>
+      </section>
+
+      <!-- Noticia destacada -->
+      <% if (tieneDestacada) { %>
+        <a href="<%= destacada.link %>" class="home-featured">
+          <span class="home-featured__glow home-featured__glow--1" aria-hidden="true"></span>
+          <span class="home-featured__glow home-featured__glow--2" aria-hidden="true"></span>
+          <div class="home-featured__content">
+            <div class="home-featured__head">
+              <span class="home-featured__badge">Destacada</span>
+              <time class="home-featured__date" datetime="<%= destacada.fecha.toISOString() %>"><%= formatNewsDate(destacada.fecha) %></time>
+            </div>
+            <h2 class="home-featured__title"><%= destacada.title %></h2>
+            <% if (destacada.subtitle) { %>
+              <p class="home-featured__sub"><%= destacada.subtitle %></p>
+            <% } %>
+            <% if (destacada.resumen && destacada.resumen.chips.length) { %>
+              <p class="home-featured__chips"><%= destacada.resumen.chips.map(c => c.text).join(' · ') %></p>
+            <% } %>
+            <span class="home-featured__cta">Leer comunicado →</span>
+          </div>
+        </a>
+      <% } %>
+
+      <!-- Lista de noticias -->
+      <section class="home-section" aria-labelledby="home-news-title">
+        <div class="home-card home-news">
+          <div class="home-card__head">
+            <h2 class="home-card__title" id="home-news-title">Noticias internas</h2>
+            <a href="/noticias" class="home-card__link">Ver todas →</a>
+          </div>
+          <% if (listaNoticias.length > 0) { %>
+            <ul class="home-news__list">
+              <% listaNoticias.forEach((news) => { %>
+                <li class="home-news__item">
+                  <a href="<%= news.link %>" class="home-news__row">
+                    <% if (news.image) { %>
+                      <span class="home-news__thumb" aria-hidden="true">
+                        <img src="<%= news.image %>" alt="" loading="lazy" decoding="async">
+                      </span>
+                    <% } else { %>
+                      <span class="home-news__dot" aria-hidden="true"></span>
+                    <% } %>
+                    <span class="home-news__texts">
+                      <span class="home-news__title" title="<%= news.title %>"><%= news.title %></span>
+                      <% if (news.subtitle) { %>
+                        <span class="home-news__sub"><%= news.subtitle %></span>
+                      <% } else if (news.resumen && news.resumen.chips.length) { %>
+                        <span class="home-news__sub"><%= news.resumen.chips.map(c => c.text).join(' · ') %></span>
+                      <% } %>
+                    </span>
+                    <time class="home-news__date"><%= formatNewsDate(news.fecha) %></time>
+                  </a>
+                </li>
+              <% }); %>
+            </ul>
+          <% } else if (!tieneDestacada) { %>
+            <p class="home-news__empty">No hay noticias recientes.</p>
+          <% } %>
+        </div>
+      </section>
+
+      <!-- Galería Transworld -->
+      <section class="home-section home-gallery" aria-labelledby="home-gallery-title">
+        <div class="home-card__head home-card__head--bare">
+          <div>
+            <h2 class="home-card__title" id="home-gallery-title">Galería Transworld</h2>
+            <p class="home-card__sub">Disfruta de los momentos más especiales de nuestra empresa</p>
+          </div>
+          <a href="/marketing/eventos" class="home-card__link">Ver galería →</a>
+        </div>
+
+        <div class="home-glass home-gallery__card<%= imagenesGaleria.length === 0 ? ' is-ready' : '' %>" id="homeGalleryCarousel"<%= imagenesGaleria.length > 0 ? ' aria-busy="true"' : '' %>>
+          <% if (imagenesGaleria.length > 0) { %>
+            <div class="home-gallery__loading" role="status" aria-live="polite">
+              <span class="home-gallery__spinner" aria-hidden="true"></span>
+              <span class="home-gallery__loading-text">Cargando fotos…</span>
+            </div>
+
+            <% if (imagenesGaleria.length > 1) { %>
+              <button type="button" class="home-gallery__nav home-gallery__nav--prev" onclick="moveHomeGallery(-1)" aria-label="Imagen anterior">&#10094;</button>
+              <button type="button" class="home-gallery__nav home-gallery__nav--next" onclick="moveHomeGallery(1)" aria-label="Imagen siguiente">&#10095;</button>
+            <% } %>
+
+            <div class="home-gallery__viewport">
+              <% imagenesGaleria.forEach((item, index) => { %>
+                <article class="home-gallery__slide<%= index === 0 ? ' is-active' : '' %>">
+                  <a href="/marketing/eventos/<%= item.slug %>" class="home-gallery__link" title="Ver galería de <%= item.name %>">
+                    <img
+                      src="<%= item.image %>"
+                      alt="Imagen de la galería de <%= item.name %>"
+                      class="home-gallery__img"
+                      loading="<%= index === 0 ? 'eager' : 'lazy' %>"
+                      onerror="this.src='/img/fondo-home.png'"
+                    >
+                    <div class="home-gallery__overlay">
+                      <span class="home-gallery__eyebrow">Galería de eventos</span>
+                      <h3 class="home-gallery__title"><%= item.name %></h3>
+                      <span class="home-gallery__cta">Ver fotos</span>
+                    </div>
+                  </a>
+                </article>
+              <% }); %>
+            </div>
+
+            <% if (imagenesGaleria.length > 1) { %>
+              <div class="home-gallery__dots" aria-label="Paginación de galería">
+                <% imagenesGaleria.forEach((item, index) => { %>
+                  <button type="button" class="home-gallery__dot<%= index === 0 ? ' is-active' : '' %>" data-gallery-index="<%= index %>" aria-label="Ver imagen <%= index + 1 %>"></button>
+                <% }); %>
+              </div>
+            <% } %>
+          <% } else { %>
+            <div class="home-gallery__empty">
+              <span class="home-gallery__empty-icon" aria-hidden="true"><%- include('partials/icon', { name: 'image' }) %></span>
+              <span>No hay imágenes disponibles en la galería por ahora.</span>
+            </div>
+          <% } %>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ── Columna lateral (superior) ── -->
+    <div class="home-dash__side">
+
+      <!-- Menú semanal (protagonista) -->
+      <section class="home-section">
+        <div class="home-card home-menu">
+          <div class="home-menu__head">
+            <div class="home-menu__head-text">
+              <h2 class="home-menu__title">Menú semanal</h2>
+              <span class="home-menu__sub">Casino · <%= (typeof mesNombre !== 'undefined') ? mesNombre : '' %></span>
+            </div>
+            <div class="home-menu__head-actions">
+              <span class="home-menu__badge">HOY</span>
+              <% if (typeof isAdministrador !== 'undefined' && isAdministrador) { %>
+                <button type="button" onclick="IntranetModal.open('modalPlatos')" class="home-menu__edit" title="Editar menú semanal" aria-label="Editar menú semanal"><%- include('partials/icon', { name: 'edit' }) %></button>
+              <% } %>
+            </div>
+          </div>
+          <ul class="home-menu__list" aria-label="Menú de la semana">
+            <% for (let i = 1; i <= 5; i++) { %>
+              <% const platoDia = (typeof menuSemanal !== 'undefined' && menuSemanal) ? menuSemanal.find(p => p.day_number === i) : null; %>
+              <li class="home-menu__day<%= i === diaActualMenu ? ' home-menu__day--today' : '' %>">
+                <span class="home-menu__label"><%= nombresDiasMenu[i - 1] %></span>
+                <span class="home-menu__dish"><%= platoDia && platoDia.dish_name ? platoDia.dish_name : 'No definido' %></span>
+              </li>
+            <% } %>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Clima -->
+      <section class="home-section">
+        <article class="home-card home-weather home-card--clickable" onclick="window.open('https://www.meteored.cl/tiempo-en_Santiago+de+Chile-America+Sur-Chile-Region+Metropolitana+de+Santiago-SCEL-1-18578.html', '_blank')" title="Ver clima detallado">
+          <div class="home-weather__top">
+            <div class="home-weather__lead">
+              <span class="home-weather__label">Clima · <%= (typeof clima !== 'undefined' && clima && clima.ubicacion) ? clima.ubicacion : 'Huechuraba' %></span>
+              <div class="home-weather__headline">
+                <span class="home-weather__temp"><%= (typeof clima !== 'undefined' && clima) ? clima.temp : '--' %>°</span>
+                <span class="home-weather__desc">
+                  <%= (typeof clima !== 'undefined' && clima && clima.desc) ? clima.desc : 'Santiago' %><% if (typeof clima !== 'undefined' && clima && clima.tempMin != null && clima.tempMax != null) { %> · <%= clima.tempMin %>° / <%= clima.tempMax %>°<% } %>
+                </span>
+              </div>
+            </div>
+            <span class="home-weather__icon" aria-hidden="true">
+              <%- include('partials/icon', { name: (typeof clima !== 'undefined' && clima && clima.icon) ? clima.icon : 'sun' }) %>
+            </span>
+          </div>
+
+          <% if (typeof clima !== 'undefined' && clima) { %>
+            <% if (clima.feelsLike != null || clima.humidity != null || clima.wind != null || clima.lluvia != null || clima.sunrise || clima.sunset) { %>
+              <div class="home-weather__details">
+                <% if (clima.feelsLike != null) { %>
+                  <span class="home-weather__detail">Sensación <%= clima.feelsLike %>°</span>
+                <% } %>
+                <% if (clima.humidity != null) { %>
+                  <span class="home-weather__detail"><%- include('partials/icon', { name: 'droplet' }) %> <%= clima.humidity %>%</span>
+                <% } %>
+                <% if (clima.wind != null) { %>
+                  <span class="home-weather__detail"><%- include('partials/icon', { name: 'wind' }) %> <%= clima.wind %> km/h</span>
+                <% } %>
+                <% if (clima.lluvia != null) { %>
+                  <span class="home-weather__detail"><%- include('partials/icon', { name: 'umbrella' }) %> <%= clima.lluvia %>%</span>
+                <% } %>
+                <% if (clima.sunrise) { %>
+                  <span class="home-weather__detail"><%- include('partials/icon', { name: 'sunrise' }) %> <%= clima.sunrise %></span>
+                <% } %>
+                <% if (clima.sunset) { %>
+                  <span class="home-weather__detail"><%- include('partials/icon', { name: 'sunset' }) %> <%= clima.sunset %></span>
+                <% } %>
+              </div>
+            <% } %>
+            <% if (clima.semana && clima.semana.length > 1) { %>
+              <ul class="home-weather__forecast" aria-label="Pronóstico semanal">
+                <% clima.semana.slice(1, 6).forEach((dia) => { %>
+                  <li class="home-weather__forecast-day">
+                    <span class="home-weather__forecast-label"><%= dia.dia %></span>
+                    <span class="home-weather__forecast-icon" aria-hidden="true"><%- include('partials/icon', { name: dia.icon }) %></span>
+                    <span class="home-weather__forecast-temp"><%= dia.tempMin %>°/<%= dia.tempMax %>°</span>
+                  </li>
+                <% }); %>
+              </ul>
+            <% } %>
+          <% } %>
+        </article>
+      </section>
+
+      <!-- Cumpleaños -->
+      <section class="home-section">
+        <div class="home-card home-bdays">
+          <span class="home-bdays__glow" aria-hidden="true"></span>
+          <div class="home-bdays__head">
+            <span class="home-bdays__emoji" aria-hidden="true">🎉</span>
+            <h2 class="home-card__title">Cumpleaños de <%= (typeof mesNombre !== 'undefined') ? mesNombre : '' %></h2>
+          </div>
+
+          <% if (!cumpleaniosOrdenados || cumpleaniosOrdenados.length === 0) { %>
+            <p class="home-bdays__empty">No hay cumpleaños registrados.</p>
+          <% } else { %>
+            <% const hoyDia = new Date().getDate(); %>
+            <div id="lista-cumpleanos" class="home-bdays__list">
+              <% cumpleaniosOrdenados.forEach((p, index) => {
+                const ocultoClass = (index >= 3) ? 'is-hidden' : '';
+                const esHoy = (Number(p.dia) === hoyDia);
+                const iniciales = getInitials(p.nombre);
+              %>
+                <article class="home-bday item-cumple<%= esHoy ? ' home-bday--today' : '' %> <%= ocultoClass %>" aria-label="Cumpleaños de <%= titleCase(p.nombre) %>">
+                  <span class="home-bday__avatar">
+                    <% if (p.photo || p.foto) { %>
+                      <img src="<%= p.photo || p.foto %>" alt="" class="home-bday__img" loading="lazy">
+                    <% } else { %>
+                      <span class="home-bday__initials" aria-hidden="true"><%= iniciales %></span>
+                    <% } %>
+                  </span>
+                  <span class="home-bday__info">
+                    <span class="home-bday__name"><%= titleCase(p.nombre) %></span>
+                    <span class="home-bday__area"><%= titleCase(p.area) %></span>
+                  </span>
+                  <span class="home-bday__date<%= esHoy ? ' home-bday__date--today' : '' %>" aria-label="<%= p.dia %> de <%= mesCorto %>"><%= p.dia %> <%= mesCorto.toUpperCase() %></span>
+                </article>
+              <% }); %>
+            </div>
+            <% if (cumpleaniosOrdenados.length > 3) { %>
+              <button type="button" id="btn-ver-mas-cumple" class="home-bdays__more" onclick="toggleCumpleanios()">Ver más...</button>
+            <% } %>
+          <% } %>
+        </div>
+      </section>
+
+      <!-- Comunicaciones (LinkedIn) -->
+      <section class="home-section home-comms" aria-labelledby="home-comms-title">
+        <div class="home-card__head home-card__head--bare home-comms__head">
+          <h2 class="home-card__title" id="home-comms-title">Comunicaciones</h2>
+          <a href="https://www.linkedin.com/company/transworldpowerandtelecom" target="_blank" rel="noopener noreferrer" class="home-card__link">Ver LinkedIn →</a>
+        </div>
+
+        <div class="home-glass home-comms__frame" id="homeCommsCarousel">
+          <button type="button" class="home-comms__nav home-comms__nav--prev" onclick="moveLinkedin(-1)" aria-label="Anterior">&#10094;</button>
+          <button type="button" class="home-comms__nav home-comms__nav--next" onclick="moveLinkedin(1)" aria-label="Siguiente">&#10095;</button>
+
+          <% if (typeof linkedinFeed !== 'undefined' && linkedinFeed.length > 0) { %>
+            <% linkedinFeed.forEach((post, index) => { %>
+              <div class="home-comms__slide<%= index === 0 ? ' is-active' : '' %>">
+                <a href="<%= post.link_url %>" target="_blank" rel="noopener noreferrer" class="home-comms__link" title="<%= post.text %>">
+                  <% if (post.image_url === '/img/fondo-home.png') { %>
+                    <% const parrafos = (post.text || '').split('\n').filter(p => p.trim().length > 0); %>
+                    <% const textoResumen = parrafos.slice(0, 2).join('<br><br>'); %>
+                    <div class="home-comms__text-card">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="#ffffff" class="home-comms__linkedin-icon" aria-hidden="true">
+                        <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"></path>
+                      </svg>
+                      <div class="home-comms__text-summary"><%- textoResumen %></div>
+                      <p class="home-comms__cta">Ver más →</p>
+                    </div>
+                  <% } else { %>
+                    <img src="<%= post.image_url %>" alt="Publicación LinkedIn" class="home-comms__img" onerror="this.src='/img/fondo-home.png'">
+                  <% } %>
+                </a>
+              </div>
+            <% }); %>
+          <% } else { %>
+            <div class="home-comms__slide is-active">
+              <div class="home-comms__empty">Actualizando comunicaciones...</div>
+            </div>
+          <% } %>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<% if (typeof showHomeTutorial !== 'undefined' && showHomeTutorial) { %>
+<%
+  const tutorialNombre = (typeof user !== 'undefined' && user && user.nombre)
+    ? user.nombre.trim().split(/\s+/)[0]
+    : 'bienvenido/a';
+%>
+<div id="modalHomeTutorial" class="modal-overlay home-tutorial-overlay" data-dismiss="false" role="dialog" aria-modal="true" aria-labelledby="home-tutorial-title" aria-hidden="true">
+  <div class="modal-content2 home-tutorial">
+    <div class="home-tutorial__badge" aria-hidden="true">Primer ingreso</div>
+    <h3 id="home-tutorial-title" class="home-tutorial__title">¡Hola, <%= tutorialNombre %>!</h3>
+    <p class="home-tutorial__lead">Te damos la bienvenida a la intranet de Transworld. Estos son los puntos clave para comenzar:</p>
+
+    <ol class="home-tutorial__steps">
+      <li class="home-tutorial__step">
+        <span class="home-tutorial__icon" aria-hidden="true"><%- include('partials/icon', { name: 'home' }) %></span>
+        <div>
+          <strong>Tu panel de inicio</strong>
+          <p>Indicadores financieros, clima, menú del casino y accesos rápidos a cursos y el sitio web.</p>
+        </div>
+      </li>
+      <li class="home-tutorial__step">
+        <span class="home-tutorial__icon" aria-hidden="true"><%- include('partials/icon', { name: 'clipboard' }) %></span>
+        <div>
+          <strong>Menú superior</strong>
+          <p>Noticias internas, procesos y documentos, RRHH y galería de eventos de la empresa.</p>
+        </div>
+      </li>
+      <li class="home-tutorial__step">
+        <span class="home-tutorial__icon" aria-hidden="true"><%- include('partials/icon', { name: 'ticket' }) %></span>
+        <div>
+          <strong>Soporte TI</strong>
+          <p>Usa <em>Soporte</em> en la barra superior para revisar la ticketera y el botón <em>Abrir Ticket</em> para crear un nuevo caso.</p>
+        </div>
+      </li>
+      <li class="home-tutorial__step">
+        <span class="home-tutorial__icon" aria-hidden="true"><%- include('partials/icon', { name: 'user' }) %></span>
+        <div>
+          <strong>Tu perfil</strong>
+          <p>Haz clic en tu foto para actualizar tus datos, teléfono y foto de perfil.</p>
+        </div>
+      </li>
+      <li class="home-tutorial__step">
+        <span class="home-tutorial__icon" aria-hidden="true"><%- include('partials/icon', { name: 'sparkles' }) %></span>
+        <div>
+          <strong>Asistente IA de Transworld</strong>
+          <p>El botón flotante en la esquina inferior te ayuda con consultas sobre la intranet.</p>
+        </div>
+      </li>
+    </ol>
+
+    <div class="home-tutorial__actions">
+      <button type="button" id="btnHomeTutorialCerrar" class="btn-primario home-tutorial__btn">Entendido, comenzar</button>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<% if (typeof isAdministrador !== 'undefined' && isAdministrador) { %>
+<div id="modalPlatos" class="modal-overlay modal-editar-menu" role="dialog" aria-modal="true" aria-labelledby="modalPlatosTitle" aria-hidden="true">
+  <div class="modal-content2 modal-content2-large">
+    <button type="button" class="modal-content2-close" data-modal-close aria-label="Cerrar">&times;</button>
+    <h3 id="modalPlatosTitle" class="modal-title">Editar Menú Semanal</h3>
+    <p class="modal-description">Actualiza el plato del casino para cada día de la semana.</p>
+    <form action="/platos/editar" method="POST" class="modal-form">
+      <% const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']; %>
+      <% for (let i = 1; i <= 5; i++) { %>
+        <% const platoDia = (typeof menuSemanal !== 'undefined' && menuSemanal) ? menuSemanal.find(p => p.day_number === i) : null; %>
+        <div class="modal-form-group">
+          <label class="modal-form-label" for="plato_<%= i %>"><%= dias[i - 1] %></label>
+          <input type="text" id="plato_<%= i %>" name="plato_<%= i %>" value="<%= platoDia ? platoDia.dish_name : '' %>" required class="modal-form-input">
+        </div>
+      <% } %>
+      <div class="modal-actions">
+        <button type="button" class="btn-secundario" data-modal-close>Cancelar</button>
+        <button type="submit" class="btn-primario">Guardar Menú</button>
+      </div>
+    </form>
+  </div>
+</div>
+<% } %>
+
+<div id="modalVerMenu" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalVerMenuTitle" aria-hidden="true">
+  <div class="modal-content2">
+    <button type="button" class="modal-content2-close" data-modal-close aria-label="Cerrar">&times;</button>
+    <h3 id="modalVerMenuTitle" class="modal-title">Menú de la Semana</h3>
+    <div class="modal-list-stack">
+      <% for (let i = 1; i <= 5; i++) { %>
+        <% const pDia = (typeof menuSemanal !== 'undefined' && menuSemanal) ? menuSemanal.find(p => p.day_number === i) : null; %>
+        <div class="modal-list-item">
+          <span class="modal-item-label"><%= nombresDiasMenu[i - 1] %></span>
+          <span class="modal-item-value"><%= pDia && pDia.dish_name ? pDia.dish_name : 'No definido' %></span>
+        </div>
+      <% } %>
+    </div>
+    <div class="modal-actions modal-actions--center">
+      <button type="button" class="btn-primario" data-modal-close>Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function toggleCumpleanios() {
+    const items = document.querySelectorAll('.item-cumple');
+    const btn = document.getElementById('btn-ver-mas-cumple');
+    const hayOcultos = Array.from(items).slice(3).some(el => el.classList.contains('is-hidden'));
+    if (hayOcultos) {
+      items.forEach(el => el.classList.remove('is-hidden'));
+      btn.innerText = 'Ver menos...';
+    } else {
+      items.forEach((el, index) => { if (index >= 3) el.classList.add('is-hidden'); });
+      btn.innerText = 'Ver más...';
+    }
+  }
+
+  let linkedinIndex = 0;
+  function moveLinkedin(n) {
+    const slides = document.querySelectorAll('.home-comms__slide');
+    if (slides.length <= 1) return;
+    slides[linkedinIndex].classList.remove('is-active');
+    linkedinIndex += n;
+    if (linkedinIndex >= slides.length) linkedinIndex = 0;
+    if (linkedinIndex < 0) linkedinIndex = slides.length - 1;
+    slides[linkedinIndex].classList.add('is-active');
+  }
+
+  let homeGalleryIndex = 0;
+  let homeGalleryTimer = null;
+  let homeGalleryStarted = false;
+
+  function isHorizontalGalleryImage(img) {
+    return new Promise(function (resolve) {
+      if (!img) {
+        resolve(false);
+        return;
+      }
+
+      function decide(el) {
+        const w = el.naturalWidth || 0;
+        const h = el.naturalHeight || 0;
+        resolve(w > 0 && w >= h);
+      }
+
+      // Reutilizar dimensiones si el <img> ya cargó (evita un segundo download).
+      if (img.complete) {
+        if (img.naturalWidth > 0) {
+          decide(img);
+        } else {
+          resolve(false);
+        }
+        return;
+      }
+
+      const onLoad = function () {
+        img.removeEventListener('load', onLoad);
+        img.removeEventListener('error', onError);
+        decide(img);
+      };
+      const onError = function () {
+        img.removeEventListener('load', onLoad);
+        img.removeEventListener('error', onError);
+        resolve(false);
+      };
+
+      img.addEventListener('load', onLoad);
+      img.addEventListener('error', onError);
+
+      // Forzar carga del candidato actual sin new Image() (respeta caché del <img>).
+      if (img.loading === 'lazy') {
+        img.loading = 'eager';
+      }
+      // Reasignar src solo si hace falta disparar la carga.
+      if (!img.complete) {
+        const src = img.currentSrc || img.src;
+        if (src) img.src = src;
+      }
+    });
+  }
+
+  function markHomeGalleryReady(gallery) {
+    gallery.classList.add('is-ready');
+    gallery.removeAttribute('aria-busy');
+    const loading = gallery.querySelector('.home-gallery__loading');
+    if (loading) loading.remove();
+  }
+
+  function showHomeGalleryEmpty(gallery) {
+    gallery.innerHTML =
+      '<div class="home-gallery__empty">' +
+      '<span class="home-gallery__empty-icon" aria-hidden="true">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<rect x="3" y="3" width="18" height="18" rx="2"/>' +
+      '<circle cx="8.5" cy="8.5" r="1.5"/>' +
+      '<polyline points="21 15 16 10 5 21"/>' +
+      '</svg>' +
+      '</span>' +
+      '<span>No hay imágenes disponibles en la galería por ahora.</span>' +
+      '</div>';
+    markHomeGalleryReady(gallery);
+  }
+
+  function reindexHomeGalleryControls(gallery) {
+    const slides = Array.from(gallery.querySelectorAll('.home-gallery__slide'));
+    const dotsWrap = gallery.querySelector('.home-gallery__dots');
+    const dots = dotsWrap ? Array.from(dotsWrap.querySelectorAll('.home-gallery__dot')) : [];
+
+    if (!slides.length) {
+      showHomeGalleryEmpty(gallery);
+      if (homeGalleryTimer) {
+        window.clearInterval(homeGalleryTimer);
+        homeGalleryTimer = null;
+      }
+      return false;
+    }
+
+    if (homeGalleryIndex >= slides.length) {
+      homeGalleryIndex = 0;
+    }
+
+    slides.forEach(function (slide, index) {
+      slide.classList.toggle('is-active', index === homeGalleryIndex);
+    });
+
+    dots.forEach(function (dot, index) {
+      if (index >= slides.length) {
+        dot.remove();
+        return;
+      }
+      dot.dataset.galleryIndex = String(index);
+      dot.classList.toggle('is-active', index === homeGalleryIndex);
+    });
+
+    if (slides.length <= 1) {
+      gallery.querySelectorAll('.home-gallery__nav').forEach(function (nav) {
+        nav.remove();
+      });
+      if (dotsWrap) dotsWrap.remove();
+      if (homeGalleryTimer) {
+        window.clearInterval(homeGalleryTimer);
+        homeGalleryTimer = null;
+      }
+    }
+
+    return true;
+  }
+
+  function removeHomeGallerySlide(gallery, slide) {
+    const slides = Array.from(gallery.querySelectorAll('.home-gallery__slide'));
+    const index = slides.indexOf(slide);
+    if (index < 0) return;
+
+    const dotsWrap = gallery.querySelector('.home-gallery__dots');
+    const dots = dotsWrap ? Array.from(dotsWrap.querySelectorAll('.home-gallery__dot')) : [];
+    dots[index]?.remove();
+    slide.remove();
+
+    if (index < homeGalleryIndex) {
+      homeGalleryIndex -= 1;
+    } else if (index === homeGalleryIndex) {
+      homeGalleryIndex = Math.min(homeGalleryIndex, Math.max(slides.length - 2, 0));
+    }
+
+    reindexHomeGalleryControls(gallery);
+  }
+
+  function preloadHomeGalleryImage(index) {
+    const slides = document.querySelectorAll('.home-gallery__slide');
+    if (!slides.length) return;
+
+    const targetIndex = (index + slides.length) % slides.length;
+    const img = slides[targetIndex].querySelector('.home-gallery__img');
+    if (!img || img.dataset.preloaded === 'true') return;
+
+    // Solo adelantar la siguiente visible; no forzar descarga de toda la cola.
+    if (img.loading === 'lazy') img.loading = 'eager';
+    img.dataset.preloaded = 'true';
+  }
+
+  function setHomeGallerySlide(nextIndex) {
+    const slides = document.querySelectorAll('.home-gallery__slide');
+    const dots = document.querySelectorAll('.home-gallery__dot');
+    if (slides.length <= 1) return;
+
+    slides[homeGalleryIndex]?.classList.remove('is-active');
+    dots[homeGalleryIndex]?.classList.remove('is-active');
+
+    homeGalleryIndex = (nextIndex + slides.length) % slides.length;
+
+    slides[homeGalleryIndex].classList.add('is-active');
+    dots[homeGalleryIndex]?.classList.add('is-active');
+    preloadHomeGalleryImage(homeGalleryIndex + 1);
+  }
+
+  function moveHomeGallery(n) {
+    setHomeGallerySlide(homeGalleryIndex + n);
+  }
+
+  function goHomeGallery(index) {
+    setHomeGallerySlide(index);
+  }
+
+  function startHomeGalleryCarousel(gallery) {
+    if (homeGalleryStarted) return;
+    homeGalleryStarted = true;
+
+    const slides = gallery.querySelectorAll('.home-gallery__slide');
+    if (slides.length <= 1) return;
+
+    gallery.querySelectorAll('.home-gallery__dot').forEach(function (dot) {
+      dot.addEventListener('click', function () {
+        goHomeGallery(Number(dot.dataset.galleryIndex || 0));
+      });
+    });
+
+    preloadHomeGalleryImage(homeGalleryIndex + 1);
+
+    homeGalleryTimer = window.setInterval(function () {
+      moveHomeGallery(1);
+    }, 6500);
+
+    gallery.addEventListener('mouseenter', function () {
+      window.clearInterval(homeGalleryTimer);
+    });
+
+    gallery.addEventListener('mouseleave', function () {
+      if (gallery.querySelectorAll('.home-gallery__slide').length <= 1) return;
+      homeGalleryTimer = window.setInterval(function () {
+        moveHomeGallery(1);
+      }, 6500);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', async function () {
+    const gallery = document.getElementById('homeGalleryCarousel');
+    if (!gallery) return;
+
+    const initialSlides = Array.from(gallery.querySelectorAll('.home-gallery__slide'));
+    if (!initialSlides.length) {
+      markHomeGalleryReady(gallery);
+      return;
+    }
+
+    let revealed = false;
+
+    // 1) Buscar la primera horizontal y mostrar el widget enseguida.
+    for (let i = 0; i < initialSlides.length; i += 1) {
+      const slide = initialSlides[i];
+      if (!slide.isConnected) continue;
+
+      const img = slide.querySelector('.home-gallery__img');
+      const horizontal = img ? await isHorizontalGalleryImage(img) : false;
+
+      if (!horizontal) {
+        removeHomeGallerySlide(gallery, slide);
+        continue;
+      }
+
+      homeGalleryIndex = 0;
+      reindexHomeGalleryControls(gallery);
+      markHomeGalleryReady(gallery);
+      startHomeGalleryCarousel(gallery);
+      revealed = true;
+
+      // 2) Filtrar el resto en segundo plano, una por una (sin saturar /content).
+      const pending = Array.from(gallery.querySelectorAll('.home-gallery__slide')).slice(1);
+      (async function filterRemaining() {
+        for (let j = 0; j < pending.length; j += 1) {
+          const other = pending[j];
+          if (!other.isConnected) continue;
+          const otherImg = other.querySelector('.home-gallery__img');
+          const ok = otherImg ? await isHorizontalGalleryImage(otherImg) : false;
+          if (!ok) removeHomeGallerySlide(gallery, other);
+        }
+      })();
+      break;
+    }
+
+    if (!revealed) {
+      showHomeGalleryEmpty(gallery);
+    }
+  });
+
+  window.addEventListener('click', function (event) {
+    if (event.target.id === 'modalPlatos') IntranetModal.close('modalPlatos');
+    if (event.target.id === 'modalVerMenu') IntranetModal.close('modalVerMenu');
+  });
+
+  (function initHomeTutorial() {
+    const modal = document.getElementById('modalHomeTutorial');
+    const btn = document.getElementById('btnHomeTutorialCerrar');
+    if (!modal || !btn) return;
+
+    function cerrarTutorial() {
+      IntranetModal.close('modalHomeTutorial');
+      fetch('/home/tutorial-visto', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json' },
+      }).catch(function () {});
+    }
+
+    btn.addEventListener('click', cerrarTutorial);
+
+    document.addEventListener('DOMContentLoaded', function () {
+      IntranetModal.open('modalHomeTutorial');
+    });
+    if (document.readyState !== 'loading') {
+      IntranetModal.open('modalHomeTutorial');
+    }
+  })();
+</script>

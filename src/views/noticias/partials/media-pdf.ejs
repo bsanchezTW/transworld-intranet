@@ -1,0 +1,46 @@
+<%
+/* Documento PDF con visor embebido. La portada rasterizada en el servidor se
+   pinta de inmediato como contenido inicial del visor; PDF.js la sustituye por
+   el documento completo en cuanto carga. Así nunca hay un hueco vacío. */
+const meta = ['PDF'];
+if (adjunto.pages) meta.push(adjunto.pages + ' página' + (adjunto.pages === 1 ? '' : 's'));
+const tam = adjunto.sizeLabel;
+if (tam) meta.push(tam);
+%>
+<div class="media-bloque media-bloque--ancho" id="adjunto-<%= adjunto.id %>">
+  <article class="doc">
+    <div class="doc__head">
+      <span class="doc__icono doc__icono--pdf" aria-hidden="true">
+        <%- include('../../partials/icon', { name: 'file-text' }) %>
+      </span>
+      <div class="doc__info">
+        <h3 class="doc__nombre"><%= adjunto.name %></h3>
+        <p class="doc__meta"><%= meta.join(' · ') %></p>
+      </div>
+      <div class="doc__acciones">
+        <a class="doc__accion" href="<%= adjunto.url %>" download="<%= adjunto.name %>">
+          <%- include('../../partials/icon', { name: 'file' }) %>
+          Descargar
+        </a>
+      </div>
+    </div>
+
+    <div class="pdf-visor" data-pdf-url="<%= adjunto.url %>">
+      <% if (adjunto.previewUrl) { %>
+        <div class="pdf-pagina"
+             <% if (adjunto.preview_width && adjunto.preview_height) { %>style="aspect-ratio: <%= adjunto.preview_width %> / <%= adjunto.preview_height %>;"<% } %>>
+          <img src="<%= adjunto.previewUrl %>"
+               alt="Primera página de <%= adjunto.name %>"
+               <% if (adjunto.preview_width && adjunto.preview_height) { %>width="<%= adjunto.preview_width %>" height="<%= adjunto.preview_height %>"<% } %>
+               loading="lazy"
+               decoding="async"
+               style="width:100%; height:auto; display:block;">
+        </div>
+      <% } else { %>
+        <p class="pdf-visor__estado">
+          <span class="pdf-cargando">Preparando el documento…</span>
+        </p>
+      <% } %>
+    </div>
+  </article>
+</div>

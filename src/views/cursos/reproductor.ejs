@@ -1,0 +1,286 @@
+<%- include('header-cursos') %>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
+  
+  .reproductor-container,
+  .reproductor-container * {
+    font-family: 'Montserrat', sans-serif !important;
+  }
+
+  .reproductor-container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.0008);
+  }
+
+  .curso-titulo {
+    color: #003a70;
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-top: 0;
+    margin-bottom: 10px; 
+    text-align: center;
+  }
+
+  .curso-descripcion {
+    color: #475569;
+    font-size: 1rem;
+    line-height: 1.6;
+    text-align: center;
+    margin-bottom: 25px;
+    font-weight: 500;
+    padding: 0 20px;
+  }
+
+  .video-wrapper {
+    position: relative;
+    padding-bottom: 56.25%; 
+    height: 0;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #000;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  }
+  
+  .video-wrapper iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%; height: 100%;
+    border: none;
+  }
+
+  .progreso-section {
+    margin-top: 30px;
+    text-align: center;
+  }
+
+  .progreso-texto {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #7a6a55;
+    margin-bottom: 10px;
+  }
+
+  .progreso-barra-fondo {
+    width: 100%;
+    height: 20px;
+    background-color: #eee;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .progreso-barra-llenado {
+    height: 100%;
+    width: 0%;
+    background-color: #c9a24a;
+    transition: width 0.3s ease;
+  }
+
+  .btn-evaluacion {
+    display: block;
+    width: 100%;
+    max-width: 300px;
+    margin: 30px auto 0 auto;
+    padding: 15px;
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border-radius: 8px;
+    border: none;
+    transition: all 0.3s;
+  }
+
+  .btn-evaluacion:disabled {
+    background-color: #ccc;
+    color: #666;
+    cursor: not-allowed;
+  }
+
+  .btn-evaluacion.desbloqueado {
+    background-color: #82D200;
+    color: white;
+    cursor: pointer;
+    text-decoration: none;
+    box-shadow: 0 4px 10px rgba(130, 210, 0, 0.4);
+  }
+
+  .btn-evaluacion.desbloqueado:hover {
+    background-color: #72b800;
+    transform: translateY(-2px);
+  }
+</style>
+
+<div class="reproductor-container">
+  <h2 class="curso-titulo"><%= curso.title %></h2>
+  
+  <% if (curso.description) { %>
+    <p class="curso-descripcion"><%= curso.description %></p>
+  <% } %>
+
+  <div class="video-wrapper">
+    <div id="youtube-player"></div>
+  </div>
+
+  <div class="progreso-section">
+    <div class="progreso-texto" id="texto-progreso">
+      Calculando tiempo...
+    </div>
+    <div class="progreso-barra-fondo">
+      <div class="progreso-barra-llenado" id="barra-progreso"></div>
+    </div>
+  </div>
+
+  <button id="btn-evaluacion" class="btn-evaluacion" disabled>
+    Visualización Incompleta
+  </button>
+</div>
+
+<script>
+  // ==========================================
+  // VARIABLES GLOBALES Y CÁLCULO DEL 80%
+  // ==========================================
+  let duracionTotal = parseInt("<%= curso.tiempoRequerido %>", 10);
+  let tiempoRequerido = Math.floor(duracionTotal * 0.8);
+  const videoId = "<%= curso.youtubeId %>";
+  
+  let progresoHistorico = parseInt("<%= typeof progresoGuardado !== 'undefined' ? progresoGuardado : 0 %>", 10);
+  const segundosVistos = new Set();
+  let lastYtTime = 0;
+  let lastRealTime = 0;
+
+  let player;
+  let monitorInterval;
+
+  const barraProgreso = document.getElementById('barra-progreso');
+  const textoProgreso = document.getElementById('texto-progreso');
+  const btnEvaluacion = document.getElementById('btn-evaluacion');
+
+  function formatearTiempo(totalSegundos) {
+    const horas = Math.floor(totalSegundos / 3600);
+    const minutos = Math.floor((totalSegundos % 3600) / 60);
+    const segundos = Math.floor(totalSegundos % 60);
+
+    let resultado = '';
+    if (horas > 0) resultado += `${horas}h `;
+    if (minutos > 0 || horas > 0) resultado += `${minutos}m `;
+    resultado += `${segundos}s`;
+    
+    return resultado.trim();
+  }
+
+  const tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/iframe_api";
+  const firstScriptTag = document.getElementsByTagName('script')[0];
+  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+  function onYouTubeIframeAPIReady() {
+    player = new YT.Player('youtube-player', {
+      videoId: videoId,
+      playerVars: { 'playsinline': 1, 'rel': 0 },
+      events: { 
+        'onReady': onPlayerReady,
+        'onStateChange': onPlayerStateChange 
+      }
+    });
+    actualizarInterfaz(); 
+  }
+
+  function onPlayerReady(event) {
+    if (progresoHistorico > 0) {
+      player.seekTo(progresoHistorico, true);
+    }
+  }
+
+  function onPlayerStateChange(event) {
+    if (event.data === YT.PlayerState.PLAYING) {
+      const ytDuration = player.getDuration();
+      if (ytDuration > 0) {
+          duracionTotal = ytDuration;
+          tiempoRequerido = Math.floor(duracionTotal * 0.8);
+      }
+
+      lastYtTime = player.getCurrentTime();
+      lastRealTime = Date.now();
+
+      if (!monitorInterval) {
+          monitorInterval = setInterval(registrarTiempo, 1000);
+      }
+    } else {
+      clearInterval(monitorInterval);
+      monitorInterval = null;
+    }
+  }
+
+  function registrarTiempo() {
+    if (player && player.getPlayerState() === YT.PlayerState.PLAYING) {
+      let currentYtTime = player.getCurrentTime();
+      let currentRealTime = Date.now();
+      
+      let deltaYt = currentYtTime - lastYtTime;
+      let deltaReal = (currentRealTime - lastRealTime) / 1000;
+      
+      if (deltaYt > 0) {
+          if (deltaYt <= deltaReal + 2.0) {
+              let inicio = Math.floor(lastYtTime);
+              let fin = Math.floor(currentYtTime);
+              
+              for (let t = inicio; t <= fin; t++) {
+                  if (t >= progresoHistorico) {
+                      segundosVistos.add(t);
+                  }
+              }
+          }
+      }
+      
+      lastYtTime = currentYtTime;
+      lastRealTime = currentRealTime;
+      
+      actualizarInterfaz();
+    }
+  }
+
+  function actualizarInterfaz() {
+    const totalVisto = progresoHistorico + segundosVistos.size;
+    let porcentaje = (totalVisto / tiempoRequerido) * 100;
+    if (porcentaje > 100) porcentaje = 100;
+
+    barraProgreso.style.width = `${porcentaje}%`;
+    textoProgreso.innerText = `Progreso: ${formatearTiempo(totalVisto)} / ${formatearTiempo(tiempoRequerido)} (80% del video)`;
+
+    if (totalVisto >= tiempoRequerido) {
+      btnEvaluacion.disabled = false;
+      btnEvaluacion.classList.add('desbloqueado');
+      btnEvaluacion.innerText = 'Ir a la Evaluación';
+      btnEvaluacion.onclick = function() {
+        window.location.href = `/cursos/evaluacion/<%= curso.id %>`;
+      };
+    }
+  }
+
+  // ==========================================
+  // SISTEMA DE GUARDADO AUTOMÁTICO
+  // ==========================================
+  function guardarProgresoEnBD() {
+    const totalVisto = progresoHistorico + segundosVistos.size;
+    
+    if (segundosVistos.size > 0) {
+        fetch('/cursos/api/progreso', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                curso_id: "<%= curso.id %>",
+                segundos_vistos: totalVisto
+            }),
+            keepalive: true 
+        }).catch(err => console.error("Error guardando progreso:", err));
+    }
+  }
+
+  setInterval(guardarProgresoEnBD, 10000);
+  window.addEventListener('beforeunload', guardarProgresoEnBD);
+</script>

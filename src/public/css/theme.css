@@ -1,0 +1,382 @@
+/* ── Tokens de diseño — Intranet Transworld (rediseño) ── */
+
+:root {
+  color-scheme: light;
+
+  /* Tipografía */
+  --font-sans: 'Instrument Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  /* Paleta corporativa */
+  --corp-blue: #0f4c81;
+  --corp-blue-light: #2a6ba8;
+  --corp-blue-dark: #0b3a63;
+  --corp-green: #a6d84a;
+  --corp-green-dark: #5c8f1d;
+  --corp-green-muted: rgba(166, 216, 74, 0.16);
+
+  /* Alias con la nomenclatura del diseño (misma paleta, otro nombre) */
+  --brand: var(--corp-blue);
+  --brand-deep: var(--corp-blue-dark);
+  --brand-soft: #e8f0f8;
+  --green: var(--corp-green);
+  --green-deep: var(--corp-green-dark);
+  --green-soft: #f0f8dd;
+  /* Verde para texto pequeño sobre --green-soft: --green-deep se queda en 3.5:1
+     y no llega al mínimo AA. */
+  --green-ink: #3d5f12;
+  --ink: #0d1f33;
+  --muted: #51637a;
+  --subtle: #8494a7;
+  --surface2: #eef2f6;
+  --border2: #d3dce6;
+  --nav-bg: rgba(11, 58, 99, 0.88);
+
+  /* Superficies base — tarjetas planas, no glassmorphism */
+  --color-bg: #f5f7fa;
+  --color-bg-image-opacity: 0;
+  --color-surface: #ffffff;
+  --color-surface-muted: #eef2f6;
+  --color-surface-elevated: #ffffff;
+  --color-border: #e3e9f0;
+  --color-border-strong: #d3dce6;
+  --color-text: #0d1f33;
+  --color-text-muted: #51637a;
+  --color-text-subtle: #8494a7;
+  --color-heading: #0b3a63;
+  --color-link: #0f4c81;
+  --color-input-bg: #ffffff;
+  --color-input-text: #0d1f33;
+  --color-overlay: rgba(13, 31, 51, 0.55);
+
+  /* Superficies "glass" — mantenidas casi opacas para el look plano nuevo;
+     los componentes que aún usan backdrop-filter (header, login) siguen viéndose bien. */
+  --glass-bg: rgba(255, 255, 255, 0.94);
+  --glass-bg-strong: #ffffff;
+  --glass-bg-gradient: linear-gradient(145deg, #ffffff 0%, #fbfcfe 100%);
+  --glass-blur-filter: blur(12px) saturate(1.15);
+  --glass-bg-dark: rgba(11, 36, 64, 0.82);
+  --glass-border: #e3e9f0;
+  --glass-border-outer: rgba(15, 76, 129, 0.06);
+  --glass-border-subtle: rgba(255, 255, 255, 0.25);
+  --glass-blur: 12px;
+  --glass-blur-strong: 18px;
+  --glass-radius: 16px;
+  --glass-radius-sm: 12px;
+  --glass-shadow: 0 1px 2px rgba(13, 31, 51, 0.05), 0 4px 16px rgba(13, 31, 51, 0.05);
+  --glass-shadow-lg: 0 4px 8px rgba(13, 31, 51, 0.06), 0 16px 40px rgba(13, 31, 51, 0.12);
+  --glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  /* Fondo global — plano, sin mesh */
+  --app-background: none;
+  --bg-gradient: none;
+  --bg-gradient-glow: none;
+
+  /* Sombras */
+  --shadow: var(--glass-shadow);
+  --shadow-lg: var(--glass-shadow-lg);
+  --shadow-card: 0 2px 8px rgba(13, 31, 51, 0.05), 0 8px 22px rgba(13, 31, 51, 0.06);
+  --shadow-card-lg: 0 8px 20px rgba(13, 31, 51, 0.08), 0 16px 34px rgba(13, 31, 51, 0.08);
+
+  /* Indicadores de estado */
+  --up: #3c9a5f;
+  --down: #d05c5c;
+  --status-up: #3c9a5f;
+  --status-down: #d05c5c;
+  --status-equal: #8494a7;
+}
+
+/* ── Modo oscuro ── */
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --corp-blue: #79b4e8;
+  --corp-blue-light: #a9cff2;
+  --corp-blue-dark: #a9cff2;
+  --corp-green: #a6d84a;
+  --corp-green-dark: #bce36e;
+  --corp-green-muted: rgba(166, 216, 74, 0.13);
+
+  --brand: var(--corp-blue);
+  --brand-deep: var(--corp-blue-dark);
+  --brand-soft: rgba(121, 180, 232, 0.12);
+  --green: var(--corp-green);
+  --green-deep: var(--corp-green-dark);
+  --green-soft: rgba(166, 216, 74, 0.13);
+  --green-ink: var(--corp-green-dark);
+  --ink: #e8eef6;
+  --muted: #9fb0c4;
+  --subtle: #6b7d93;
+  --surface2: #18253a;
+  --border2: rgba(255, 255, 255, 0.16);
+  --nav-bg: rgba(5, 12, 24, 0.92);
+
+  --color-bg: #0a1220;
+  --color-bg-image-opacity: 0;
+  --color-surface: #111c2e;
+  --color-surface-muted: #18253a;
+  --color-surface-elevated: #111c2e;
+  --color-border: rgba(255, 255, 255, 0.09);
+  --color-border-strong: rgba(255, 255, 255, 0.16);
+  --color-text: #e8eef6;
+  --color-text-muted: #9fb0c4;
+  --color-text-subtle: #6b7d93;
+  --color-heading: #a9cff2;
+  --color-link: #79b4e8;
+  --color-input-bg: #18253a;
+  --color-input-text: #e8eef6;
+  --color-overlay: rgba(0, 5, 15, 0.75);
+
+  --glass-bg: rgba(17, 28, 46, 0.92);
+  --glass-bg-strong: #111c2e;
+  --glass-bg-gradient: linear-gradient(145deg, #131f33 0%, #101a2b 100%);
+  --glass-blur-filter: blur(12px) saturate(1.1);
+  --glass-bg-dark: rgba(5, 15, 30, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-border-outer: rgba(255, 255, 255, 0.04);
+  --glass-border-subtle: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
+  --glass-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.35), 0 16px 48px rgba(0, 0, 0, 0.5);
+  --glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  --app-background: none;
+  --bg-gradient: none;
+  --bg-gradient-glow: none;
+
+  --shadow: var(--glass-shadow);
+  --shadow-lg: var(--glass-shadow-lg);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.2), 0 8px 22px rgba(0, 0, 0, 0.18);
+  --shadow-card-lg: 0 8px 22px rgba(0, 0, 0, 0.28), 0 16px 36px rgba(0, 0, 0, 0.24);
+
+  --up: #6cc78d;
+  --down: #e07f7f;
+  --status-up: #6cc78d;
+  --status-down: #e07f7f;
+}
+
+/* ── Fondo global (intranet; login conserva blanco propio) ── */
+html {
+  min-height: 100%;
+}
+
+body:not(.login-split-page) {
+  background-color: var(--color-bg) !important;
+  background-image: var(--app-background) !important;
+  background-attachment: fixed !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  min-height: 100vh;
+}
+
+main {
+  background: transparent !important;
+}
+
+/* ── Utilidad glass ── */
+.glass-card {
+  background: var(--glass-bg-gradient);
+  backdrop-filter: var(--glass-blur-filter);
+  -webkit-backdrop-filter: var(--glass-blur-filter);
+  border: 1px solid var(--glass-border);
+  outline: 1px solid var(--glass-border-outer);
+  outline-offset: -1px;
+  border-radius: var(--glass-radius);
+  box-shadow: var(--shadow-card);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-card {
+    background: var(--glass-bg-strong);
+  }
+}
+
+.glass-card--strong {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--glass-blur-strong));
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+}
+
+.glass-card--dark {
+  background: var(--glass-bg-dark);
+  border-color: var(--glass-border-subtle);
+  color: #ffffff;
+}
+
+/* ── Utilidad: texto solo para lectores de pantalla ── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Botón de tema — oculto */
+.theme-toggle,
+.theme-toggle--mobile {
+  display: none !important;
+}
+
+/* ── Cursos / Academy ── */
+.btn-cursos,
+.btn-dual.btn-cursos {
+  background: var(--glass-bg-strong);
+  color: var(--color-text);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+.btn-cursos:hover,
+.btn-dual.btn-cursos:hover {
+  background: var(--color-surface-elevated);
+}
+
+.cursos-sidebar {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  box-shadow: var(--shadow-card-lg) !important;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+.cursos-sidebar .sidebar-brand {
+  border-bottom-color: var(--color-border) !important;
+}
+
+.cursos-sidebar .sidebar-nav a {
+  color: var(--color-text-muted) !important;
+}
+
+.cursos-sidebar .sidebar-nav a:hover {
+  background: var(--color-surface-muted) !important;
+  color: var(--color-heading) !important;
+}
+
+.cursos-sidebar .sidebar-nav a.active {
+  background: var(--corp-green-muted) !important;
+  color: var(--color-heading) !important;
+}
+
+.cursos-sidebar .sidebar-buttons {
+  border-top-color: var(--color-border) !important;
+}
+
+.cursos-sidebar .btn-volver-intranet {
+  background: var(--color-surface-muted) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border-strong) !important;
+}
+
+.cursos-sidebar .btn-volver-intranet:hover {
+  background: var(--color-surface-elevated) !important;
+}
+
+.cursos-welcome .welcome-title {
+  color: var(--color-heading) !important;
+}
+
+.cursos-welcome .welcome-text {
+  color: var(--color-text) !important;
+}
+
+.cursos-welcome .ppt-frame {
+  border-color: var(--color-border) !important;
+  box-shadow: var(--shadow-card-lg) !important;
+}
+
+/* ── Procesos — tarjetas ── */
+.card-opcion-exec,
+.folder-card-exec {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  box-shadow: var(--shadow-card) !important;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.card-opcion-exec:hover,
+.folder-card-exec:hover {
+  background: var(--color-surface-elevated) !important;
+  border-color: var(--color-border-strong) !important;
+  box-shadow: var(--shadow-card-lg) !important;
+  transform: translateY(-2px) scale(1.015);
+}
+
+.card-opcion-exec .card-title,
+.folder-card-exec .folder-title-exec {
+  color: var(--color-heading) !important;
+}
+
+.card-opcion-exec .card-desc {
+  color: var(--color-text-muted) !important;
+}
+
+.folder-card-exec .folder-count {
+  background: var(--corp-green-muted) !important;
+  color: var(--color-text-muted) !important;
+}
+
+/* ── Sistema de animaciones de entrada (referencia de diseño) ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes cardIn {
+  0% { opacity: 0; transform: translateX(-70px); }
+  55% { opacity: 1; }
+  100% { opacity: 1; transform: translateX(0); }
+}
+@keyframes itemUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(28px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes swapIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes cardPop {
+  0% { opacity: 0; transform: translateY(26px) scale(0.97); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes galIn {
+  from { opacity: 0; transform: scale(1.06); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Respetar preferencia de movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

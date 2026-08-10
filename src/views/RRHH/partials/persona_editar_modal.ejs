@@ -1,0 +1,223 @@
+<%
+  const nombreColaborador = [(persona.first_name || ''), (persona.last_name || '')].filter(Boolean).join(' ') || 'este colaborador';
+  const tieneFoto = Boolean(persona.photo);
+  const tieneCorreoRegistrado = Boolean(persona.email && String(persona.email).trim());
+  const phoneFull = persona.phone || '';
+  const phoneLocal = phoneFull.startsWith('+56') ? phoneFull.slice(3).trim() : '';
+%>
+
+<div class="modal-editar-layout layout-horizontal-form">
+  <aside class="form-aside modal-editar-aside">
+    <h2 class="modal-editar-title">Editar Colaborador</h2>
+    <p class="form-aside-desc">Modifica los datos del colaborador.</p>
+    <div class="profile-photo-upload">
+      <div class="profile-photo-preview-wrap">
+        <div class="profile-photo-preview profile-photo-preview--light" id="photo-preview">
+          <img id="photo-preview-img" <% if (tieneFoto) { %>src="<%= persona.photo %>"<% } else { %>hidden<% } %>>
+          <div class="profile-photo-placeholder" id="photo-placeholder" <%= tieneFoto ? 'hidden' : '' %>>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </div>
+        </div>
+        <div class="profile-photo-actions">
+          <button type="button" class="btn-photo-select btn-photo-select--light" id="btn-select-photo">
+            <%= tieneFoto ? 'Cambiar foto' : 'Seleccionar foto' %>
+          </button>
+          <button type="button" class="btn-photo-remove" id="btn-remove-photo" <%= tieneFoto ? '' : 'hidden' %>>Quitar foto</button>
+          <span class="profile-photo-hint profile-photo-hint--light">Recorta la imagen en formato circular · JPG, PNG o WebP · Máx. 5 MB</span>
+        </div>
+      </div>
+      <input type="file" id="foto" name="foto" accept="image/*" hidden form="formEditarPersona">
+      <input type="hidden" name="eliminar_foto" id="eliminar_foto" value="0" form="formEditarPersona">
+    </div>
+  </aside>
+
+  <main class="form-main modal-editar-main">
+    <form action="/RRHH/editar/<%= persona.id %>" method="POST" enctype="multipart/form-data" id="formEditarPersona">
+      <div class="form-grid-2">
+        <div class="campo">
+          <label for="first_name">Nombre *</label>
+          <input type="text" id="first_name" name="first_name" required value="<%= persona.first_name || '' %>">
+        </div>
+        <div class="campo">
+          <label for="last_name">Apellido *</label>
+          <input type="text" id="last_name" name="last_name" required value="<%= persona.last_name || '' %>">
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="campo">
+          <label for="email">Correo Electrónico<%= tieneCorreoRegistrado ? ' *' : '' %></label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            value="<%= persona.email || '' %>"
+            placeholder="nombre@empresa.com"
+            autocomplete="email"
+            <%= tieneCorreoRegistrado ? 'required data-email-locked="1"' : '' %>
+          >
+          <span class="hint">
+            <% if (tieneCorreoRegistrado) { %>
+              El correo no puede eliminarse una vez registrado. Puedes actualizarlo por otro válido.
+            <% } else { %>
+              Al agregar un correo, se creará la cuenta de intranet y se enviará la contraseña temporal al usuario.
+            <% } %>
+          </span>
+          <span class="field-error" id="email-error" role="alert"></span>
+        </div>
+        <div class="campo">
+          <label for="telefono_local">Teléfono</label>
+          <div class="phone-field" data-phone-chile id="editar_phone_field">
+            <span class="phone-field__prefix" aria-hidden="true">+56</span>
+            <input type="tel" id="telefono_local" class="phone-field__local" placeholder="9 1234 5678" maxlength="11" inputmode="numeric" autocomplete="tel-national" aria-label="Número celular sin código de país" value="<%= phoneLocal %>">
+            <input type="hidden" name="phone" id="telefono" value="<%= phoneFull %>">
+          </div>
+          <span class="field-error" id="telefono-error" role="alert"></span>
+        </div>
+      </div>
+
+      <div class="campo">
+        <label for="area_trabajo_id">Área de Trabajo *</label>
+        <select id="area_trabajo_id" name="work_area_id" required>
+          <option value="">-- Selecciona un área --</option>
+          <% (areas || []).forEach(area => { %>
+            <option value="<%= area.id %>" <%= Number(persona.work_area_id) === Number(area.id) ? 'selected' : '' %>><%= area.area_name %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="campo">
+          <label for="employment_country">País de contrato *</label>
+          <% const pais = (persona.employment_country || 'CL'); %>
+          <select id="employment_country" name="employment_country" required>
+            <option value="CL" <%= pais === 'CL' ? 'selected' : '' %>>Chile</option>
+            <option value="PE" <%= pais === 'PE' ? 'selected' : '' %>>Perú</option>
+          </select>
+          <span class="hint">Determina las reglas de vacaciones.</span>
+        </div>
+        <div class="campo">
+          <label for="hire_date">Fecha de ingreso</label>
+          <input
+            type="date"
+            id="hire_date"
+            name="hire_date"
+            value="<%= persona.hire_date ? new Date(persona.hire_date).toISOString().split('T')[0] : '' %>"
+          >
+          <span class="hint">Necesaria para calcular vacaciones.</span>
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="campo">
+          <label for="prior_years_credited">Años previos acreditados (CL)</label>
+          <input
+            type="number"
+            id="prior_years_credited"
+            name="prior_years_credited"
+            min="0"
+            max="10"
+            step="0.5"
+            value="<%= persona.prior_years_credited != null ? persona.prior_years_credited : 0 %>"
+          >
+          <span class="hint">Antigüedad en otros empleadores (máx. 10).</span>
+        </div>
+        <div class="campo">
+          <label for="progressive_days_override">Progresivo negociado (CL)</label>
+          <input
+            type="number"
+            id="progressive_days_override"
+            name="progressive_days_override"
+            min="0"
+            step="1"
+            value="<%= persona.progressive_days_override != null ? persona.progressive_days_override : '' %>"
+            placeholder="Opcional"
+          >
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="campo">
+          <label for="work_days_per_week">Jornada (días/semana)</label>
+          <% const jornada = persona.work_days_per_week || 5; %>
+          <select id="work_days_per_week" name="work_days_per_week">
+            <option value="5" <%= jornada === 5 ? 'selected' : '' %>>5 días</option>
+            <option value="6" <%= jornada === 6 ? 'selected' : '' %>>6 días</option>
+            <option value="4" <%= jornada === 4 ? 'selected' : '' %>>4 días</option>
+            <option value="3" <%= jornada === 3 ? 'selected' : '' %>>3 días</option>
+          </select>
+          <span class="hint">Récord vacacional Perú.</span>
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="campo">
+          <label for="fecha_nacimiento" id="fecha_nacimiento_label">Fecha de Nacimiento<%= tieneCorreoRegistrado ? '' : ' *' %></label>
+          <input
+            type="date"
+            id="fecha_nacimiento"
+            name="birth_date"
+            <%= tieneCorreoRegistrado ? '' : 'required' %>
+            value="<%= persona.birth_date ? new Date(persona.birth_date).toISOString().split('T')[0] : '' %>"
+          >
+          <% if (tieneCorreoRegistrado) { %>
+            <span class="hint">Opcional para colaboradores con correo registrado.</span>
+          <% } %>
+        </div>
+        <div class="campo">
+          <label for="role">Rol de Intranet *</label>
+          <% if (persona.email_confirmed) { %>
+            <select id="role" name="role" required>
+              <option value="Usuario"        <%= (persona.role === 'Usuario' || persona.role === 'usuario') ? 'selected' : '' %>>Usuario</option>
+              <option value="Administrador"  <%= (persona.role === 'Administrador' || persona.role === 'admin') ? 'selected' : '' %>>Administrador</option>
+              <option value="Deshabilitado"  <%= (persona.role === 'Deshabilitado') ? 'selected' : '' %>>Deshabilitado</option>
+            </select>
+          <% } else { %>
+            <input type="text" id="role" value="Deshabilitado" readonly class="input-solo-lectura">
+            <span class="hint">El rol solo puede modificarse después de que el colaborador verifique su correo.</span>
+          <% } %>
+        </div>
+      </div>
+
+      <div class="modal-form-actions">
+        <button type="button" class="btn-secundario" data-modal-close>Cancelar</button>
+        <button type="submit" class="btn-primario">Guardar Cambios</button>
+      </div>
+    </form>
+
+    <div class="zona-peligro">
+      <h3>Zona de peligro</h3>
+      <p>Esta acción elimina al colaborador del registro de forma permanente.</p>
+      <form
+        action="/RRHH/eliminar/<%= persona.id %>"
+        method="POST"
+        onsubmit="return confirm('¿Eliminar a <%= nombreColaborador %>? Esta acción no se puede deshacer.');"
+      >
+        <button type="submit" class="btn-eliminar">Eliminar Colaborador</button>
+      </form>
+    </div>
+  </main>
+</div>
+
+<div class="foto-crop-overlay" id="fotoCropOverlay" role="dialog" aria-modal="true" aria-labelledby="fotoCropTitle" hidden>
+  <div class="foto-crop-modal">
+    <div class="foto-crop-header">
+      <h3 id="fotoCropTitle">Recortar foto de perfil</h3>
+      <button type="button" class="foto-crop-close" id="fotoCropClose" aria-label="Cerrar">&times;</button>
+    </div>
+    <p class="foto-crop-hint">Arrastra y ajusta el encuadre. La foto se verá circular en el perfil.</p>
+    <div class="foto-crop-body">
+      <div class="foto-crop-stage">
+        <img id="fotoCropImage" src="" alt="Vista previa para recortar">
+      </div>
+    </div>
+    <p id="fotoCropError" class="foto-crop-error" role="alert"></p>
+    <div class="foto-crop-footer">
+      <button type="button" class="btn-crop-cancel" id="fotoCropCancel">Cancelar</button>
+      <button type="button" class="btn-crop-save" id="fotoCropSave">Aplicar recorte</button>
+    </div>
+  </div>
+</div>

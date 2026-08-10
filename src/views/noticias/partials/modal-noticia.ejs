@@ -1,0 +1,115 @@
+<%
+/* Editor de noticias: sirve tanto para crear como para editar. Los estilos
+   viven en /css/noticias.css y la lógica en /js/noticias-editor.js. */
+%>
+<link rel="stylesheet" href="/css/profile-photo-crop.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+
+<div id="modalCrearNoticia" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="editorTitulo" aria-hidden="true">
+  <div class="modal-content editor-modal">
+    <button type="button" class="modal-close" data-modal-close aria-label="Cerrar">&times;</button>
+
+    <div class="editor__head">
+      <h2 id="editorTitulo">Publicar noticia</h2>
+      <p id="editorDesc">Las imágenes, PDF y documentos se mostrarán dentro de la noticia y del correo.</p>
+    </div>
+
+    <form id="formNoticia" action="/noticias/crear" method="POST" style="display:contents;">
+      <div class="editor__cuerpo">
+
+        <%# ---------- Columna principal: texto ---------- %>
+        <div class="editor__col editor__col--principal">
+          <div class="editor__campo">
+            <label class="editor__label" for="noticia_titulo">Título</label>
+            <input type="text" class="editor__input editor__input--titulo" id="noticia_titulo"
+                   name="titulo" required maxlength="200" placeholder="Titular de la noticia">
+          </div>
+
+          <div class="editor__campo">
+            <label class="editor__label" for="noticia_subtitulo">Bajada</label>
+            <input type="text" class="editor__input" id="noticia_subtitulo"
+                   name="subtitulo" maxlength="300" placeholder="Resumen breve (opcional)">
+          </div>
+
+          <div class="editor__campo editor__campo--contenido">
+            <label class="editor__label" for="noticia_contenido">Contenido</label>
+            <textarea class="editor__textarea" name="contenido" id="noticia_contenido" rows="18"></textarea>
+          </div>
+        </div>
+
+        <%# ---------- Columna lateral: portada y archivos ---------- %>
+        <div class="editor__col editor__col--lateral">
+
+          <div class="editor__campo">
+            <span class="editor__label">Portada</span>
+
+            <div class="editor__portada" id="cover-preview-wrap" hidden>
+              <img id="cover-preview-img" alt="Vista previa de la portada">
+              <button type="button" class="editor__portada-quitar" id="btn-quitar-portada"
+                      aria-label="Quitar portada">&times;</button>
+            </div>
+
+            <%# Sin icono: el recortador reescribe el texto del botón al aplicar. %>
+            <button type="button" class="btn-nt" id="btn-select-cover" style="width:100%; justify-content:center;">
+              Seleccionar portada
+            </button>
+
+            <input type="file" id="filePortada" accept="image/*" hidden>
+            <input type="hidden" name="imagen_portada" id="url_portada">
+            <p class="editor__ayuda">JPG, PNG o WebP · se recorta a 16:9 · máx. 8 MB</p>
+          </div>
+
+          <div class="editor__campo">
+            <span class="editor__label">Archivos de la noticia</span>
+
+            <div class="editor__soltar" id="zonaSoltar" tabindex="0" role="button"
+                 aria-label="Añadir archivos: arrástralos aquí o pulsa para elegirlos">
+              <%- include('../../partials/icon', { name: 'upload' }) %>
+              <strong>Arrastra archivos aquí</strong>
+              <span>Imágenes, PDF, Word o video</span>
+            </div>
+
+            <input type="file" id="fileGaleria" multiple hidden
+                   accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,application/pdf,.doc,.docx,video/mp4,video/webm">
+            <input type="hidden" name="adjuntos_data" id="adjuntos_data" value="[]">
+
+            <ul class="editor__adjuntos" id="listaAdjuntos"></ul>
+            <p class="editor__vacio" id="adjuntosVacio">Aún no has añadido archivos.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="editor__foot">
+        <p class="editor__estado" id="editorEstado" aria-live="polite"></p>
+        <button type="button" class="btn-secundario" data-modal-close>Cancelar</button>
+        <button type="submit" class="btn-primario" id="btnGuardarNoticia">Publicar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<%# ---------- Recorte de portada (compartido con el resto de la intranet) ---------- %>
+<div class="foto-crop-overlay" id="coverCropOverlay" role="dialog" aria-modal="true" aria-labelledby="coverCropTitle" hidden>
+  <div class="foto-crop-modal">
+    <div class="foto-crop-header">
+      <h3 id="coverCropTitle">Recortar portada</h3>
+      <button type="button" class="foto-crop-close" id="coverCropClose" aria-label="Cerrar">&times;</button>
+    </div>
+    <p class="foto-crop-hint">Arrastra y ajusta el encuadre. La portada se mostrará en proporción 16:9.</p>
+    <div class="foto-crop-body">
+      <div class="foto-crop-stage">
+        <img id="coverCropImage" src="" alt="Vista previa para recortar">
+      </div>
+    </div>
+    <p id="coverCropError" class="foto-crop-error" role="alert"></p>
+    <div class="foto-crop-footer">
+      <button type="button" class="btn-crop-cancel" id="coverCropCancel">Cancelar</button>
+      <button type="button" class="btn-crop-save" id="coverCropSave">Aplicar recorte</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="/js/profile-photo-cropper.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.2/tinymce.min.js" referrerpolicy="origin"></script>
+<script src="/js/noticias-editor.js?v=20260728e"></script>

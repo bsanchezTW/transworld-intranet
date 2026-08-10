@@ -1,0 +1,640 @@
+/* ── RRHH · Personal (colaboradores) — tokens del sistema de diseño ── */
+
+.contenedor-personal {
+  width: 100%;
+  padding-bottom: 60px;
+  animation: fadeUp 0.5s ease both;
+}
+
+.contenedor-personal .page-header {
+  margin-bottom: 25px;
+}
+
+.link-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  padding: 6px 0;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: color 0.15s;
+}
+
+.link-volver:hover {
+  color: var(--brand);
+}
+
+.btn-agregar-persona {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--color-bg);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.15s, opacity 0.2s;
+}
+
+.btn-agregar-persona:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
+}
+
+/* ── Panel contenedor de la tabla ── */
+.contenedor-personal .panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 0;
+  box-shadow: var(--shadow);
+  margin-bottom: 24px;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.personal-empty {
+  text-align: center;
+  color: var(--subtle);
+  padding: 40px 16px;
+}
+
+/* ── Toolbar (buscador + chips de área) ── */
+.personal-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  animation: fadeUp 0.45s 0.06s ease backwards;
+}
+
+.personal-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.personal-chip {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+  background: var(--color-surface);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.personal-chip:hover { border-color: var(--brand); color: var(--brand); }
+.personal-chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+.personal-chip.is-activo {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+html[data-theme="dark"] .personal-chip.is-activo { color: var(--color-bg); }
+
+.personal-search {
+  flex: 1 1 260px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--color-surface);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 0 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.personal-search:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+
+.personal-search-icon {
+  color: var(--subtle);
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.personal-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 10px 0;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  min-width: 0;
+}
+
+.personal-search input::placeholder {
+  color: var(--subtle);
+}
+
+.personal-sin-resultados {
+  text-align: center;
+  color: var(--subtle);
+  padding: 44px 16px;
+  margin: 0;
+}
+
+/* ── Tabla ── */
+.tabla-personal {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  text-align: left;
+}
+
+.tabla-personal th {
+  background: var(--surface2);
+  padding: 0;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* La cabecera ordenable es un botón real: enfocable y anunciada por lectores
+   de pantalla gracias al aria-sort del <th>. */
+.tabla-personal th button {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  /* --muted y no --subtle: el rótulo debe pasar el contraste AA en ambos temas. */
+  color: var(--muted);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.tabla-personal th button:hover { color: var(--color-text); }
+.tabla-personal th button:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+
+/* Indicador de orden: ↕ en reposo, ↑/↓ cuando la columna manda. */
+.tabla-personal th button::after {
+  content: '↕';
+  font-size: 0.75em;
+  opacity: 0.45;
+}
+
+.tabla-personal th[aria-sort="ascending"] button,
+.tabla-personal th[aria-sort="descending"] button { color: var(--brand); }
+.tabla-personal th[aria-sort="ascending"] button::after { content: '↑'; opacity: 1; }
+.tabla-personal th[aria-sort="descending"] button::after { content: '↓'; opacity: 1; }
+
+.tabla-personal th.col-centro button { justify-content: center; }
+.tabla-personal td.col-centro { text-align: center; }
+
+.tabla-personal td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* El filtrado usa [hidden]; en la vista de tarjetas `tr` pasa a display:block
+   y ganaría a la hoja del navegador. */
+.tabla-personal tbody tr[hidden] { display: none !important; }
+
+/* Nombre + avatar en la misma celda */
+.persona {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.link-discreto {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.link-discreto:hover { color: var(--brand); text-decoration: underline; }
+
+.dato-vacio { color: var(--subtle); }
+
+.tabla-personal tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tabla-personal tbody tr {
+  transition: background 0.12s;
+}
+
+.tabla-personal tbody tr:hover td {
+  background-color: var(--surface2);
+}
+
+.tabla-personal .col-nombre {
+  font-weight: 600;
+}
+
+.link-nombre-colaborador {
+  color: var(--brand);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.15s;
+}
+
+.link-nombre-colaborador:hover {
+  color: var(--corp-blue-light);
+  text-decoration: underline;
+}
+
+.nombre-solo {
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.tabla-personal .col-correo,
+.tabla-personal .col-telefono {
+  color: var(--color-text-muted);
+}
+
+/* ── Avatares con iniciales (paletas rotativas) ── */
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border2);
+}
+
+.avatar-fallback {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  color: #fff;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--brand), var(--corp-blue-light));
+}
+
+.avatar-fallback--c1 { background: linear-gradient(135deg, #0f4c81, #2a6ba8); }
+.avatar-fallback--c2 { background: linear-gradient(135deg, #5c8f1d, #8bc34a); }
+.avatar-fallback--c3 { background: linear-gradient(135deg, #7c3aed, #a78bfa); }
+.avatar-fallback--c4 { background: linear-gradient(135deg, #c2410c, #fb923c); }
+.avatar-fallback--c5 { background: linear-gradient(135deg, #0e7490, #22d3ee); }
+.avatar-fallback--c6 { background: linear-gradient(135deg, #9d174d, #ec4899); }
+
+/* ── Chips de área / rol ── */
+.pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 7px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  /* Los valores por defecto van aquí y no en la regla de abajo: si se
+     declararan junto al fondo, su mayor especificidad ganaría al matiz que
+     define cada área. */
+  --pill-h: 215;
+  --pill-s: 16%;
+}
+
+/* Chips por área de trabajo (ver src/constants/workAreas.js).
+   Cada área solo declara su matiz: el fondo y el texto se derivan de él, así el
+   modo oscuro se resuelve con dos reglas en lugar de doce pares de hex. */
+.pill[class*="pill-area-"] {
+  background: hsl(var(--pill-h) var(--pill-s) 92%);
+  color: hsl(var(--pill-h) var(--pill-s) 28%);
+}
+
+html[data-theme="dark"] .pill[class*="pill-area-"] {
+  background: hsl(var(--pill-h) var(--pill-s) 20%);
+  color: hsl(var(--pill-h) calc(var(--pill-s) + 18%) 78%);
+}
+
+.pill-area-informatica { --pill-h: 142; --pill-s: 55%; }
+.pill-area-logistica   { --pill-h: 258; --pill-s: 58%; }
+.pill-area-bodega      { --pill-h: 38;  --pill-s: 72%; }
+.pill-area-comercial   { --pill-h: 48;  --pill-s: 68%; }
+.pill-area-ventas      { --pill-h: 25;  --pill-s: 75%; }
+.pill-area-control     { --pill-h: 232; --pill-s: 58%; }
+.pill-area-electrica   { --pill-h: 190; --pill-s: 68%; }
+.pill-area-finanzas    { --pill-h: 330; --pill-s: 62%; }
+.pill-area-gerencia    { --pill-h: 292; --pill-s: 58%; }
+.pill-area-marketing   { --pill-h: 200; --pill-s: 72%; }
+.pill-area-tramonto    { --pill-h: 172; --pill-s: 62%; }
+
+/* Roles: pastilla sólida, ya legible en ambos temas. */
+.pill-rol-admin    { background: #c0392e; color: #fff; }
+.pill-rol-rrhh     { background: #6d33d6; color: #fff; }
+.pill-rol-usuario  { background: #5a6879; color: #fff; }
+.pill-rol-marketing { background: #0b7fbb; color: #fff; }
+.pill-rol-gerencia { background: #b4700a; color: #fff; }
+.pill-rol-deshabilitado { background: var(--surface2); color: var(--subtle); }
+
+.estado-si { color: var(--green-ink); font-size: 1rem; display: inline-flex; }
+.estado-no { color: var(--down); font-size: 0.95rem; font-weight: 700; }
+
+/* ── Popup de notificación ── */
+.popup-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  min-width: 260px;
+  max-width: calc(100% - 40px);
+  padding: 14px 18px;
+  border-radius: 12px;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: var(--shadow-lg);
+}
+
+.popup-notification.success { background: #16a34a; }
+.popup-notification.error   { background: var(--down); }
+.popup-notification.show     { display: flex; }
+.popup-notification .popup-close {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+/* ── Modal Crear colaborador ── */
+.modal-crear-colaborador .modal-content {
+  max-width: 620px;
+}
+
+.modal-crear-desc {
+  margin: 0 0 18px;
+}
+
+.modal-crear-error {
+  display: none;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(208, 92, 92, 0.1);
+  border: 1px solid rgba(208, 92, 92, 0.32);
+  color: var(--down);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.modal-crear-error.show { display: block; }
+
+/* Campo bloqueado (rol antes de verificar el correo) */
+.input-solo-lectura {
+  background: var(--surface2) !important;
+  color: var(--subtle) !important;
+  cursor: not-allowed;
+}
+
+.modal-crear-colaborador .campo { margin-bottom: 16px; }
+.modal-crear-colaborador .campo .phone-field__local { width: auto; }
+.modal-crear-colaborador .campo .hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 4px;
+  display: block;
+}
+.modal-crear-colaborador .campo .field-error {
+  font-size: 0.8rem;
+  color: var(--down);
+  margin-top: 4px;
+  display: none;
+}
+.modal-crear-colaborador .campo .field-error.show { display: block; }
+.modal-crear-colaborador .required-mark { color: var(--down); margin-left: 2px; }
+
+.modal-form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+
+/* ── Modal Editar colaborador ── */
+.modal-editar-colaborador .modal-content,
+.modal-editar-panel {
+  max-width: var(--layout-content-max-width, 1200px);
+  width: min(1200px, 100%);
+  max-height: min(90vh, 900px);
+  padding: 0;
+  overflow: hidden;
+}
+
+.modal-editar-layout {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-height: min(90vh, 900px);
+}
+
+.modal-editar-aside {
+  flex: 0 0 240px;
+  padding: 24px 20px;
+  border-right: 1px solid var(--color-border);
+  background: linear-gradient(160deg, var(--brand-soft), transparent);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-editar-main {
+  flex: 1;
+  min-width: 0;
+  padding: 24px 28px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  max-height: none;
+}
+
+.modal-editar-title {
+  color: var(--brand-deep);
+  font-size: 1.25rem;
+  margin: 0 0 6px;
+}
+
+.modal-loading {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.modal-editar-colaborador .campo { margin-bottom: 16px; }
+.modal-editar-colaborador .campo label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+.modal-editar-colaborador .campo input,
+.modal-editar-colaborador .campo select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: var(--color-input-text);
+  background: var(--color-input-bg);
+  box-sizing: border-box;
+}
+.modal-editar-colaborador .campo input:focus,
+.modal-editar-colaborador .campo select:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+.modal-editar-colaborador .campo .hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 4px;
+  display: block;
+}
+.modal-editar-colaborador .campo .field-error {
+  font-size: 0.8rem;
+  color: var(--down);
+  margin-top: 4px;
+  display: none;
+}
+.modal-editar-colaborador .campo .field-error.show { display: block; }
+.modal-editar-colaborador .btn-photo-remove {
+  border: none;
+  background: transparent;
+  color: var(--down);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.modal-editar-colaborador .zona-peligro {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(208, 92, 92, 0.3);
+}
+.modal-editar-colaborador .zona-peligro h3 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  color: var(--down);
+}
+.modal-editar-colaborador .zona-peligro p {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.modal-editar-colaborador .btn-eliminar {
+  width: 100%;
+  padding: 11px 16px;
+  border: 1px solid rgba(208, 92, 92, 0.42);
+  border-radius: 8px;
+  background: rgba(208, 92, 92, 0.1);
+  color: var(--down);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.modal-editar-colaborador .btn-eliminar:hover {
+  background: rgba(208, 92, 92, 0.18);
+  border-color: var(--down);
+}
+
+/* ==========================================================================
+   Responsive — misma lista en móvil; solo nombre/apellido y área visibles.
+   ========================================================================== */
+
+@media (max-width: 860px) {
+  .tabla-personal .col-desktop {
+    display: none;
+  }
+
+  .tabla-personal .col-nombre {
+    width: 58%;
+  }
+
+  .tabla-personal .col-area {
+    width: 42%;
+  }
+
+  .tabla-personal th button,
+  .tabla-personal td {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .tabla-personal .avatar,
+  .tabla-personal .avatar-fallback {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .personal-toolbar { gap: 10px; }
+  .personal-search { flex: 1 1 100%; }
+  .personal-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    max-width: 100%;
+    padding-bottom: 2px;
+  }
+  .personal-chips::-webkit-scrollbar { display: none; }
+
+  .btn-agregar-persona { flex: 1; justify-content: center; }
+
+  .modal-form-grid-2 { grid-template-columns: 1fr; }
+  .modal-editar-layout {
+    flex-direction: column;
+    max-height: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .modal-editar-aside {
+    flex: none;
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .modal-editar-main {
+    max-height: none;
+    padding: 20px 16px;
+  }
+  .modal-editar-colaborador .modal-content,
+  .modal-editar-panel {
+    max-height: none;
+  }
+}

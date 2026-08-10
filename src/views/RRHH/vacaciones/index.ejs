@@ -1,0 +1,61 @@
+<link rel="stylesheet" href="/css/vacaciones.css?v=20260729a">
+<link rel="stylesheet" href="/css/rrhh.css?v=20260729a">
+
+<div class="contenedor">
+  <div class="page-header page-header--toolbar">
+    <div class="page-header__text">
+      <h2 class="page-title">Vacaciones</h2>
+      <p class="page-description">
+        Gestiona tus solicitudes y saldos de vacaciones.
+      </p>
+    </div>
+    <div class="page-header-actions">
+      <a href="/RRHH" class="boton-volver">← Volver a RRHH</a>
+    </div>
+  </div>
+
+  <% if (typeof success !== 'undefined' && success) { %>
+    <div class="vac-alert vac-alert-success"><%= success %></div>
+  <% } %>
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="vac-alert vac-alert-error"><%= error %></div>
+  <% } %>
+
+  <div class="grid-opciones-exec">
+    <a href="/RRHH/vacaciones/mis-vacaciones" class="card-opcion-exec">
+      <div class="card-icon-wrapper"><%- include('../../partials/icon', { name: 'umbrella' }) %></div>
+      <div class="card-content">
+        <h3 class="card-title">Mis vacaciones</h3>
+        <p class="card-desc">Consulta tu saldo, solicita días y revisa tu historial.</p>
+      </div>
+    </a>
+
+    <a href="/RRHH/vacaciones/calendario" class="card-opcion-exec">
+      <div class="card-icon-wrapper"><%- include('../../partials/icon', { name: 'calendar' }) %></div>
+      <div class="card-content">
+        <h3 class="card-title">Calendario</h3>
+        <p class="card-desc">
+          <% if (locals.isAdministrador) { %>Vacaciones del equipo.<% } else { %>Tus vacaciones programadas.<% } %>
+        </p>
+      </div>
+    </a>
+
+    <% if (locals.isAdministrador) { %>
+      <a href="/RRHH/vacaciones/gestion" class="card-opcion-exec">
+        <div class="card-icon-wrapper"><%- include('../../partials/icon', { name: 'archive' }) %></div>
+        <div class="card-content">
+          <h3 class="card-title">Gestión RRHH</h3>
+          <p class="card-desc">Aprueba o rechaza solicitudes y ajusta saldos.</p>
+        </div>
+      </a>
+
+      <a href="/RRHH/vacaciones/feriados" class="card-opcion-exec">
+        <div class="card-icon-wrapper"><%- include('../../partials/icon', { name: 'flag' }) %></div>
+        <div class="card-content">
+          <h3 class="card-title">Feriados</h3>
+          <p class="card-desc">Administra los feriados de Chile y Perú.</p>
+        </div>
+      </a>
+    <% } %>
+  </div>
+</div>

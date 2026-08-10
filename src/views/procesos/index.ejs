@@ -1,0 +1,320 @@
+<style>
+      .global-search-wrapper {
+        position: relative;
+        max-width: 700px;
+        margin-bottom: 40px;
+        z-index: 100;
+      }
+
+      .search-icon-global {
+        position: absolute;
+        left: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #a0aec0;
+        font-size: 1.3rem;
+      }
+
+      .search-input-global {
+        width: 100%;
+        padding: 16px 50px 16px 50px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 1.1rem;
+        background: #ffffff;
+        transition: all 0.2s;
+        box-sizing: border-box;
+        color: #2d3748;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+      }
+
+      .search-input-global:focus {
+        border-color: #003a70;
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(0, 58, 112, 0.1);
+      }
+
+      .search-spinner {
+        position: absolute;
+        right: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 22px;
+        height: 22px;
+        border: 3px solid #e2e8f0;
+        border-top-color: #003a70;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        display: none;
+      }
+
+      @keyframes spin {
+        to {
+          transform: translateY(-50%) rotate(360deg);
+        }
+      }
+
+      .search-results-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        max-height: 350px;
+        overflow-y: auto;
+        margin-top: 8px;
+      }
+
+      .search-item {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 15px 20px;
+        border-bottom: 1px solid #edf2f7;
+        text-decoration: none;
+        transition: background 0.2s;
+      }
+
+      .search-item:last-child {
+        border-bottom: none;
+      }
+      .search-item:hover {
+        background: #f8fafc;
+      }
+      .search-item-icon {
+        font-size: 1.5rem;
+      }
+      .search-item-title {
+        color: #003a70;
+        font-weight: 700;
+        font-size: 1rem;
+        margin-bottom: 2px;
+      }
+      .search-item-type {
+        color: #718096;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .grid-opciones-exec {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 25px;
+      }
+
+      .card-opcion-exec {
+        background: var(--color-surface, #ffffff);
+        border: 1px solid var(--color-border, #e2e8f0);
+        border-radius: 12px;
+        padding: 30px 25px;
+        text-decoration: none;
+        display: flex;
+        align-items: flex-start;
+        gap: 20px;
+        transition: all 0.3s ease;
+        box-shadow: var(--shadow-card, 0 2px 5px rgba(0, 0, 0, 0.02));
+        color: var(--color-text, #333333);
+      }
+
+      .card-opcion-exec:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 20px rgba(0, 0, 0, 0.08);
+        border-color: var(--color-border-strong, #cbd5e0);
+        background: var(--color-surface-muted, #f8fafc);
+      }
+
+      .card-icon-wrapper {
+        background: #eef4ff;
+        color: #175cd3;
+        width: 55px;
+        height: 55px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        flex-shrink: 0;
+        border: 1px solid #d1e0ff;
+      }
+
+      .card-content {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .card-title {
+        color: var(--color-heading, #003a70);
+        font-size: 1.25rem;
+        font-weight: 800;
+        margin: 0;
+      }
+
+      .card-desc {
+        color: var(--color-text-muted, #718096);
+        font-size: 0.95rem;
+        line-height: 1.5;
+        margin: 0;
+      }
+</style>
+
+<div class="contenedor">
+      <div class="page-header">
+        <h2 class="page-title">Procesos y Documentos</h2>
+        <p class="page-description">
+          Selecciona la sección que deseas consultar en el repositorio documental:
+        </p>
+      </div>
+
+      <div class="global-search-wrapper">
+        <span class="search-icon-global"><%- include('../partials/icon', { name: 'search' }) %></span>
+        <input
+          type="text"
+          id="buscadorGlobal"
+          class="search-input-global"
+          placeholder="Buscar en todos los procesos, protocolos y documentos..."
+          autocomplete="off"
+        />
+        <div id="searchSpinner" class="search-spinner"></div>
+        <div
+          id="searchResults"
+          class="search-results-dropdown"
+          style="display: none"
+        ></div>
+      </div>
+
+      <div class="grid-opciones-exec">
+        <a href="/procesos/procedimientos" class="card-opcion-exec">
+          <div class="card-icon-wrapper"><%- include('../partials/icon', { name: 'clipboard' }) %></div>
+          <div class="card-content">
+            <h3 class="card-title">Procedimientos</h3>
+            <p class="card-desc">
+              Instructivos paso a paso para tareas operativas y recurrentes.
+            </p>
+          </div>
+        </a>
+
+        <a href="/procesos/protocolos" class="card-opcion-exec">
+          <div class="card-icon-wrapper"><%- include('../partials/icon', { name: 'shield' }) %></div>
+          <div class="card-content">
+            <h3 class="card-title">Protocolos</h3>
+            <p class="card-desc">
+              Lineamientos formales para situaciones específicas y de seguridad.
+            </p>
+          </div>
+        </a>
+
+        <a href="/procesos/reglamento" class="card-opcion-exec">
+          <div class="card-icon-wrapper"><%- include('../partials/icon', { name: 'scale' }) %></div>
+          <div class="card-content">
+            <h3 class="card-title">Reglamento Interno</h3>
+            <p class="card-desc">
+              Normativa, políticas internas y reglas generales de la empresa.
+            </p>
+          </div>
+        </a>
+
+        <a href="/procesos/otros" class="card-opcion-exec">
+          <div class="card-icon-wrapper"><%- include('../partials/icon', { name: 'folder' }) %></div>
+          <div class="card-content">
+            <h3 class="card-title">Otros Documentos</h3>
+            <p class="card-desc">
+              Documentación adicional, plantillas e información importante.
+            </p>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <script>
+      let searchTimeout;
+      const searchInput = document.getElementById("buscadorGlobal");
+      const resultsContainer = document.getElementById("searchResults");
+      const spinner = document.getElementById("searchSpinner");
+
+      searchInput.addEventListener("input", (e) => {
+        clearTimeout(searchTimeout);
+        const query = e.target.value.trim();
+
+        if (query.length < 2) {
+          resultsContainer.style.display = "none";
+          spinner.style.display = "none";
+          return;
+        }
+
+        spinner.style.display = "block";
+
+        searchTimeout = setTimeout(async () => {
+          try {
+            const response = await fetch(
+              `/procesos/api/buscar?q=${encodeURIComponent(query)}`,
+            );
+            const data = await response.json();
+
+            resultsContainer.innerHTML = "";
+
+            if (data.length === 0) {
+              resultsContainer.innerHTML =
+                '<div style="color:#718096; text-align:center; padding: 20px;">No se encontraron documentos.</div>';
+            } else {
+              data.forEach((doc) => {
+                let tipoLabel = "Documento";
+                if (doc.tipo === "reglamento") tipoLabel = "Reglamento Interno";
+                else if (doc.tipo === "otros") tipoLabel = "Otros Documentos";
+                else if (doc.type === "reglamento") tipoLabel = "Reglamento Interno";
+                else if (doc.type === "otros") tipoLabel = "Otros Documentos";
+                else if (doc.tipo || doc.type) {
+                  const tipo = doc.tipo || doc.type;
+                  const partes = tipo.split("_");
+                  if (partes.length === 2) {
+                    tipoLabel = partes[0] + " (" + partes[1] + ")";
+                  }
+                }
+
+                const icon = '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>';
+
+                const item = document.createElement("a");
+                item.href = doc.url;
+                item.target = "_blank";
+                item.className = "search-item";
+                item.innerHTML = `
+                            <div class="search-item-icon">${icon}</div>
+                            <div>
+                                <div class="search-item-title">${doc.name || doc.nombre}</div>
+                                <div class="search-item-type">${tipoLabel}</div>
+                            </div>
+                        `;
+                resultsContainer.appendChild(item);
+              });
+            }
+            resultsContainer.style.display = "block";
+          } catch (err) {
+            console.error("Error buscando:", err);
+          } finally {
+            spinner.style.display = "none";
+          }
+        }, 300);
+      });
+
+      document.addEventListener("click", (e) => {
+        if (
+          !searchInput.contains(e.target) &&
+          !resultsContainer.contains(e.target)
+        ) {
+          resultsContainer.style.display = "none";
+        }
+      });
+
+      searchInput.addEventListener("focus", () => {
+        if (
+          searchInput.value.trim().length >= 2 &&
+          resultsContainer.innerHTML !== ""
+        ) {
+          resultsContainer.style.display = "block";
+        }
+      });
+</script>

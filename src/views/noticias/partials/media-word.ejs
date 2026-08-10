@@ -1,0 +1,42 @@
+<%
+/* Documento Word convertido a HTML durante la subida. Se muestra dentro de la
+   noticia, no como descarga. Si el documento es largo se colapsa y el propio
+   JS retira el botón cuando el contenido cabe entero. */
+const meta = ['Documento Word'];
+if (adjunto.sizeLabel) meta.push(adjunto.sizeLabel);
+const tieneHtml = Boolean(adjunto.html && adjunto.html.trim());
+%>
+<div class="media-bloque media-bloque--ancho" id="adjunto-<%= adjunto.id %>">
+  <article class="doc" <%= tieneHtml ? 'data-word' : '' %>>
+    <div class="doc__head">
+      <span class="doc__icono doc__icono--word" aria-hidden="true">
+        <%- include('../../partials/icon', { name: 'file-text' }) %>
+      </span>
+      <div class="doc__info">
+        <h3 class="doc__nombre"><%= adjunto.name %></h3>
+        <p class="doc__meta"><%= meta.join(' · ') %></p>
+      </div>
+      <div class="doc__acciones">
+        <a class="doc__accion" href="<%= adjunto.url %>" download="<%= adjunto.name %>">
+          <%- include('../../partials/icon', { name: 'file' }) %>
+          Descargar
+        </a>
+      </div>
+    </div>
+
+    <% if (tieneHtml) { %>
+      <div class="doc-word doc-word--colapsado"><%- adjunto.html %></div>
+      <button type="button" class="doc__desplegar" aria-expanded="false">
+        Leer documento completo
+      </button>
+    <% } else { %>
+      <div class="doc-word">
+        <p>
+          <%= adjunto.excerpt
+              ? adjunto.excerpt
+              : 'No fue posible mostrar el contenido de este documento aquí. Puedes descargarlo con el botón superior.' %>
+        </p>
+      </div>
+    <% } %>
+  </article>
+</div>

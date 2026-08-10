@@ -1,0 +1,181 @@
+<%
+// El modelo de vista (autor, fechas, tiempo de lectura, tipos de adjunto) lo
+// arma noticiaPresenter; aquí solo se decide el orden y el marcado.
+const puedeEscribir = typeof can !== 'undefined' && can.noticias_write;
+const restantes = noticias.filter(n => !destacada || n.id !== destacada.id);
+
+const ICONO_CHIP = { image: 'image', pdf: 'file-text', word: 'file-text', video: 'video', file: 'paperclip' };
+
+// Filtros por tipo de contenido: solo se ofrecen los que existen de verdad.
+const FILTROS = [
+  { tipo: 'image', label: 'Con imágenes', icono: 'image' },
+  { tipo: 'pdf',   label: 'Con PDF',      icono: 'file-text' },
+  { tipo: 'word',  label: 'Con documentos', icono: 'file-text' },
+  { tipo: 'video', label: 'Con video',    icono: 'video' },
+];
+const tiposPresentes = new Set(noticias.flatMap(n => n.tiposAdjunto));
+const filtrosVisibles = FILTROS.filter(f => tiposPresentes.has(f.tipo));
+%>
+
+<div class="contenedor noticias">
+
+  <%# Misma cabecera que el resto de secciones de la intranet.
+      Ojo: no usar <header>, intranet.css estiliza esa etiqueta como la barra
+      de navegación (fondo azul + position:sticky). %>
+  <div class="page-header page-header--toolbar">
+    <div class="page-header__text">
+      <h2 class="page-title">Noticias y Comunicados</h2>
+      <p class="page-description">Entérate de las últimas novedades de Transworld.</p>
+    </div>
+    <% if (puedeEscribir) { %>
+    <div class="page-header-actions">
+      <button type="button" class="noticias-add-btn" onclick="abrirModalCrearNoticia()">
+        <span aria-hidden="true">+</span> Publicar noticia
+      </button>
+    </div>
+    <% } %>
+  </div>
+
+  <% if (typeof ok !== 'undefined' && ok) { %>
+    <div class="nt-aviso nt-aviso--ok" role="status">
+      <%- include('../partials/icon', { name: 'sparkles' }) %>
+      <span><%= ok %></span>
+    </div>
+  <% } %>
+
+  <% if (!noticias || noticias.length === 0) { %>
+
+    <div class="noticias__empty">
+      <%- include('../partials/icon', { name: 'news' }) %>
+      <p>Todavía no hay noticias publicadas.</p>
+    </div>
+
+  <% } else { %>
+
+    <%# --- Buscador y filtros (todo el filtrado ocurre en el cliente) --- %>
+    <div class="nt-toolbar" data-noticias-filtros>
+      <label class="nt-buscador" for="noticias-buscar">
+        <span class="nt-buscador__icono" aria-hidden="true"><%- include('../partials/icon', { name: 'search' }) %></span>
+        <input type="search" id="noticias-buscar" placeholder="Buscar por título, bajada o autor…"
+               autocomplete="off" aria-label="Buscar noticias">
+      </label>
+
+      <% if (filtrosVisibles.length) { %>
+        <div class="nt-chips" role="group" aria-label="Filtrar por tipo de contenido">
+          <button type="button" class="nt-chip is-activo" data-filtro-tipo="" aria-pressed="true">Todas</button>
+          <% filtrosVisibles.forEach(f => { %>
+            <button type="button" class="nt-chip" data-filtro-tipo="<%= f.tipo %>" aria-pressed="false">
+              <%- include('../partials/icon', { name: f.icono }) %>
+              <%= f.label %>
+            </button>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+
+    <%# --- Noticia destacada --- %>
+    <% if (destacada) { %>
+      <%# Sin portada no se reserva el panel de imagen: quedaba un hueco enorme. %>
+      <a href="/noticias/<%= destacada.id %>"
+         class="noticia-hero <%= destacada.image ? '' : 'noticia-hero--sin-imagen' %>"
+         data-noticia
+         data-search="<%= destacada.textoBusqueda %>"
+         data-tipos="<%= destacada.tiposAdjunto.join(' ') %>">
+        <% if (destacada.image) { %>
+          <div class="noticia-hero__media">
+            <span class="media-placeholder" aria-hidden="true"><%- include('../partials/icon', { name: 'news' }) %></span>
+            <img src="<%= destacada.image %>"
+                 alt=""
+                 loading="eager"
+                 fetchpriority="high"
+                 decoding="async"
+                 onerror="this.remove()">
+          </div>
+        <% } %>
+        <div class="noticia-hero__body">
+          <span class="noticia-hero__badge">
+            <%- include('../partials/icon', { name: 'sparkles' }) %>
+            Destacada
+          </span>
+          <h2 class="noticia-hero__title"><%= destacada.title %></h2>
+          <% if (destacada.subtitle) { %>
+            <p class="noticia-hero__sub"><%= destacada.subtitle %></p>
+          <% } %>
+          <p class="noticia-card__date"><%= destacada.fechaLarga %></p>
+          <% if (destacada.resumen.chips.length) { %>
+            <div class="noticia-card__chips">
+              <% destacada.resumen.chips.forEach(chip => { %>
+                <span class="noticia-chip noticia-chip--<%= chip.kind %>">
+                  <%- include('../partials/icon', { name: ICONO_CHIP[chip.kind] || 'paperclip' }) %>
+                  <%= chip.text %>
+                </span>
+              <% }) %>
+            </div>
+          <% } %>
+          <span class="noticia-hero__cta">Leer noticia <span aria-hidden="true">→</span></span>
+        </div>
+      </a>
+    <% } %>
+
+    <%# --- Resto de noticias --- %>
+    <% if (restantes.length) { %>
+      <div class="noticias__grid">
+        <% restantes.forEach(n => { %>
+          <a href="/noticias/<%= n.id %>" class="noticia-card"
+             data-noticia
+             data-search="<%= n.textoBusqueda %>"
+             data-tipos="<%= n.tiposAdjunto.join(' ') %>">
+            <div class="noticia-card__media">
+              <%# El icono queda siempre debajo: si la portada falla al cargar
+                  (adjuntos heredados que ya no existen) se ve el icono y no el
+                  cuadro de imagen rota del navegador. %>
+              <span class="media-placeholder" aria-hidden="true"><%- include('../partials/icon', { name: 'news' }) %></span>
+              <% if (n.image) { %>
+                <img src="<%= n.image %>" alt="" loading="lazy" decoding="async"
+                     onerror="this.remove()">
+              <% } %>
+              <% if (n.resumen.total) { %>
+                <span class="noticia-card__adjuntos" title="<%= n.resumen.total %> archivo<%= n.resumen.total === 1 ? '' : 's' %> adjunto<%= n.resumen.total === 1 ? '' : 's' %>">
+                  <%- include('../partials/icon', { name: 'paperclip' }) %>
+                  <%= n.resumen.total %>
+                </span>
+              <% } %>
+            </div>
+            <div class="noticia-card__body">
+              <p class="noticia-card__date"><%= n.fechaCorta %></p>
+              <h2 class="noticia-card__title"><%= n.title %></h2>
+              <% if (n.subtitle) { %>
+                <p class="noticia-card__sub"><%= n.subtitle %></p>
+              <% } %>
+              <% if (n.resumen.chips.length) { %>
+                <div class="noticia-card__chips">
+                  <% n.resumen.chips.forEach(chip => { %>
+                    <span class="noticia-chip noticia-chip--<%= chip.kind %>">
+                      <%- include('../partials/icon', { name: ICONO_CHIP[chip.kind] || 'paperclip' }) %>
+                      <%= chip.text %>
+                    </span>
+                  <% }) %>
+                </div>
+              <% } %>
+              <p class="noticia-card__pie">
+                <span class="noticia-card__autor"><%= n.autor %></span>
+                <span aria-hidden="true">·</span>
+                <span><%= n.lecturaLabel %></span>
+              </p>
+            </div>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+
+    <div class="noticias__empty noticias__empty--filtro" id="noticias-sin-resultados" hidden>
+      <%- include('../partials/icon', { name: 'search' }) %>
+      <p>No encontramos noticias con ese criterio.</p>
+    </div>
+
+  <% } %>
+</div>
+
+<% if (puedeEscribir) { %>
+  <%- include('partials/modal-noticia') %>
+<% } %>

@@ -1,0 +1,91 @@
+<style>
+  .grid-carpetas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 25px;
+    margin-top: 30px;
+  }
+
+  .folder-card-exec {
+    background: var(--color-surface, #ffffff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 25px 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  }
+
+  .folder-card-exec:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px rgba(0,0,0,0.06);
+    border-color: var(--color-border-strong, #cbd5e0);
+    background: var(--color-surface-muted, #f8fafc);
+  }
+
+  .folder-icon-exec {
+    font-size: 2.5rem;
+    line-height: 1;
+  }
+
+  .folder-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .folder-title-exec {
+    margin: 0;
+    font-size: 1.15rem;
+    color: #2d3748;
+    font-weight: 700;
+  }
+  
+  .folder-count {
+    font-size: 0.85rem;
+    color: #718096;
+    background: #edf2f7;
+    padding: 2px 8px;
+    border-radius: 12px;
+    display: inline-block;
+    width: fit-content;
+    font-weight: 600;
+  }
+
+  .boton-volver {
+    display: inline-block; background: #f8fafc; border: 1px solid #cbd5e0;
+    color: #4a5568; padding: 10px 20px; border-radius: 6px; text-decoration: none;
+    font-weight: 600; font-size: 0.95rem; transition: all 0.2s;
+  }
+  .boton-volver:hover { background: #edf2f7; color: #1a202c; }
+</style>
+
+<div class="contenedor">
+  <div class="page-header">
+    <h2 class="page-title"><%= titulo %></h2>
+    <p class="page-description">
+      Selecciona el área para ver los documentos correspondientes.
+    </p>
+  </div>
+
+  <div class="grid-carpetas">
+    <% areas.forEach(area => { %>
+      <a href="/procesos/<%= seccionBase %>/<%= area.slug %>" class="folder-card-exec">
+        <div class="folder-icon-exec"><%- include('../partials/icon', { name: 'folder' }) %></div>
+        <div class="folder-info">
+          <h3 class="folder-title-exec"><%= area.name %></h3>
+          <span class="folder-count"><%= area.cantidad %> archivo(s)</span>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+
+  <div class="grid-opciones" style="margin-top: 40px;">
+    <a class="boton-volver" href="/procesos">
+      ← Volver al menú principal
+    </a>
+  </div>
+</div>

@@ -1,0 +1,120 @@
+<div class="contenedor" data-ticket-list-admin="<%= (typeof isAdministrador !== 'undefined' && isAdministrador) ? 'true' : 'false' %>">
+<div class="page-header page-header--toolbar">
+  <div class="page-header__text">
+    <h2 class="page-title"><%= titulo || 'Soporte de TI' %></h2>
+    <p class="page-description">Listado de tickets recibidos por soporte.</p>
+  </div>
+
+  <div class="page-header-actions">
+    <% if (typeof isAdministrador !== 'undefined' && isAdministrador) { %>
+    <button id="btnToggleCerrados" type="button" class="btn-toggle-cerrados" data-toggle-closed-tickets>
+      <span id="eyeIcon" class="ticket-icon-inline" data-ticket-closed-icon>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .707-.707 12 12-.708.707z"/></svg>
+      </span>
+      <span id="eyeText" data-ticket-closed-text>Mostrar Cerrados</span>
+    </button>
+    <% } %>
+
+    <a href="/sistemas/tickets/nuevo" class="btn-primario btn-ticket-create js-open-ticket-modal">
+      <span class="btn-ticket-create__icon">+</span> Abrir Nuevo Ticket
+    </a>
+  </div>
+</div><!-- /.page-header -->
+
+<div class="tabla-tickets-scroll">
+<table class="tabla-tickets" id="ticketsTable">
+  <thead>
+    <tr>
+      <% let cIdx = 0; %>
+      <th class="col-id col-ocultar-mobile" data-sort-column="<%= cIdx++ %>">ID <span class="sort-icon"></span></th>
+      <th class="col-titulo" data-sort-column="<%= cIdx++ %>">Título <span class="sort-icon"></span></th>
+      <th class="col-categoria col-ocultar-mobile" data-sort-column="<%= cIdx++ %>">Categoría <span class="sort-icon"></span></th>
+      <th class="col-importancia" data-sort-column="<%= cIdx++ %>">Importancia <span class="sort-icon"></span></th>
+      <th class="col-estado" data-sort-column="<%= cIdx++ %>">Estado <span class="sort-icon"></span></th>
+      <% if (user && typeof isAdministrador !== 'undefined' && isAdministrador) { %>
+        <th class="col-asignado col-ocultar-mobile" data-sort-column="<%= cIdx++ %>">Tomado por <span class="sort-icon"></span></th>
+      <% } %>
+      <th class="col-solicitante col-ocultar-mobile" data-sort-column="<%= cIdx++ %>">Solicitante <span class="sort-icon"></span></th>
+      <th class="col-correo col-ocultar-mobile" data-sort-column="<%= cIdx++ %>">Correo <span class="sort-icon"></span></th>
+      <th class="col-creado col-ocultar-mobile" data-sort-column="<%= cIdx++ %>">Creado <span class="sort-icon"></span></th>
+      <th class="col-ult-respuesta col-ocultar-mobile" data-sort-column="<%= cIdx++ %>">Últ. Respuesta <span class="sort-icon"></span></th>
+      <th class="col-t-respuesta col-ocultar-mobile" data-sort-column="<%= cIdx++ %>">T. Respuesta <span class="sort-icon"></span></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% if (tickets && tickets.length > 0) { %>
+      <% tickets.forEach(t => { 
+         const estadoLabels = { open: 'Abierto', in_progress: 'En curso', pending_close: 'Pendiente de cierre', closed: 'Cerrado' };
+         const prioridadLabels = { low: 'Baja', medium: 'Media', high: 'Alta' };
+
+         let esNoLeido = false;
+         if (typeof user !== 'undefined' && typeof isAdministrador !== 'undefined' && isAdministrador && t.read_by_admin === false) {
+            esNoLeido = true;
+         } else if (typeof user !== 'undefined' && !(typeof isAdministrador !== 'undefined' && isAdministrador) && t.read_by_user === false) {
+            esNoLeido = true;
+         }
+
+         let badgePrioridad = 'bg-secondary';
+         if (t.priority === 'high') badgePrioridad = 'bg-danger';
+         else if (t.priority === 'medium') badgePrioridad = 'bg-success';
+         else if (t.priority === 'low') badgePrioridad = 'bg-primary';
+
+         let badgeEstado = 'bg-secondary';
+         if (t.status === 'open') badgeEstado = 'bg-primary';
+         else if (t.status === 'in_progress') badgeEstado = 'bg-warning';
+         else if (t.status === 'pending_close') badgeEstado = 'bg-warning';
+         else if (t.status === 'closed') badgeEstado = 'bg-success';
+
+         const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: 'numeric', minute: 'numeric', second: 'numeric' };
+         const strCreado = t.created_at ? new Date(t.created_at).toLocaleDateString('es-CL', options) : '-';
+         const strUltima = t.fecha_ultima_respuesta ? new Date(t.fecha_ultima_respuesta).toLocaleDateString('es-CL', options) : '-';
+         
+         const tRespuesta = t.tiempo_respuesta || '-';
+      %>
+        <tr class="clickable-row <%= esNoLeido ? 'fila-no-leida' : '' %>" data-href="/sistemas/tickets/<%= t.id %>" data-estado="<%= t.status %>">
+          
+          <td class="col-id col-ocultar-mobile" data-sort="<%= t.id %>"><%= t.id %></td>
+          <td class="col-titulo" title="<%= t.title %>">
+            <% if (esNoLeido) { %><span class="badge-nuevo-ticket">Nuevo</span><% } %>
+            <div class="ticket-title-clamp">
+              <%= t.title %>
+            </div>
+          </td>
+          <td class="col-categoria col-ocultar-mobile"><%= t.category || '-' %></td>
+          <td class="col-importancia" data-sort="<%= t.priority %>"><span class="badge <%= badgePrioridad %>"><%= prioridadLabels[t.priority] || t.priority %></span></td>
+          <td class="col-estado" data-sort="<%= t.status %>"><span class="badge <%= badgeEstado %>"><%= estadoLabels[t.status] || t.status %></span></td>
+          
+          <% if (user && typeof isAdministrador !== 'undefined' && isAdministrador) { %>
+            <td class="col-asignado col-ocultar-mobile ticket-assigned <%= t.assigned_to ? 'ticket-assigned--active' : '' %>">
+                <%= t.assigned_to || 'Sin asignar' %>
+            </td>
+          <% } %>
+
+          <td class="col-solicitante col-ocultar-mobile"><%= t.requester_name %></td>
+          <td class="col-correo col-ocultar-mobile ticket-table-muted"><%= t.requester_email %></td>
+          <td class="col-creado col-ocultar-mobile ticket-table-date" data-sort="<%= t.created_at ? new Date(t.created_at).getTime() : 0 %>"><%= strCreado %></td>
+          <td class="col-ult-respuesta col-ocultar-mobile ticket-table-date" data-sort="<%= t.fecha_ultima_respuesta ? new Date(t.fecha_ultima_respuesta).getTime() : 0 %>"><%= strUltima %></td>
+          <td class="col-t-respuesta col-ocultar-mobile ticket-response-time" data-sort="<%= t.tiempo_respuesta_minutos != null ? t.tiempo_respuesta_minutos : -1 %>"><%= tRespuesta %></td>
+          
+        </tr>
+      <% }) %>
+    <% } else { %>
+      <tr>
+        <td colspan="<%= (user && typeof isAdministrador !== 'undefined' && isAdministrador) ? 11 : 10 %>" class="ticket-empty-table">No hay tickets registrados actualmente.</td>
+      </tr>
+    <% } %>
+  </tbody>
+</table>
+</div>
+
+</div>
+
+<%- include('../partials/modal', {
+  id: 'modalVerTicketDetalle',
+  titleId: 'modalVerTicketDetalleTitulo',
+  title: 'Detalle de ticket',
+  overlayClass: 'modal-ticket-navbar',
+  panelClass: 'modal-ticket-navbar-content modal-ticket-detail-content',
+  titleClass: 'ticket-modal-title ticket-modal-title--sr',
+  body: include('../partials/ticket-detail-modal-content')
+}) %>

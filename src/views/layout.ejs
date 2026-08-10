@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/theme-head') %>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= formatPageTitle(titulo) %></title>
+    <link rel="stylesheet" href="/css/intranet.css">
+    <link rel="stylesheet" href="/css/modal.css?v=20260728c">
+    <link rel="stylesheet" href="/css/ticket-modal.css?v=20260728c">
+    <% if (typeof extraCss !== 'undefined' && Array.isArray(extraCss)) { %>
+      <% extraCss.forEach((href) => { %>
+        <link rel="stylesheet" href="<%= href %>">
+      <% }) %>
+    <% } %>
+    <link rel="stylesheet" href="/css/home.css">
+    <% if (typeof usuario !== 'undefined' && usuario) { %>
+    <link rel="stylesheet" href="/css/claude-fab.css">
+    <link rel="stylesheet" href="/css/claude-chat.css">
+    <% } %>
+    <script src="/js/modal.js?v=20260728c" defer></script>
+    <script src="/js/ticket-create-form.js" defer></script>
+    <script src="/js/ticket-detail.js" defer></script>
+</head>
+
+<body>
+
+  <div id="toast-container">
+    <div class="toast-success">
+      <span>✓</span>
+      <span id="toast-message">Operación exitosa</span>
+    </div>
+  </div>
+
+  <% 
+    const currentUser = (typeof usuario !== 'undefined' && usuario) ?
+    usuario : ((typeof user !== 'undefined' && user) ? user : null);
+    let displayName = 'Usuario';
+    if (currentUser) {
+      if (currentUser.nombre) displayName = currentUser.nombre;
+      else if (currentUser.first_name) displayName = currentUser.first_name + (currentUser.last_name ? ' ' + currentUser.last_name : '');
+      else if (currentUser.name) displayName = currentUser.name;
+      else if (currentUser.username) displayName = currentUser.username;
+    }
+  %>
+
+<div class="mobile-overlay" id="mobile-overlay"></div>
+<nav class="mobile-sidebar" id="mobile-sidebar">
+  <span class="close-btn" id="close-menu">&times;</span>
+
+  <div class="mobile-sidebar__body">
+  <a href="/">INICIO</a>
+
+  <a href="/noticias">NOTICIAS</a>
+  
+  <a href="#" class="submenu-toggle">PROCESOS Y DOCUMENTOS <span class="arrow">▾</span></a>
+  <div class="sub-menu">
+    <a href="/procesos/procedimientos">Procedimientos</a>
+    <a href="/procesos/protocolos">Protocolos</a>
+    <a href="/procesos/reglamento">Reglamento interno</a>
+    <a href="/procesos/otros">Otros documentos</a>
+  </div>
+
+  <a href="#" class="submenu-toggle">RRHH <span class="arrow">▾</span></a>
+  <div class="sub-menu">
+    <a href="/RRHH/organigrama">Organigrama</a>
+    <a href="/RRHH/personal">Personal</a>
+    <a href="/RRHH/vacaciones">Vacaciones</a>
+    <a href="https://transworld.mirexmas.com/" target="_blank">Rex+</a>
+    <a href="https://www.achs.cl/" target="_blank">ACHS</a>
+    <a href="https://www.cajalosandes.cl/" target="_blank">Caja los Andes</a>
+  </div>
+
+  <a href="/marketing/eventos">GALERÍA</a>
+
+  <a href="/apps">APLICACIONES</a>
+  <a href="/sistemas/tickets" class="ticket-notif-target">SOPORTE</a>
+  </div>
+
+  <% if (currentUser) { %>
+    <div class="mobile-sidebar__footer">
+      <a href="/perfil" class="mobile-sidebar__profile">
+        <% if (currentUser.photo || currentUser.foto) { %>
+          <img src="<%= currentUser.photo || currentUser.foto %>" alt="Foto de perfil" class="nav-user-photo">
+        <% } else { %>
+          <div class="nav-user-avatar">
+            <%= displayName.charAt(0).toUpperCase() %>
+          </div>
+        <% } %>
+        <span>Mi perfil</span>
+      </a>
+      <a href="/logout" class="mobile-sidebar__logout">Cerrar sesión</a>
+    </div>
+  <% } %>
+</nav>
+
+<header>
+  <div class="header-inner">
+    
+    <div class="header-left">
+      <button class="menu-toggle" id="menu-toggle">☰</button>
+      
+      <div class="logo-container">
+        <a href="/" title="Ir al Inicio">
+          <img src="/img/trw_logohor.png" alt="Transworld" class="logo-tw logo-tw--light">
+          <img src="/img/PNG-LOGO-TW-2.png" alt="Transworld" class="logo-tw logo-tw--dark">
+        </a>
+      </div>
+    </div>
+
+    <nav class="main-nav">      
+      <div class="nav-item"><a href="/noticias">NOTICIAS</a></div>
+      <div class="nav-item">
+        <a href="/procesos">PROCESOS Y DOCUMENTOS</a>
+        <div class="dropdown-menu">
+          <a href="/procesos/procedimientos">Procedimientos</a>
+          <a href="/procesos/protocolos">Protocolos</a>
+          <a href="/procesos/reglamento">Reglamento interno</a>
+          <a href="/procesos/otros">Otros documentos</a>
+        </div>
+      </div>
+      <div class="nav-item">
+        <a href="/RRHH">RRHH</a>
+        <div class="dropdown-menu">
+          <a href="/RRHH/organigrama">Organigrama</a>
+          <a href="/RRHH/personal">Personal</a>
+          <a href="/RRHH/vacaciones">Vacaciones</a>
+          <a href="https://transworld.mirexmas.com/" target="_blank" rel="noopener noreferrer">Rex+</a>
+          <a href="https://www.achs.cl/" target="_blank" rel="noopener noreferrer">ACHS</a>
+          <a href="https://www.cajalosandes.cl/" target="_blank" rel="noopener noreferrer">Caja los Andes</a>
+        </div>
+      </div>
+      <div class="nav-item"><a href="/marketing/eventos">GALERÍA</a></div>
+      <div class="nav-item"><a href="/apps">APPS</a></div>
+      <div class="nav-item"><a href="/sistemas/tickets" class="ticket-notif-target">SOPORTE</a></div>
+
+    </nav>
+    
+    <div class="header-right">
+      <a href="/sistemas/tickets/nuevo" class="btn-ticket-nav js-open-ticket-modal" title="Abrir nuevo ticket de soporte">Abrir Ticket</a>
+
+      <div class="social-nav">
+        <a href="https://www.linkedin.com/company/transworldpowerandtelecom" target="_blank" title="LinkedIn">
+           <svg class="social-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="4" fill="#0077B5"/>
+            <path d="M12.5 30H8.5V16H12.5V30ZM10.5 14.4C9.2 14.4 8.2 13.4 8.2 12.2C8.2 11 9.2 10 10.5 10C11.8 10 12.8 11 12.8 12.2C12.8 13.4 11.8 14.4 10.5 14.4ZM31.5 30H27.5V22.8C27.5 21 26.8 19.8 25.2 19.8C24 19.8 23.3 20.6 23 21.4C22.9 21.7 22.9 22.1 22.9 22.5V30H18.9C18.9 30 19 17.1 18.9 16H22.9V18.2C23.4 17.3 24.6 16 26.8 16C29.6 16 31.5 17.9 31.5 22.1V30Z" fill="white"/>
+           </svg>
+        </a>
+        <a href="https://www.youtube.com/@transworld-tv" target="_blank" title="YouTube">
+          <svg class="social-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="4" fill="#FF0000"/>
+            <g transform="translate(20, 20) scale(1.5) translate(-20, -20)">
+              <path d="M29.2 14.2C29 13.5 28.5 13 27.8 12.8C26.5 12.5 21.5 12.5 21.5 12.5C21.5 12.5 16.5 12.5 15.2 12.8C14.5 13 14 13.5 13.8 14.2C13.5 15.5 13.5 18.2 13.5 18.2C13.5 18.2 13.5 21 13.8 22.2C14 22.9 14.5 23.4 15.2 23.6C16.5 24 21.5 24 21.5 24C21.5 24 26.5 24 27.8 23.6C28.5 23.4 29 22.9 29.2 22.2C29.5 21 29.5 18.2 29.5 18.2C29.5 18.2 29.5 15.5 29.2 14.2ZM19.8 20.7V15.7L24.2 18.2L19.8 20.7Z" fill="white"/>
+            </g>
+          </svg>
+        </a>
+        <a href="https://login.salesforce.com/" target="_blank" class="nav-social-icon" title="Salesforce">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/f/f9/Salesforce.com_logo.svg" alt="Salesforce" class="salesforce-logo">
+        </a>
+      </div>
+
+      <% if (currentUser) { %>
+        <div class="nav-user nav-user-menu">
+          <button type="button" class="user-name nav-user-link nav-user-trigger" aria-expanded="false" aria-haspopup="true" aria-label="Abrir menú de usuario">
+            <% if (currentUser.photo || currentUser.foto) { %>
+              <img src="<%= currentUser.photo || currentUser.foto %>" alt="Foto" class="nav-user-photo">
+            <% } else { %>
+              <div class="nav-user-avatar">
+                <%= displayName.charAt(0).toUpperCase() %>
+              </div>
+            <% } %>
+          </button>
+          <div class="nav-user-dropdown" role="menu">
+            <a href="/perfil" role="menuitem">Mi Perfil</a>
+            <a href="/logout" role="menuitem">Cerrar Sesión</a>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</header>
+
+<main>
+    <div class="contenedor-principal">
+        <%- body %>
+    </div>
+</main>
+
+<% if (currentUser) { %>
+  <%- include('partials/modal', {
+    id: 'modalNuevoTicketNavbar',
+    titleId: 'ticket-modal-title',
+    title: 'Abrir Nuevo Ticket de Soporte',
+    overlayClass: 'modal-ticket-navbar',
+    panelClass: 'modal-content2-large modal-ticket-navbar-content',
+    titleClass: 'ticket-modal-title',
+    closeLabel: 'Cerrar modal de ticket',
+    body: include('partials/ticket-create-modal-content', { currentUser, displayName })
+  }) %>
+<% } %>
+
+<footer>
+  <div class="footer-content">
+
+    <div class="footer-col">
+      <strong>Procesos</strong>
+      <a href="/procesos/protocolos">Protocolos</a>
+      <a href="/procesos/reglamento">Reglamento interno</a>
+      <a href="/procesos/procedimientos">Procedimientos</a>
+      <a href="/procesos/otros">Otros documentos</a>
+    </div>
+
+    <div class="footer-col">
+       <strong>Empresa</strong>
+       <a href="https://www.transworld.cl/nosotros/" target="_blank" rel="noopener noreferrer">Nosotros</a>
+       <a href="/marketing/eventos">Eventos</a>
+       <a href="/noticias">Noticias internas</a>
+    </div>
+
+    <div class="footer-col">
+      <strong>Ayuda</strong>
+      <a href="/sistemas/tickets">Soporte de TI</a>
+    </div>
+
+    <div class="footer-col">
+      <strong class="footer-heading-accent">Links Externos</strong>
+      <a href="https://transworld.mirexmas.com/" target="_blank" rel="noopener noreferrer">Rex+</a>
+      <a href="https://www.achs.cl/" target="_blank" rel="noopener noreferrer">ACHS</a>
+      <a href="https://www.cajalosandes.cl/" target="_blank" rel="noopener noreferrer">Caja los Andes</a>
+      <a href="https://clientes.bciseguros.cl/HomePrivado/LinkLogin" target="_blank" rel="noopener noreferrer">BCI Seguros</a>
+      <a href="https://login.salesforce.com/" target="_blank" rel="noopener noreferrer">Salesforce</a>
+    </div>
+
+  </div>
+</footer>
+
+<% if (currentUser && typeof titulo === 'string' && titulo.toLowerCase().includes('home')) { %>
+  <%- include('partials/claude-fab') %>
+  <%- include('partials/claude-modal') %>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
+  <script src="/js/claude-chat.js"></script>
+  <script src="/js/claude-modal.js"></script>
+<% } %>
+
+<% if (typeof extraJs !== 'undefined' && Array.isArray(extraJs)) { %>
+  <% extraJs.forEach((src) => { %>
+    <script src="<%= src %>" defer></script>
+  <% }) %>
+<% } %>
+
+<script>
+  document.addEventListener('DOMContentLoaded', async function() {
+
+    // --- ESTADO ACTIVO DE LA NAVEGACIÓN ---
+    (function markActiveNav() {
+      const path = window.location.pathname;
+      const links = document.querySelectorAll('.main-nav .nav-item > a');
+      let best = null;
+      let bestLen = 0;
+      links.forEach((a) => {
+        let href;
+        try { href = new URL(a.getAttribute('href'), window.location.origin).pathname; }
+        catch (e) { return; }
+        if (href === '/' ) return;
+        if ((path === href || path.startsWith(href + '/') || path.startsWith(href)) && href.length > bestLen) {
+          best = a;
+          bestLen = href.length;
+        }
+      });
+      if (best) best.classList.add('is-active');
+    })();
+
+    // --- LÓGICA DE MENÚ MÓVIL PRINCIPAL ---
+    const menuToggle = document.getElementById('menu-toggle');
+    const closeMenu = document.getElementById('close-menu');
+    const mobileSidebar = document.getElementById('mobile-sidebar');
+    const mobileOverlay = document.getElementById('mobile-overlay');
+
+    function toggleMenu() {
+      mobileSidebar.classList.toggle('open');
+      mobileOverlay.classList.toggle('open');
+    }
+
+    menuToggle.addEventListener('click', toggleMenu);
+    closeMenu.addEventListener('click', toggleMenu);
+    mobileOverlay.addEventListener('click', toggleMenu);
+
+    // --- LÓGICA DE SUBMENÚS DESPLEGABLES (MÓVIL) ---
+    const submenuToggles = document.querySelectorAll('.submenu-toggle');
+    submenuToggles.forEach(toggle => {
+      toggle.addEventListener('click', function(e) {
+        e.preventDefault(); // Evita que la página salte
+        
+        this.classList.toggle('active');
+        
+        const submenu = this.nextElementSibling;
+        if (submenu && submenu.classList.contains('sub-menu')) {
+          submenu.classList.toggle('open');
+        }
+      });
+    });
+
+    // --- MENÚ DE USUARIO EN NAVBAR ---
+    const userMenus = document.querySelectorAll('.nav-user-menu');
+
+    function closeUserMenus(exceptMenu) {
+      userMenus.forEach((menu) => {
+        if (menu === exceptMenu) return;
+        menu.classList.remove('is-open');
+        const trigger = menu.querySelector('.nav-user-trigger');
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+      });
+    }
+
+    userMenus.forEach((menu) => {
+      const trigger = menu.querySelector('.nav-user-trigger');
+      if (!trigger) return;
+
+      trigger.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const willOpen = !menu.classList.contains('is-open');
+        closeUserMenus(menu);
+        menu.classList.toggle('is-open', willOpen);
+        trigger.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      });
+    });
+
+    document.addEventListener('click', () => closeUserMenus());
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeUserMenus();
+    });
+
+
+    // --- CÓDIGO EXISTENTE DEL TOAST ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const okMsg = urlParams.get('ok');
+    const flashMsg = urlParams.get('msg');
+    // ok=1&msg=... lo maneja la vista (p. ej. listado de personal); evita toast duplicado
+    if (okMsg && !(okMsg === '1' && flashMsg)) {
+      const toastContainer = document.getElementById('toast-container');
+      const toastMessage = document.getElementById('toast-message');
+      toastMessage.textContent = decodeURIComponent(okMsg.replace(/\+/g, ' '));
+      toastContainer.classList.add('is-visible');
+
+      setTimeout(() => {
+        toastContainer.classList.remove('is-visible');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }, 4000);
+    }
+
+    // --- BURBUJA DE NOTIFICACIONES ---
+    function renderTicketBadges(count) {
+      const btnsTicket = document.querySelectorAll('.ticket-notif-target');
+      btnsTicket.forEach(btn => {
+        btn.querySelectorAll('.badge-notif').forEach(badge => badge.remove());
+
+        if (count > 0) {
+          const badge = document.createElement('span');
+          badge.className = 'badge-notif';
+          badge.innerText = count > 99 ? '99+' : count;
+          btn.appendChild(badge);
+        }
+      });
+    }
+
+    async function refreshTicketNotifications() {
+      if (document.hidden) return;
+
+      try {
+        const res = await fetch('/sistemas/tickets/notificaciones/count', {
+          cache: 'no-store',
+          headers: { 'Accept': 'application/json' }
+        });
+        const data = await res.json();
+        renderTicketBadges(Number(data.count) || 0);
+      } catch (error) {
+        console.error('Error al cargar notificaciones de tickets:', error);
+      }
+    }
+
+    refreshTicketNotifications();
+    setInterval(refreshTicketNotifications, 30000);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) refreshTicketNotifications();
+    });
+
+  });
+</script>
+
+</body>
+</html>

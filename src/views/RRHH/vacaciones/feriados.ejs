@@ -1,0 +1,105 @@
+<link rel="stylesheet" href="/css/vacaciones.css">
+
+<%
+  function fmt(d) {
+    if (!d) return '-';
+    const s = (typeof d === 'string') ? d.slice(0,10) : new Date(d).toISOString().slice(0,10);
+    const [y,m,dd] = s.split('-');
+    return `${dd}-${m}-${y}`;
+  }
+%>
+
+<div class="vac-wrap">
+  <div class="vac-header">
+    <div>
+      <h2 class="vac-title">Feriados</h2>
+      <p class="vac-subtitle">Feriados legales de Chile y Perú. Afectan el cálculo de días hábiles (Chile).</p>
+    </div>
+    <a href="/RRHH/vacaciones" class="vac-link-volver">← Volver</a>
+  </div>
+
+  <% if (typeof success !== 'undefined' && success) { %>
+    <div class="vac-alert vac-alert-success"><%= success %></div>
+  <% } %>
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="vac-alert vac-alert-error"><%= error %></div>
+  <% } %>
+
+  <!-- Agregar feriado -->
+  <div class="vac-panel">
+    <div class="vac-panel-head">Agregar feriado</div>
+    <form class="vac-form" action="/RRHH/vacaciones/feriados" method="POST">
+      <div class="vac-form-grid-2">
+        <div class="campo">
+          <label for="country_code">País *</label>
+          <select id="country_code" name="country_code" required>
+            <option value="CL">Chile</option>
+            <option value="PE">Perú</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label for="holiday_date">Fecha *</label>
+          <input type="date" id="holiday_date" name="holiday_date" required>
+        </div>
+      </div>
+      <div class="campo">
+        <label for="name">Nombre *</label>
+        <input type="text" id="name" name="name" required placeholder="Ej: Día del Trabajo">
+      </div>
+      <button type="submit" class="vac-btn vac-btn-primary">Agregar feriado</button>
+    </form>
+  </div>
+
+  <!-- Listados -->
+  <div class="vac-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+    <div class="vac-panel">
+      <div class="vac-panel-head">Chile (<%= holidaysCL.length %>)</div>
+      <% if (!holidaysCL.length) { %>
+        <p class="vac-empty">Sin feriados.</p>
+      <% } else { %>
+        <table class="vac-table">
+          <thead><tr><th>Fecha</th><th>Nombre</th><th></th></tr></thead>
+          <tbody>
+            <% holidaysCL.forEach(h => { %>
+              <tr>
+                <td><%= fmt(h.holiday_date) %></td>
+                <td><%= h.name %></td>
+                <td>
+                  <form class="vac-inline-form" action="/RRHH/vacaciones/feriados/<%= h.id %>/eliminar" method="POST"
+                        onsubmit="return confirm('¿Eliminar feriado?');">
+                    <button type="submit" class="vac-btn vac-btn-cancel vac-btn-sm">Eliminar</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+
+    <div class="vac-panel">
+      <div class="vac-panel-head">Perú (<%= holidaysPE.length %>)</div>
+      <% if (!holidaysPE.length) { %>
+        <p class="vac-empty">Sin feriados.</p>
+      <% } else { %>
+        <table class="vac-table">
+          <thead><tr><th>Fecha</th><th>Nombre</th><th></th></tr></thead>
+          <tbody>
+            <% holidaysPE.forEach(h => { %>
+              <tr>
+                <td><%= fmt(h.holiday_date) %></td>
+                <td><%= h.name %></td>
+                <td>
+                  <form class="vac-inline-form" action="/RRHH/vacaciones/feriados/<%= h.id %>/eliminar" method="POST"
+                        onsubmit="return confirm('¿Eliminar feriado?');">
+                    <button type="submit" class="vac-btn vac-btn-cancel vac-btn-sm">Eliminar</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+  </div>
+</div>

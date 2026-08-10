@@ -1,0 +1,27 @@
+<div class="contenedor contenedor--narrow">
+  <% const ticketCreateUser = (typeof usuario !== 'undefined' && usuario) ? usuario : ((typeof user !== 'undefined' && user) ? user : {}); %>
+  <div class="ticket-detail-back">
+    <a href="/sistemas/tickets" class="link-volver">← Volver a la Soporte de TI</a>
+  </div>
+
+  <div class="page-header">
+    <h2 class="page-title">Abrir Nuevo Ticket de Soporte</h2>
+    <p class="page-description">Describe tu problema o requerimiento técnico a continuación.</p>
+  </div>
+
+  <div class="ticket-create-card">
+    <div class="ticket-modal-user-box">
+      <p>
+        <strong>Solicitante:</strong>
+        <%= ticketCreateUser.nombre || ticketCreateUser.username || 'Usuario' %>
+        <span>(<%= ticketCreateUser.email || 'Sin correo' %>)</span>
+      </p>
+    </div>
+
+    <%- include('../partials/ticket-create-form', {
+      formId: 'formCrearTicket',
+      fieldPrefix: 'ticketPage',
+      showCancel: false
+    }) %>
+  </div>
+</div>

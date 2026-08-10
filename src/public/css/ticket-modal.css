@@ -1,0 +1,104 @@
+/* Ticket modals — layout-only on shared modal.css */
+
+.modal-overlay.modal-ticket-navbar {
+  z-index: 2600;
+}
+
+.modal-ticket-navbar-content {
+  max-width: 680px;
+}
+
+.modal-ticket-detail-content {
+  max-width: 960px;
+  padding: 28px;
+}
+
+.ticket-modal-title--sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0 !important;
+}
+
+.ticket-modal-user-box {
+  background: var(--modal-input-bg, #f5f8fc);
+  border: 1px solid var(--modal-border, #dbe5ef);
+  border-radius: var(--modal-radius-sm, 8px);
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.ticket-modal-user-box p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.ticket-modal-user-box span {
+  color: var(--modal-heading, #0f4c81);
+}
+
+.ticket-modal-counter {
+  font-size: 0.8rem;
+  color: #666;
+  text-align: right;
+  margin-top: -4px;
+}
+
+.ticket-modal-counter.limit-reached {
+  color: #dc3545;
+  font-weight: 700;
+}
+
+.ticket-modal-files-label {
+  margin-top: 8px;
+}
+
+.ticket-modal-upload-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ticket-modal-upload-status {
+  color: #666;
+  font-size: 0.86rem;
+  font-style: italic;
+}
+
+.ticket-modal-upload-status--warning { color: #e67e22; }
+.ticket-modal-upload-status--success { color: green; }
+.ticket-modal-upload-status--error { color: red; }
+
+.ticket-modal-state {
+  color: var(--modal-muted, #555);
+  font-size: 1rem;
+  padding: 42px 18px;
+  text-align: center;
+}
+
+.ticket-modal-state--error {
+  color: #b42318;
+}
+
+html[data-theme="dark"] .ticket-modal-user-box {
+  background: #243147;
+  border-color: #3b4a65;
+}
+
+html[data-theme="dark"] .ticket-modal-counter {
+  color: #94a3b8;
+}
+
+@media (max-width: 768px) {
+  .modal-ticket-navbar-content,
+  .modal-ticket-detail-content {
+    max-height: none;
+    padding: 22px 16px;
+  }
+}

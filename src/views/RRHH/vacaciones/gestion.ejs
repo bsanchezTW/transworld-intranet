@@ -1,0 +1,95 @@
+<link rel="stylesheet" href="/css/vacaciones.css">
+
+<div class="vac-wrap">
+  <div class="vac-header">
+    <div>
+      <h2 class="vac-title">Gestión de vacaciones</h2>
+      <p class="vac-subtitle">Aprueba o rechaza solicitudes y revisa los saldos del equipo.</p>
+    </div>
+    <a href="/RRHH/vacaciones" class="vac-link-volver">← Volver</a>
+  </div>
+
+  <% if (typeof success !== 'undefined' && success) { %>
+    <div class="vac-alert vac-alert-success"><%= success %></div>
+  <% } %>
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="vac-alert vac-alert-error"><%= error %></div>
+  <% } %>
+
+  <div class="vac-panel">
+    <form class="vac-filters" method="GET" action="/RRHH/vacaciones/gestion">
+      <select name="country">
+        <option value="">Todos los países</option>
+        <option value="CL" <%= filtros.country === 'CL' ? 'selected' : '' %>>Chile</option>
+        <option value="PE" <%= filtros.country === 'PE' ? 'selected' : '' %>>Perú</option>
+      </select>
+      <select name="area">
+        <option value="">Todas las áreas</option>
+        <% (areas || []).forEach(a => { %>
+          <option value="<%= a.id %>" <%= String(filtros.area) === String(a.id) ? 'selected' : '' %>><%= a.area_name %></option>
+        <% }) %>
+      </select>
+      <select name="status">
+        <option value="">Todos los estados</option>
+        <option value="pending" <%= filtros.status === 'pending' ? 'selected' : '' %>>Pendiente</option>
+        <option value="approved" <%= filtros.status === 'approved' ? 'selected' : '' %>>Aprobada</option>
+        <option value="rejected" <%= filtros.status === 'rejected' ? 'selected' : '' %>>Rechazada</option>
+        <option value="in_progress" <%= filtros.status === 'in_progress' ? 'selected' : '' %>>En curso</option>
+        <option value="completed" <%= filtros.status === 'completed' ? 'selected' : '' %>>Completada</option>
+        <option value="cancelled" <%= filtros.status === 'cancelled' ? 'selected' : '' %>>Cancelada</option>
+      </select>
+      <button type="submit" class="vac-btn vac-btn-primary vac-btn-sm">Filtrar</button>
+    </form>
+
+    <% if (!requests || requests.length === 0) { %>
+      <p class="vac-empty">No hay solicitudes con los filtros aplicados.</p>
+    <% } else { %>
+      <table class="vac-table">
+        <thead>
+          <tr>
+            <th>Colaborador</th><th>País</th><th>Período</th><th>Días</th>
+            <th>Estado</th><th>Comentario</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% requests.forEach(r => { %>
+            <tr>
+              <td>
+                <a class="vac-link-volver" style="color:#003a70;font-weight:600;" href="/RRHH/vacaciones/gestion/<%= r.user_id %>"><%= r.collaboratorName || ('#' + r.user_id) %></a>
+              </td>
+              <td><span class="vac-country"><%= r.countryLabel %></span></td>
+              <td><%= r.startDateFmt %> → <%= r.endDateFmt %></td>
+              <td><%= r.days %> <%= r.dayUnit %></td>
+              <td><span class="<%= r.statusBadge %>"><%= r.statusLabel %></span></td>
+              <td><%= r.reviewer_notes || r.requester_notes || '-' %></td>
+              <td>
+                <% if (r.status === 'pending') { %>
+                  <form class="vac-inline-form" action="/RRHH/vacaciones/gestion/solicitud/<%= r.id %>/aprobar" method="POST"
+                        onsubmit="return confirm('¿Aprobar esta solicitud?');">
+                    <button type="submit" class="vac-btn vac-btn-approve vac-btn-sm">Aprobar</button>
+                  </form>
+                  <form class="vac-inline-form js-reject-form" action="/RRHH/vacaciones/gestion/solicitud/<%= r.id %>/rechazar" method="POST">
+                    <input type="hidden" name="reason">
+                    <button type="submit" class="vac-btn vac-btn-reject vac-btn-sm">Rechazar</button>
+                  </form>
+                <% } else { %>
+                  <span style="color:#94a3b8;">—</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.js-reject-form').forEach((form) => {
+    form.addEventListener('submit', (e) => {
+      const reason = window.prompt('Indica el motivo del rechazo:');
+      if (!reason || !reason.trim()) { e.preventDefault(); return; }
+      form.querySelector('input[name="reason"]').value = reason.trim();
+    });
+  });
+</script>

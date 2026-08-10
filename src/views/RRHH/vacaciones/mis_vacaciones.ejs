@@ -1,0 +1,210 @@
+<link rel="stylesheet" href="/css/vacaciones.css">
+
+<div class="vac-wrap">
+  <div class="vac-header">
+    <div>
+      <h2 class="vac-title">Mis vacaciones <span class="vac-country"><%= countryLabel %></span></h2>
+      <p class="vac-subtitle">Saldo expresado en <%= dayUnitLabel %>.</p>
+    </div>
+    <a href="/RRHH/vacaciones" class="vac-link-volver">← Volver</a>
+  </div>
+
+  <% if (typeof success !== 'undefined' && success) { %>
+    <div class="vac-alert vac-alert-success"><%= success %></div>
+  <% } %>
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="vac-alert vac-alert-error"><%= error %></div>
+  <% } %>
+
+  <% if (summary && summary.accumulationAlert) { %>
+    <div class="vac-alert vac-alert-info"><%= summary.accumulationMessage %></div>
+  <% } %>
+
+  <% if (!hasHireDate) { %>
+    <div class="vac-alert vac-alert-info">
+      No tienes una fecha de ingreso registrada. Contacta a RRHH para poder calcular tu saldo de vacaciones.
+    </div>
+  <% } %>
+
+  <div class="vac-balance-grid">
+    <div class="vac-stat">
+      <div class="vac-stat-label">Disponible</div>
+      <div class="vac-stat-value"><%= summary.available %> <span class="vac-stat-unit"><%= dayUnit === 'business' ? 'háb.' : 'cal.' %></span></div>
+    </div>
+    <div class="vac-stat">
+      <div class="vac-stat-label">Devengado</div>
+      <div class="vac-stat-value"><%= summary.entitled %></div>
+    </div>
+    <div class="vac-stat">
+      <div class="vac-stat-label">Usado</div>
+      <div class="vac-stat-value"><%= summary.used %></div>
+    </div>
+    <% if (summary.expiringSoon > 0) { %>
+      <div class="vac-stat">
+        <div class="vac-stat-label">Por vencer (90 días)</div>
+        <div class="vac-stat-value warn"><%= summary.expiringSoon %></div>
+      </div>
+    <% } %>
+  </div>
+
+  <% if (hasHireDate) { %>
+  <div class="vac-panel">
+    <div class="vac-panel-head">Solicitar vacaciones</div>
+    <form class="vac-form" action="/RRHH/vacaciones/mis-vacaciones/solicitar" method="POST" id="vacForm">
+      <div class="vac-form-grid-2">
+        <div class="campo">
+          <label for="start_date">Desde *</label>
+          <input type="date" id="start_date" name="start_date" required>
+        </div>
+        <div class="campo">
+          <label for="end_date">Hasta *</label>
+          <input type="date" id="end_date" name="end_date" required>
+        </div>
+      </div>
+      <div class="vac-preview" id="vacPreview" hidden></div>
+      <div class="vac-preview vac-alert-info" id="vacWarnings" hidden></div>
+      <div class="campo" id="fractionAckWrap" hidden>
+        <label>
+          <input type="checkbox" id="fraction_ack" name="fraction_ack" value="1">
+          Confirmo que solicito el fraccionamiento por escrito (art. 17 D.L. 713).
+        </label>
+      </div>
+      <div class="campo" id="policyAckWrap" hidden>
+        <label>
+          <input type="checkbox" id="policy_warning_ack" name="policy_warning_ack" value="1">
+          He leído la advertencia de política interna y deseo continuar.
+        </label>
+      </div>
+      <div class="campo">
+        <label for="notes">Comentario (opcional)</label>
+        <textarea id="notes" name="notes" rows="2" placeholder="Motivo o detalle de la solicitud"></textarea>
+      </div>
+      <button type="submit" class="vac-btn vac-btn-primary">Enviar solicitud</button>
+    </form>
+  </div>
+  <% } %>
+
+  <div class="vac-panel">
+    <div class="vac-panel-head">Períodos de devengo</div>
+    <% if (!periods || periods.length === 0) { %>
+      <p class="vac-empty">Aún no tienes períodos calculados.</p>
+    <% } else { %>
+      <table class="vac-table">
+        <thead>
+          <tr><th>Período</th><th>Devengado</th><th>Ajuste</th><th>Usado</th><th>Disponible</th><th>Vence</th></tr>
+        </thead>
+        <tbody>
+          <% periods.forEach(p => { %>
+            <tr>
+              <td><%= p.periodStartFmt %> → <%= p.periodEndFmt %></td>
+              <td><%= p.recordMet === false ? '0 (récord)' : p.entitled %></td>
+              <td><%= p.adjusted %></td>
+              <td><%= p.used %></td>
+              <td><strong><%= p.available %></strong></td>
+              <td><%= p.noExpiry ? 'No caduca' : (p.expired ? 'Vencido' : (p.expiresAtFmt || '-')) %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+
+  <div class="vac-panel">
+    <div class="vac-panel-head">Historial de solicitudes</div>
+    <% if (!requests || requests.length === 0) { %>
+      <p class="vac-empty">No tienes solicitudes registradas.</p>
+    <% } else { %>
+      <table class="vac-table">
+        <thead>
+          <tr><th>Período</th><th>Días</th><th>Estado</th><th>Revisor</th><th>Notas</th><th></th></tr>
+        </thead>
+        <tbody>
+          <% requests.forEach(r => { %>
+            <tr>
+              <td><%= r.startDateFmt %> → <%= r.endDateFmt %></td>
+              <td><%= r.days %> <%= r.dayUnit %></td>
+              <td><span class="<%= r.statusBadge %>"><%= r.statusLabel %></span></td>
+              <td><%= r.reviewerName || '-' %></td>
+              <td><%= r.reviewer_notes || r.requester_notes || '-' %></td>
+              <td>
+                <% if (r.status === 'pending' || r.status === 'approved') { %>
+                  <form class="vac-inline-form" action="/RRHH/vacaciones/mis-vacaciones/cancelar/<%= r.id %>" method="POST"
+                        onsubmit="return confirm('¿Cancelar esta solicitud?');">
+                    <button type="submit" class="vac-btn vac-btn-cancel vac-btn-sm">Cancelar</button>
+                  </form>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const startInput = document.getElementById('start_date');
+    const endInput = document.getElementById('end_date');
+    const preview = document.getElementById('vacPreview');
+    const warningsEl = document.getElementById('vacWarnings');
+    const fractionWrap = document.getElementById('fractionAckWrap');
+    const fractionAck = document.getElementById('fraction_ack');
+    const policyWrap = document.getElementById('policyAckWrap');
+    const policyAck = document.getElementById('policy_warning_ack');
+    if (!startInput || !endInput || !preview) return;
+
+    let timer = null;
+    async function updatePreview() {
+      const start = startInput.value;
+      const end = endInput.value;
+      if (!start || !end) {
+        preview.hidden = true;
+        if (warningsEl) warningsEl.hidden = true;
+        if (fractionWrap) fractionWrap.hidden = true;
+        if (policyWrap) policyWrap.hidden = true;
+        return;
+      }
+      try {
+        const fractionParam = fractionAck && fractionAck.checked ? '&fraction_ack=1' : '';
+        const res = await fetch(
+          `/RRHH/vacaciones/api/preview-dias?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}${fractionParam}`,
+          { credentials: 'same-origin' },
+        );
+        if (!res.ok) { preview.hidden = true; return; }
+        const data = await res.json();
+        preview.textContent = data.ok
+          ? `Esta solicitud consumiría ${data.days} ${data.unitLabel}.`
+          : (data.errors || []).join(' ') || 'No se pudo validar la solicitud.';
+        preview.hidden = false;
+
+        if (warningsEl) {
+          if (data.warnings && data.warnings.length) {
+            warningsEl.textContent = data.warnings.join(' ');
+            warningsEl.hidden = false;
+            if (policyWrap) policyWrap.hidden = false;
+          } else {
+            warningsEl.hidden = true;
+            if (policyWrap) policyWrap.hidden = true;
+            if (policyAck) policyAck.checked = false;
+          }
+        }
+
+        if (fractionWrap) {
+          fractionWrap.hidden = !data.requiresFractionAck;
+          if (!data.requiresFractionAck && fractionAck) fractionAck.checked = false;
+        }
+      } catch (e) {
+        preview.hidden = true;
+      }
+    }
+
+    function debounced() {
+      clearTimeout(timer);
+      timer = setTimeout(updatePreview, 250);
+    }
+    startInput.addEventListener('change', debounced);
+    endInput.addEventListener('change', debounced);
+    if (fractionAck) fractionAck.addEventListener('change', debounced);
+  })();
+</script>

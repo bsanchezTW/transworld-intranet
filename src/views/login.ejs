@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <%- include('partials/theme-head') %>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= formatPageTitle(titulo || "Iniciar sesión") %></title>
+  <link rel="stylesheet" href="/css/login.css">
+  <script>
+    document.documentElement.setAttribute('data-theme','light');
+    try {
+      if (sessionStorage.getItem('loginShellReady') === '1') {
+        document.documentElement.classList.add('login-shell-settled');
+      }
+    } catch (_) {}
+  </script>
+  <link rel="stylesheet" href="/css/profile-photo-crop.css">
+  <link rel="stylesheet" href="/css/phone-chile.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+</head>
+<body class="login-split-page">
+
+  <% const activeView = locals.view || 'login'; %>
+
+  <div class="login-split<%= activeView === 'register' ? ' login-split--register' : '' %>">
+
+    <!-- Panel izquierdo: formulario -->
+    <section class="login-split__form-panel<%= activeView === 'register' ? ' login-split__form-panel--register' : '' %>" aria-label="Acceso a la intranet">
+      <div class="login-split__form-inner">
+
+        <nav class="login-split__nav">
+          <a href="https://www.transworld.cl/" target="_blank" rel="noopener noreferrer">
+            <span class="login-split__nav-arrow" aria-hidden="true">&lt;</span>
+            Visita Transworld Chile
+          </a>
+        </nav>
+
+        <div class="login-auth-stage login-auth-stage--enter" id="loginAuthStage">
+
+        <div class="login-split__brand" id="loginAuthBrand"<% if (activeView === 'register') { %> hidden<% } %>>
+          <img src="/img/favicon.png" alt="Transworld" class="login-split__logo">
+        </div>
+
+        <%
+          const viewCopy = {
+            login: {
+              heading: 'Acceso a la Intranet',
+              subheading: 'Bienvenido a tu Portal de Transworld Chile',
+            },
+            register: {
+              heading: 'Crear cuenta',
+              subheading: 'Completa tus datos para unirte a la intranet',
+            },
+            forgot: {
+              heading: 'Recuperar contraseña',
+              subheading: 'Ingresa tu correo corporativo y te enviaremos una contraseña temporal',
+            },
+            verify: locals.awaitingAdmin
+              ? { heading: 'Correo verificado', subheading: 'Tu correo fue confirmado correctamente' }
+              : { heading: 'Verificar correo', subheading: 'Enviamos un código de 6 dígitos a tu correo. Ingrésalo para activar tu cuenta.' },
+            reset: {
+              heading: 'Crear nueva contraseña',
+              subheading: 'Por seguridad, debes cambiar tu contraseña temporal antes de continuar',
+            },
+          };
+          const copy = viewCopy[activeView] || viewCopy.login;
+        %>
+        <h1 class="login-split__heading" id="loginAuthHeading"><%= copy.heading %></h1>
+        <p class="login-split__subheading" id="loginAuthSubheading"><%= copy.subheading %></p>
+
+        <div class="login-split__alert login-split__alert--error" id="loginAuthError" role="alert"<% if (!locals.error) { %> hidden<% } %>><%= locals.error || '' %></div>
+        <div class="login-split__alert login-split__alert--info" id="loginAuthInfo" role="status"<% if (!locals.info) { %> hidden<% } %>><%= locals.info || '' %></div>
+
+        <!-- ── Login ── -->
+        <div class="login-view" data-view="login"<% if (activeView !== 'login') { %> hidden<% } %>>
+          <form action="/login" method="POST" novalidate>
+            <div class="login-field login-field--username">
+              <label class="login-field__label" for="login-username">Usuario</label>
+              <div class="login-username-row">
+                <input
+                  type="text"
+                  id="login-username"
+                  name="username"
+                  class="login-field__input"
+                  autocomplete="username"
+                  placeholder="Ej: mgonzalez"
+                  title="Ingresa solo el usuario, sin dominio"
+                  required
+                  <% if (activeView === 'login') { %>autofocus<% } %>
+                >
+                <div class="login-domain">
+                  <span class="login-domain__at">@</span>
+                  <select name="domain" aria-label="Dominio de correo">
+                    <option value="transworld.cl" selected>transworld.cl</option>
+                    <option value="gmail.com">gmail.com</option>
+                    <option value="icloud.com">icloud.com</option>
+                    <option value="outlook.com">outlook.com</option>
+                    <option value="outlook.cl">outlook.cl</option>
+                    <option value="hotmail.com">hotmail.com</option>
+                    <option value="hotmail.cl">hotmail.cl</option>
+                    <option value="yahoo.com">yahoo.com</option>
+                    <option value="yahoo.cl">yahoo.cl</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="login-field login-field--password">
+              <label class="login-field__label" for="login-password">Contraseña</label>
+              <input
+                type="password"
+                id="login-password"
+                name="password"
+                class="login-field__input"
+                autocomplete="current-password"
+                required
+              >
+              <button type="button" class="login-field__toggle" onclick="toggleVisibility('login-password', this)" title="Mostrar u ocultar contraseña" aria-label="Mostrar u ocultar contraseña">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
+
+            <p class="login-password-caps-hint" id="login-password-caps-hint" hidden role="status">
+              Caps Lock está activado. Desactívalo si no es necesario.
+            </p>
+
+            <button type="submit" class="login-split__submit">Ingresar</button>
+          </form>
+
+          <div class="login-split__links">
+            <a href="/register">Crear cuenta</a>
+            <a href="/forgot-password">¿Olvidaste tu contraseña?</a>
+          </div>
+        </div>
+
+        <!-- ── Registro ── -->
+        <% const fd = locals.formData || {}; %>
+        <div class="login-view login-view--register" data-view="register"<% if (activeView !== 'register') { %> hidden<% } %>>
+          <div class="login-register-photo">
+            <div class="profile-photo-preview profile-photo-preview--dark login-register-photo__preview" id="photo-preview">
+              <img id="photo-preview-img" hidden>
+              <div class="profile-photo-placeholder" id="photo-placeholder">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </div>
+            </div>
+            <div class="login-register-photo__meta">
+              <span class="login-register-photo__label">Foto de perfil <span style="font-weight:400; opacity:0.85;">(opcional)</span></span>
+              <button type="button" class="btn-photo-select btn-photo-select--dark login-register-photo__btn" id="btn-select-photo">Seleccionar foto</button>
+              <span class="profile-photo-hint profile-photo-hint--dark login-register-photo__hint">Circular · JPG, PNG o WebP · Máx. 5 MB</span>
+            </div>
+          </div>
+
+          <form action="/register" method="POST" enctype="multipart/form-data" novalidate id="register-form">
+            <input type="file" id="foto_file" name="foto_file" accept="image/*" hidden>
+            <div class="login-form-grid-2">
+              <div class="login-field">
+                <label class="login-field__label" for="first_name">Nombre</label>
+                <input type="text" id="first_name" name="first_name" class="login-field__input" value="<%= fd.first_name || '' %>" required<% if (activeView === 'register') { %> autofocus<% } %>>
+              </div>
+              <div class="login-field">
+                <label class="login-field__label" for="last_name">Apellido</label>
+                <input type="text" id="last_name" name="last_name" class="login-field__input" value="<%= fd.last_name || '' %>" required>
+              </div>
+            </div>
+
+            <div class="login-field login-field--username">
+              <label class="login-field__label" for="reg-username">Usuario</label>
+              <div class="login-username-row">
+                <input
+                  type="text"
+                  id="reg-username"
+                  name="username"
+                  class="login-field__input"
+                  placeholder="Ej: mgonzalez"
+                  title="Ingresa solo el usuario, sin dominio"
+                  value="<%= fd.username || '' %>"
+                  required
+                >
+                <div class="login-domain">
+                  <span class="login-domain__at">@</span>
+                  <select name="domain" aria-label="Dominio de correo" tabindex="-1">
+                    <% const regDomains = ['transworld.cl','gmail.com','icloud.com','outlook.com','outlook.cl','hotmail.com','hotmail.cl','yahoo.com','yahoo.cl']; %>
+                    <% const regSelectedDomain = regDomains.includes(fd.domain) ? fd.domain : 'transworld.cl'; %>
+                    <% regDomains.forEach(d => { %>
+                      <option value="<%= d %>"<%= d === regSelectedDomain ? ' selected' : '' %>><%= d %></option>
+                    <% }) %>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="login-form-grid-2">
+              <div class="login-field login-field--password">
+                <label class="login-field__label" for="reg-password">Contraseña</label>
+                <input type="password" id="reg-password" name="password" class="login-field__input" required minlength="8" autocomplete="new-password">
+                <button type="button" class="login-field__toggle" tabindex="-1" onclick="toggleVisibility('reg-password', this)" title="Mostrar u ocultar contraseña" aria-label="Mostrar u ocultar contraseña">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+              </div>
+              <div class="login-field login-field--password">
+                <label class="login-field__label" for="reg-password2">Repetir contraseña</label>
+                <input type="password" id="reg-password2" name="password2" class="login-field__input" required minlength="8" autocomplete="new-password">
+                <button type="button" class="login-field__toggle" tabindex="-1" onclick="toggleVisibility('reg-password2', this)" title="Mostrar u ocultar contraseña" aria-label="Mostrar u ocultar contraseña">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="login-password-strength" id="password-strength" hidden>
+              <div class="login-password-strength-bar" aria-hidden="true">
+                <span class="login-password-strength-segment" data-segment="1"></span>
+                <span class="login-password-strength-segment" data-segment="2"></span>
+                <span class="login-password-strength-segment" data-segment="3"></span>
+                <span class="login-password-strength-segment" data-segment="4"></span>
+                <span class="login-password-strength-segment" data-segment="5"></span>
+              </div>
+              <div class="login-password-strength-label" id="password-strength-label"></div>
+              <ul class="login-password-rules" id="password-rules">
+                <li data-rule="length">Mínimo 8 caracteres</li>
+                <li data-rule="lowercase">Una minúscula</li>
+                <li data-rule="uppercase">Una mayúscula</li>
+                <li data-rule="number">Un número</li>
+                <li data-rule="symbol">Un símbolo</li>
+              </ul>
+            </div>
+
+            <div class="login-password-match" id="password-match-msg" hidden></div>
+
+            <div class="login-form-grid-2">
+              <div class="login-field login-field--phone">
+                <label class="login-field__label" for="telefono_local">Teléfono</label>
+                <div class="phone-field" data-phone-chile>
+                  <span class="phone-field__prefix" aria-hidden="true">+56</span>
+                  <input type="tel" id="telefono_local" class="login-field__input phone-field__local" required placeholder="9 1234 5678" maxlength="11" inputmode="numeric" autocomplete="tel-national" aria-label="Número celular sin código de país">
+                  <input type="hidden" name="phone" id="telefono" value="<%= fd.phone || '' %>">
+                </div>
+              </div>
+              <div class="login-field">
+                <label class="login-field__label" for="fecha_nacimiento">Fecha de nacimiento</label>
+                <input type="date" id="fecha_nacimiento" name="birth_date" class="login-field__input" value="<%= fd.birth_date || '' %>" required>
+              </div>
+            </div>
+
+            <button type="submit" class="login-split__submit" id="register-submit-btn" disabled>Registrarse</button>
+          </form>
+
+          <div class="login-split__links">
+            <a href="/login">¿Ya tienes cuenta? Inicia sesión</a>
+          </div>
+        </div>
+
+        <!-- ── Olvidé contraseña ── -->
+        <div class="login-view" data-view="forgot"<% if (activeView !== 'forgot') { %> hidden<% } %>>
+          <form action="/forgot-password" method="POST" novalidate>
+            <div class="login-field">
+              <label class="login-field__label" for="forgot-email">Email corporativo</label>
+              <input
+                type="email"
+                id="forgot-email"
+                name="email"
+                class="login-field__input"
+                required
+                placeholder="nombre@transworld.cl"
+                <% if (activeView === 'forgot') { %>autofocus<% } %>
+              >
+            </div>
+
+            <button type="submit" class="login-split__submit">Enviar correo</button>
+          </form>
+
+          <div class="login-split__links">
+            <a href="/login">Volver al inicio de sesión</a>
+          </div>
+        </div>
+
+        <!-- ── Verificar email ── -->
+        <div class="login-view" data-view="verify"<% if (activeView !== 'verify') { %> hidden<% } %>>
+          <% if (locals.awaitingAdmin) { %>
+            <div class="login-split__alert login-split__alert--warning" role="status"><%= externalDomainMessage %></div>
+            <div class="login-split__links" style="margin-top: 0;">
+              <a href="/login">Volver al inicio de sesión</a>
+            </div>
+          <% } else { %>
+            <form action="/verify-email" method="POST" novalidate>
+              <div class="login-field">
+                <label class="login-field__label" for="verify-email">Correo</label>
+                <input
+                  type="email"
+                  id="verify-email"
+                  name="email"
+                  class="login-field__input login-field__input--readonly"
+                  value="<%= email || '' %>"
+                  required
+                  readonly
+                >
+              </div>
+
+              <div class="login-field">
+                <label class="login-field__label" for="verify-code">Código de verificación</label>
+                <input
+                  type="text"
+                  id="verify-code"
+                  name="code"
+                  class="login-field__input login-field__input--code"
+                  inputmode="numeric"
+                  pattern="[0-9]{6}"
+                  maxlength="6"
+                  minlength="6"
+                  autocomplete="one-time-code"
+                  placeholder="000000"
+                  required
+                  <% if (activeView === 'verify') { %>autofocus<% } %>
+                >
+              </div>
+
+              <button type="submit" class="login-split__submit">Verificar</button>
+            </form>
+
+            <div class="login-split__links">
+              <form action="/verify-email/resend" method="POST" class="login-split__inline-form">
+                <input type="hidden" name="email" value="<%= email || '' %>">
+                <button type="submit" class="login-split__link-btn">Reenviar código</button>
+              </form>
+              <a href="/login">Volver al inicio de sesión</a>
+            </div>
+          <% } %>
+        </div>
+
+        <!-- ── Restablecer contraseña temporal ── -->
+        <div class="login-view" data-view="reset"<% if (activeView !== 'reset') { %> hidden<% } %>>
+          <form action="/reset-password" method="POST" novalidate>
+            <div class="login-field login-field--password">
+              <label class="login-field__label" for="reset-password">Nueva contraseña</label>
+              <input
+                type="password"
+                id="reset-password"
+                name="new_password"
+                class="login-field__input"
+                autocomplete="new-password"
+                required
+                minlength="6"
+                <% if (activeView === 'reset') { %>autofocus<% } %>
+              >
+              <button type="button" class="login-field__toggle" onclick="toggleVisibility('reset-password', this)" title="Mostrar u ocultar contraseña" aria-label="Mostrar u ocultar contraseña">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
+
+            <div class="login-field login-field--password">
+              <label class="login-field__label" for="reset-password2">Repetir contraseña</label>
+              <input
+                type="password"
+                id="reset-password2"
+                name="confirm_password"
+                class="login-field__input"
+                autocomplete="new-password"
+                required
+                minlength="6"
+              >
+              <button type="button" class="login-field__toggle" onclick="toggleVisibility('reset-password2', this)" title="Mostrar u ocultar contraseña" aria-label="Mostrar u ocultar contraseña">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
+
+            <div class="login-password-match" id="reset-match-msg" hidden></div>
+
+            <button type="submit" class="login-split__submit">Guardar y entrar</button>
+          </form>
+        </div>
+
+        <% const showAuthHelp = activeView === 'login' || activeView === 'forgot'; %>
+        <aside class="login-split__help" id="loginAuthHelp"<% if (!showAuthHelp) { %> hidden<% } %>>
+          <h2 class="login-split__help-title">¿Tienes problema para acceder?</h2>
+          <div class="login-split__help-grid">
+            <div class="login-split__help-col">
+              <div class="login-split__help-item">
+                <svg class="login-split__help-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                <div class="login-split__help-copy">
+                  <strong>Bastián Abarca</strong>
+                  <a class="login-split__help-phone" href="tel:+56993447687">+56 9 9344 7687 (Anexo 124)</a>
+                </div>
+              </div>
+            </div>
+            <div class="login-split__help-col">
+              <div class="login-split__help-item">
+                <svg class="login-split__help-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                <div class="login-split__help-copy">
+                  <strong>Sebastián Quiroga</strong>
+                  <a class="login-split__help-phone" href="tel:+56961925635">+56 9 6192 5635 (Anexo 111)</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        </div><!-- /.login-auth-stage -->
+
+      </div>
+    </section>
+
+    <!-- Panel derecho: área visual -->
+    <section class="login-split__visual-panel" aria-label="Información corporativa">
+      <div class="login-split__visual-overlay" aria-hidden="true"></div>
+
+      <div class="login-visual-content">
+      <div class="login-carousel" id="loginCarousel" aria-live="polite">
+        <div class="login-carousel__slides">
+
+          <article class="login-carousel__slide is-active" data-slide="0">
+            <svg class="login-carousel__icon" viewBox="0 0 56 56" fill="none" aria-hidden="true">
+              <rect width="56" height="56" rx="14" fill="rgba(125,211,252,0.15)"/>
+              <rect x="12" y="18" width="32" height="22" rx="3" stroke="#7dd3fc" stroke-width="2"/>
+              <path d="M12 24h32" stroke="#7dd3fc" stroke-width="2"/>
+              <path d="M18 30h8M18 34h12" stroke="#7dd3fc" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="40" cy="32" r="6" stroke="#34d399" stroke-width="2"/>
+              <path d="M38 32l1.5 1.5L42 30" stroke="#34d399" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div class="login-carousel__text">
+              <span class="login-carousel__badge">Soporte</span>
+              <p class="login-carousel__title">¿Necesitas ayuda? Estamos contigo</p>
+              <p class="login-carousel__desc">Abre tickets de soporte, sigue su avance y recibe respuesta del equipo sin salir de la intranet.</p>
+            </div>
+          </article>
+
+          <article class="login-carousel__slide" data-slide="1">
+            <svg class="login-carousel__icon" viewBox="0 0 56 56" fill="none" aria-hidden="true">
+              <rect width="56" height="56" rx="14" fill="rgba(125,211,252,0.15)"/>
+              <path d="M18 38V26l10-6 10 6v12" stroke="#7dd3fc" stroke-width="2" stroke-linejoin="round"/>
+              <rect x="24" y="32" width="8" height="6" rx="1" stroke="#34d399" stroke-width="2"/>
+              <path d="M28 20v-2M22 24l-1.5-1.5M34 24l1.5-1.5" stroke="#34d399" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <div class="login-carousel__text">
+              <span class="login-carousel__badge">Capacitación</span>
+              <p class="login-carousel__title">Aprende y crece en tu rol</p>
+              <p class="login-carousel__desc">Accede a cursos profesionales y certificaciones para fortalecer tus habilidades técnicas y de liderazgo.</p>
+            </div>
+          </article>
+
+          <article class="login-carousel__slide" data-slide="2">
+            <svg class="login-carousel__icon" viewBox="0 0 56 56" fill="none" aria-hidden="true">
+              <rect width="56" height="56" rx="14" fill="rgba(125,211,252,0.15)"/>
+              <rect x="14" y="16" width="28" height="26" rx="4" stroke="#7dd3fc" stroke-width="2"/>
+              <path d="M14 22h28" stroke="#7dd3fc" stroke-width="2"/>
+              <path d="M18 28h16M18 32h12M18 36h8" stroke="#34d399" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <div class="login-carousel__text">
+              <span class="login-carousel__badge">Noticias</span>
+              <p class="login-carousel__title">Siempre al día con la empresa</p>
+              <p class="login-carousel__desc">Entérate de las últimas noticias, comunicados y anuncios importantes desde un solo lugar.</p>
+            </div>
+          </article>
+
+          <article class="login-carousel__slide" data-slide="3">
+            <svg class="login-carousel__icon" viewBox="0 0 56 56" fill="none" aria-hidden="true">
+              <rect width="56" height="56" rx="14" fill="rgba(125,211,252,0.15)"/>
+              <path d="M28 14l2.5 7.5H38l-6 4.5 2.5 7.5L28 29l-6.5 4.5 2.5-7.5-6-4.5h7.5L28 14z" stroke="#7dd3fc" stroke-width="1.5" stroke-linejoin="round"/>
+              <circle cx="28" cy="38" r="6" stroke="#34d399" stroke-width="2"/>
+              <path d="M25 38h6M28 35v6" stroke="#34d399" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <div class="login-carousel__text">
+              <span class="login-carousel__badge">Inteligencia artificial</span>
+              <p class="login-carousel__title">Tu copiloto para proyectos</p>
+              <p class="login-carousel__desc">Usa inteligencia artificial para idear, redactar y avanzar más rápido en tus tareas del día a día.</p>
+            </div>
+          </article>
+
+        </div>
+
+        <div class="login-carousel__controls">
+          <div class="login-carousel__dots" role="tablist" aria-label="Diapositivas del carrusel">
+            <button type="button" class="login-carousel__dot is-active" data-slide-to="0" role="tab" aria-selected="true" aria-label="Diapositiva 1"></button>
+            <button type="button" class="login-carousel__dot" data-slide-to="1" role="tab" aria-selected="false" aria-label="Diapositiva 2"></button>
+            <button type="button" class="login-carousel__dot" data-slide-to="2" role="tab" aria-selected="false" aria-label="Diapositiva 3"></button>
+            <button type="button" class="login-carousel__dot" data-slide-to="3" role="tab" aria-selected="false" aria-label="Diapositiva 4"></button>
+          </div>
+        </div>
+      </div>
+
+      <p class="login-split__security">No compartas tu contraseña corporativa con nadie.</p>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="foto-crop-overlay" id="fotoCropOverlay" role="dialog" aria-modal="true" aria-labelledby="fotoCropTitle" hidden>
+    <div class="foto-crop-modal">
+      <div class="foto-crop-header">
+        <h3 id="fotoCropTitle">Recortar foto de perfil</h3>
+        <button type="button" class="foto-crop-close" id="fotoCropClose" aria-label="Cerrar">&times;</button>
+      </div>
+      <p class="foto-crop-hint">Arrastra y ajusta el encuadre. La foto se verá circular en tu perfil.</p>
+      <div class="foto-crop-body">
+        <div class="foto-crop-stage">
+          <img id="fotoCropImage" src="" alt="Vista previa para recortar">
+        </div>
+      </div>
+      <p id="fotoCropError" class="foto-crop-error" role="alert"></p>
+      <div class="foto-crop-footer">
+        <button type="button" class="btn-crop-cancel" id="fotoCropCancel">Cancelar</button>
+        <button type="button" class="btn-crop-save" id="fotoCropSave">Aplicar recorte</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      const isHidden = input.type === 'password';
+      input.type = isHidden ? 'text' : 'password';
+      btn.innerHTML = isHidden
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+    }
+
+    (function initAuthShell() {
+      const stage = document.getElementById('loginAuthStage');
+      if (!stage) return;
+
+      const FADE_MS = 280;
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const split = document.querySelector('.login-split');
+      const formPanel = document.querySelector('.login-split__form-panel');
+      const brand = document.getElementById('loginAuthBrand');
+      const heading = document.getElementById('loginAuthHeading');
+      const subheading = document.getElementById('loginAuthSubheading');
+      const help = document.getElementById('loginAuthHelp');
+      const errorEl = document.getElementById('loginAuthError');
+      const infoEl = document.getElementById('loginAuthInfo');
+
+      const PATH_TO_VIEW = {
+        '/login': 'login',
+        '/register': 'register',
+        '/forgot-password': 'forgot',
+        '/verify-email': 'verify',
+        '/reset-password': 'reset'
+      };
+
+      const VIEW_META = {
+        login: {
+          path: '/login',
+          title: 'Iniciar sesión',
+          heading: 'Acceso a la Intranet',
+          subheading: 'Bienvenido a tu Portal de Transworld Chile'
+        },
+        register: {
+          path: '/register',
+          title: 'Registro',
+          heading: 'Crear cuenta',
+          subheading: 'Completa tus datos para unirte a la intranet'
+        },
+        forgot: {
+          path: '/forgot-password',
+          title: 'Recuperar contraseña',
+          heading: 'Recuperar contraseña',
+          subheading: 'Ingresa tu correo corporativo y te enviaremos una contraseña temporal'
+        },
+        verify: {
+          path: '/verify-email',
+          title: 'Verificar correo',
+          heading: 'Verificar correo',
+          subheading: 'Enviamos un código de 6 dígitos a tu correo. Ingrésalo para activar tu cuenta.'
+        },
+        reset: {
+          path: '/reset-password',
+          title: 'Crear nueva contraseña',
+          heading: 'Crear nueva contraseña',
+          subheading: 'Por seguridad, debes cambiar tu contraseña temporal antes de continuar'
+        }
+      };
+
+      const SPA_VIEWS = new Set(['login', 'register', 'forgot']);
+      const AUTH_ROUTES = new Set(Object.keys(PATH_TO_VIEW));
+
+      const INFO_BY_QUERY = {
+        confirmed: 'Correo verificado correctamente. Ya puedes iniciar sesión.',
+        pending: 'Debes verificar tu correo con el código de 6 dígitos antes de ingresar.',
+        exists: 'Ese correo ya está registrado. Inicia sesión.',
+        reset: 'Se ha enviado una nueva contraseña a tu correo.',
+        changed: 'Contraseña actualizada correctamente. Ingresa con tu correo y nueva contraseña.'
+      };
+
+      let currentView = document.querySelector('.login-view:not([hidden])')?.dataset.view
+        || PATH_TO_VIEW[normalizePath(window.location.pathname)]
+        || 'login';
+      let transitioning = false;
+
+      function normalizePath(pathname) {
+        const path = String(pathname || '').replace(/\/$/, '');
+        return path || '/login';
+      }
+
+      function markShellReady() {
+        try { sessionStorage.setItem('loginShellReady', '1'); } catch (_) {}
+        document.documentElement.classList.add('login-shell-settled');
+      }
+
+      function fadeIn() {
+        stage.classList.remove('login-auth-stage--exit');
+        if (reducedMotion || document.documentElement.classList.contains('login-shell-settled')) {
+          stage.classList.add('login-auth-stage--ready');
+          markShellReady();
+          return;
+        }
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            stage.classList.add('login-auth-stage--ready');
+            window.setTimeout(markShellReady, 450);
+          });
+        });
+      }
+
+      function setAlert(el, message) {
+        if (!el) return;
+        const text = String(message || '').trim();
+        if (!text) {
+          el.hidden = true;
+          el.textContent = '';
+          return;
+        }
+        el.textContent = text;
+        el.hidden = false;
+      }
+
+      function clearAlerts() {
+        setAlert(errorEl, '');
+        setAlert(infoEl, '');
+      }
+
+      function infoFromSearch(search) {
+        const params = new URLSearchParams(search || '');
+        for (const key of Object.keys(INFO_BY_QUERY)) {
+          if (params.get(key) === '1') return INFO_BY_QUERY[key];
+        }
+        return null;
+      }
+
+      function applyViewChrome(view, options) {
+        const meta = VIEW_META[view] || VIEW_META.login;
+        if (heading) heading.textContent = meta.heading;
+        if (subheading) subheading.textContent = meta.subheading;
+        document.title = meta.title + ' | Intranet Transworld Chile';
+
+        const isRegister = view === 'register';
+        if (split) split.classList.toggle('login-split--register', isRegister);
+        if (formPanel) formPanel.classList.toggle('login-split__form-panel--register', isRegister);
+        if (brand) brand.hidden = isRegister;
+        if (help) help.hidden = !(view === 'login' || view === 'forgot');
+
+        if (options && Object.prototype.hasOwnProperty.call(options, 'error')) {
+          setAlert(errorEl, options.error);
+        }
+        if (options && Object.prototype.hasOwnProperty.call(options, 'info')) {
+          setAlert(infoEl, options.info);
+        }
+      }
+
+      function focusFirstField(view) {
+        const panel = document.querySelector('.login-view[data-view="' + view + '"]');
+        if (!panel) return;
+        const field = panel.querySelector('input:not([type="hidden"]):not([disabled]), select, textarea');
+        if (field) {
+          try { field.focus({ preventScroll: true }); } catch (_) { field.focus(); }
+        }
+      }
+
+      function showView(view, options) {
+        options = options || {};
+        const panel = document.querySelector('.login-view[data-view="' + view + '"]');
+        if (!panel) return false;
+
+        document.querySelectorAll('.login-view').forEach(function (el) {
+          el.hidden = el !== panel;
+        });
+
+        currentView = view;
+        applyViewChrome(view, options);
+
+        if (options.push !== false) {
+          const url = new URL((VIEW_META[view] || VIEW_META.login).path, window.location.origin);
+          if (options.search) url.search = options.search;
+          const next = url.pathname + url.search;
+          const curr = window.location.pathname + window.location.search;
+          if (next !== curr) {
+            history.pushState({ authView: view }, '', next);
+          } else {
+            history.replaceState({ authView: view }, '', next);
+          }
+        }
+
+        focusFirstField(view);
+        return true;
+      }
+
+      function navigateWithFade(url) {
+        if (reducedMotion) {
+          window.location.href = url;
+          return;
+        }
+        stage.classList.remove('login-auth-stage--ready');
+        stage.classList.add('login-auth-stage--exit');
+        window.setTimeout(function () {
+          window.location.href = url;
+        }, FADE_MS);
+      }
+
+      function switchView(view, options) {
+        options = options || {};
+        if (!SPA_VIEWS.has(view)) {
+          navigateWithFade((VIEW_META[view] || VIEW_META.login).path + (options.search || ''));
+          return;
+        }
+        if (transitioning) return;
+        if (view === currentView && !options.force && !options.error && !options.info) {
+          if (options.search != null) {
+            showView(view, options);
+          }
+          return;
+        }
+
+        if (reducedMotion) {
+          showView(view, options);
+          return;
+        }
+
+        transitioning = true;
+        stage.classList.remove('login-auth-stage--ready');
+        stage.classList.add('login-auth-stage--exit');
+
+        window.setTimeout(function () {
+          showView(view, options);
+          stage.classList.remove('login-auth-stage--exit');
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              stage.classList.add('login-auth-stage--ready');
+              transitioning = false;
+            });
+          });
+        }, FADE_MS);
+      }
+
+      window.__loginSwitchView = switchView;
+      window.__loginSetAlerts = function (payload) {
+        if (!payload) {
+          clearAlerts();
+          return;
+        }
+        if (Object.prototype.hasOwnProperty.call(payload, 'error')) setAlert(errorEl, payload.error);
+        if (Object.prototype.hasOwnProperty.call(payload, 'info')) setAlert(infoEl, payload.info);
+      };
+
+      fadeIn();
+
+      document.addEventListener('click', function (e) {
+        const link = e.target.closest('a[href]');
+        if (!link) return;
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        if (link.target && link.target !== '_self') return;
+
+        let url;
+        try {
+          url = new URL(link.href, window.location.href);
+        } catch (_) {
+          return;
+        }
+
+        if (url.origin !== window.location.origin) return;
+        const path = normalizePath(url.pathname);
+        if (!AUTH_ROUTES.has(path)) return;
+
+        const view = PATH_TO_VIEW[path];
+        if (!view) return;
+
+        e.preventDefault();
+
+        if (!SPA_VIEWS.has(view)) {
+          navigateWithFade(url.pathname + url.search);
+          return;
+        }
+
+        const info = infoFromSearch(url.search);
+        switchView(view, {
+          search: url.search,
+          info: info,
+          error: '',
+          force: true
+        });
+      });
+
+      window.addEventListener('popstate', function () {
+        const path = normalizePath(window.location.pathname);
+        const view = PATH_TO_VIEW[path];
+        if (!view || !SPA_VIEWS.has(view)) {
+          window.location.reload();
+          return;
+        }
+        switchView(view, {
+          push: false,
+          search: window.location.search,
+          info: infoFromSearch(window.location.search),
+          error: '',
+          force: true
+        });
+      });
+
+      // Login / recuperar: POST nativo (urlencoded). El fetch+FormData
+      // enviaba multipart y Express dejaba req.body vacío.
+    })();
+
+    (function initLoginCarousel() {
+      const slides = document.querySelectorAll('.login-carousel__slide');
+      const dots = document.querySelectorAll('.login-carousel__dot');
+      if (!slides.length) return;
+      let current = 0;
+      let timer = null;
+      const INTERVAL = 6000;
+
+      function showSlide(index) {
+        current = (index + slides.length) % slides.length;
+        slides.forEach((s, i) => s.classList.toggle('is-active', i === current));
+        dots.forEach((d, i) => {
+          d.classList.toggle('is-active', i === current);
+          d.setAttribute('aria-selected', i === current ? 'true' : 'false');
+        });
+      }
+
+      function nextSlide() {
+        showSlide(current + 1);
+      }
+
+      function startAutoplay() {
+        if (timer) clearInterval(timer);
+        timer = setInterval(nextSlide, INTERVAL);
+      }
+
+      dots.forEach((dot) => {
+        dot.addEventListener('click', () => {
+          showSlide(Number(dot.dataset.slideTo));
+          startAutoplay();
+        });
+      });
+
+      startAutoplay();
+    })();
+
+    (function initVerifyCode() {
+      const codeInput = document.getElementById('verify-code');
+      if (!codeInput) return;
+      codeInput.addEventListener('input', function () {
+        this.value = this.value.replace(/\D/g, '').slice(0, 6);
+      });
+    })();
+
+    (function initResetPasswordMatch() {
+      const p1 = document.getElementById('reset-password');
+      const p2 = document.getElementById('reset-password2');
+      const msg = document.getElementById('reset-match-msg');
+      if (!p1 || !p2 || !msg) return;
+
+      function update() {
+        if (!p2.value.length) {
+          msg.hidden = true;
+          msg.textContent = '';
+          return;
+        }
+        msg.hidden = false;
+        if (p1.value === p2.value) {
+          msg.textContent = 'Las contraseñas coinciden';
+          msg.className = 'login-password-match ok';
+        } else {
+          msg.textContent = 'Las contraseñas no coinciden';
+          msg.className = 'login-password-match bad';
+        }
+      }
+
+      p1.addEventListener('input', update);
+      p2.addEventListener('input', update);
+    })();
+
+    (function initLoginTabOrder() {
+      const usernameInput = document.getElementById('login-username');
+      const passwordInput = document.getElementById('login-password');
+      if (!usernameInput || !passwordInput) return;
+
+      usernameInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Tab' && !e.shiftKey) {
+          e.preventDefault();
+          passwordInput.focus();
+        }
+      });
+    })();
+
+    (function initLoginPasswordCapsHint() {
+      const passwordInput = document.getElementById('login-password');
+      const hint = document.getElementById('login-password-caps-hint');
+      if (!passwordInput || !hint) return;
+
+      let capsLockOn = false;
+
+      function syncCapsState(event) {
+        if (event && typeof event.getModifierState === 'function') {
+          capsLockOn = event.getModifierState('CapsLock');
+        }
+        if (document.activeElement === passwordInput) {
+          updateHint();
+        }
+      }
+
+      function updateHint() {
+        const isFocused = document.activeElement === passwordInput;
+        hint.hidden = !(isFocused && capsLockOn);
+      }
+
+      function onInteraction(event) {
+        syncCapsState(event);
+        updateHint();
+      }
+
+      document.addEventListener('keydown', syncCapsState, true);
+      document.addEventListener('keyup', syncCapsState, true);
+
+      passwordInput.addEventListener('mousedown', onInteraction);
+      passwordInput.addEventListener('keydown', onInteraction);
+      passwordInput.addEventListener('keyup', onInteraction);
+      passwordInput.addEventListener('focus', updateHint);
+      passwordInput.addEventListener('blur', function () {
+        hint.hidden = true;
+      });
+    })();
+
+    (function initUsernameFields() {
+      const ALLOWED_DOMAINS = new Set([
+        'transworld.cl', 'gmail.com', 'icloud.com', 'outlook.com',
+        'outlook.cl', 'hotmail.com', 'hotmail.cl', 'yahoo.com', 'yahoo.cl'
+      ]);
+
+      function parseUsernameInput(value) {
+        const raw = String(value || '').trim().toLowerCase();
+        const at = raw.indexOf('@');
+        if (at === -1) return { username: raw, domain: null };
+        const username = raw.slice(0, at);
+        const domain = raw.slice(at + 1);
+        return {
+          username,
+          domain: ALLOWED_DOMAINS.has(domain) ? domain : null
+        };
+      }
+
+      function sanitizeUsernameField(input) {
+        const row = input.closest('.login-username-row');
+        const domainSelect = row ? row.querySelector('select[name="domain"]') : null;
+
+        function apply() {
+          const parsed = parseUsernameInput(input.value);
+          if (input.value !== parsed.username) {
+            input.value = parsed.username;
+          }
+          if (parsed.domain && domainSelect) {
+            domainSelect.value = parsed.domain;
+          }
+        }
+
+        input.addEventListener('input', apply);
+        input.addEventListener('change', apply);
+
+        input.addEventListener('paste', function (e) {
+          e.preventDefault();
+          const text = (e.clipboardData || window.clipboardData).getData('text');
+          const parsed = parseUsernameInput(text);
+          input.value = parsed.username;
+          if (parsed.domain && domainSelect) {
+            domainSelect.value = parsed.domain;
+          }
+        });
+
+        input.addEventListener('keydown', function (e) {
+          if (e.key === '@') e.preventDefault();
+        });
+
+        if (input.value) apply();
+        window.setTimeout(apply, 100);
+        window.setTimeout(apply, 500);
+      }
+
+      ['login-username', 'reg-username'].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el) sanitizeUsernameField(el);
+      });
+    })();
+
+  </script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="/js/profile-photo-cropper.js"></script>
+  <script src="/js/password-strength.js"></script>
+  <script src="/js/phone-chile.js"></script>
+  <script>
+    (function initRegisterForm() {
+      const passwordInput = document.getElementById('reg-password');
+      const password2Input = document.getElementById('reg-password2');
+      const telefonoField = document.querySelector('[data-phone-chile]');
+      const submitBtn = document.getElementById('register-submit-btn');
+      const strengthBox = document.getElementById('password-strength');
+      const strengthLabel = document.getElementById('password-strength-label');
+      const strengthSegments = document.querySelectorAll('.login-password-strength-segment');
+      const ruleItems = document.querySelectorAll('#password-rules li');
+      const matchMsg = document.getElementById('password-match-msg');
+
+      if (!passwordInput || !password2Input || !submitBtn || !strengthBox || !matchMsg) return;
+
+      const photoCropper = ProfilePhotoCropper.init({
+        fileInputId: 'foto_file',
+        previewImgId: 'photo-preview-img',
+        previewPlaceholderId: 'photo-placeholder',
+        selectBtnId: 'btn-select-photo',
+        overlayId: 'fotoCropOverlay',
+        cropImgId: 'fotoCropImage',
+        closeBtnId: 'fotoCropClose',
+        cancelBtnId: 'fotoCropCancel',
+        saveBtnId: 'fotoCropSave',
+        errorElId: 'fotoCropError',
+        maxSizeMb: 5,
+        outputSize: 400,
+        outputFilename: 'foto-perfil.jpg',
+        saveLabel: 'Aplicar recorte',
+        clearOnLeave: true,
+        onCropped: function () {
+          updateSubmitState();
+        }
+      });
+
+      const registerForm = document.querySelector('[data-view="register"] form');
+      const phoneField = PhoneChile.initField(telefonoField, { onChange: updateSubmitState });
+
+      if (registerForm) {
+        registerForm.addEventListener('submit', function () {
+          phoneField?.sync();
+          const blob = photoCropper.getBlob();
+          if (blob) {
+            const file = new File([blob], 'foto-perfil.jpg', { type: 'image/jpeg' });
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            document.getElementById('foto_file').files = dt.files;
+          }
+        });
+      }
+
+      function updateStrengthUI() {
+        const result = PasswordStrength.analyzePasswordStrength(passwordInput.value);
+        const hasValue = passwordInput.value.length > 0;
+
+        strengthBox.hidden = !hasValue;
+        if (!hasValue) {
+          strengthLabel.textContent = '';
+          strengthLabel.className = 'login-password-strength-label';
+          strengthSegments.forEach((seg) => {
+            seg.className = 'login-password-strength-segment';
+          });
+          ruleItems.forEach((item) => item.classList.remove('valid'));
+          return;
+        }
+
+        strengthLabel.textContent = result.label;
+        strengthLabel.className = 'login-password-strength-label ' + (result.level === 'empty' ? '' : result.level);
+
+        strengthSegments.forEach((seg) => {
+          const idx = Number(seg.dataset.segment);
+          seg.className = 'login-password-strength-segment' + (idx <= result.score ? ' active-' + result.score : '');
+        });
+
+        ruleItems.forEach((item) => {
+          const rule = item.dataset.rule;
+          item.classList.toggle('valid', Boolean(result.checks[rule]));
+        });
+      }
+
+      function updateMatchUI() {
+        const p1 = passwordInput.value;
+        const p2 = password2Input.value;
+
+        if (!p2.length) {
+          matchMsg.hidden = true;
+          matchMsg.textContent = '';
+          return;
+        }
+
+        matchMsg.hidden = false;
+        if (p1 === p2) {
+          matchMsg.textContent = 'Las contraseñas coinciden';
+          matchMsg.className = 'login-password-match ok';
+        } else {
+          matchMsg.textContent = 'Las contraseñas no coinciden';
+          matchMsg.className = 'login-password-match bad';
+        }
+      }
+
+      function updateSubmitState() {
+        const strongEnough = PasswordStrength.isPasswordStrongEnough(passwordInput.value);
+        const passwordsMatch = passwordInput.value === password2Input.value && password2Input.value.length > 0;
+        const hasTelefono = PhoneChile.isFieldValid(telefonoField);
+        submitBtn.disabled = !(strongEnough && passwordsMatch && hasTelefono);
+      }
+
+      function onPasswordChange() {
+        updateStrengthUI();
+        updateMatchUI();
+        updateSubmitState();
+      }
+
+      passwordInput.addEventListener('input', onPasswordChange);
+      password2Input.addEventListener('input', onPasswordChange);
+    })();
+  </script>
+
+</body>
+</html>

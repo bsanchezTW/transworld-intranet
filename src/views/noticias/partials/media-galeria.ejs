@@ -1,0 +1,38 @@
+<%
+/* Galería adaptativa: el layout cambia según cuántas imágenes haya.
+   Recibe: imagenes (array de adjuntos normalizados), grupoId. */
+const total = imagenes.length;
+const VISIBLES_MAX = 9;
+const visibles = Math.min(total, VISIBLES_MAX);
+const modificador = total === 1 ? '1' : total === 2 ? '2' : total === 3 ? '3' : 'muchas';
+%>
+<div class="media-bloque <%= total === 1 ? '' : 'media-bloque--ancho' %>" id="adjunto-<%= imagenes[0].id %>">
+  <div class="galeria galeria--<%= modificador %>"
+       data-galeria="<%= grupoId %>"
+       role="group"
+       aria-label="Galería de <%= total %> <%= total === 1 ? 'imagen' : 'imágenes' %>">
+    <% imagenes.forEach((img, i) => { %>
+      <button type="button"
+              class="galeria__item"
+              <%= i >= visibles ? 'hidden' : '' %>
+              data-full="<%= img.previewUrl || img.url %>"
+              data-alt="<%= img.alt || img.name %>"
+              data-caption="<%= img.caption || '' %>"
+              aria-label="Ampliar imagen <%= i + 1 %> de <%= total %><%= img.alt ? ': ' + img.alt : '' %>">
+        <img src="<%= img.previewUrl || img.url %>"
+             alt="<%= img.alt || '' %>"
+             <% if (img.width && img.height) { %>width="<%= img.width %>" height="<%= img.height %>"<% } %>
+             loading="lazy"
+             decoding="async">
+        <% if (i === visibles - 1 && total > visibles) { %>
+          <span class="galeria__mas" aria-hidden="true">+<%= total - visibles %></span>
+        <% } %>
+      </button>
+    <% }) %>
+  </div>
+
+  <% const conPie = imagenes.filter(img => img.caption); %>
+  <% if (total === 1 && conPie.length === 1) { %>
+    <p class="media-pie"><%= conPie[0].caption %></p>
+  <% } %>
+</div>

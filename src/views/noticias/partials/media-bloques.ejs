@@ -1,0 +1,64 @@
+<%
+/* Distribuye los adjuntos como bloques de contenido, en el orden en que el
+   autor los colocó. Las imágenes consecutivas se agrupan en una sola galería;
+   así el orden se respeta y a la vez se obtiene una composición cuidada. */
+const bloques = [];
+
+adjuntos.forEach((adjunto) => {
+  const ultimo = bloques[bloques.length - 1];
+  if (adjunto.kind === 'image' && ultimo && ultimo.tipo === 'galeria') {
+    ultimo.imagenes.push(adjunto);
+    return;
+  }
+  if (adjunto.kind === 'image') {
+    bloques.push({ tipo: 'galeria', imagenes: [adjunto] });
+    return;
+  }
+  bloques.push({ tipo: adjunto.kind, adjunto });
+});
+%>
+
+<% bloques.forEach((bloque, i) => { %>
+  <% if (bloque.tipo === 'galeria') { %>
+    <%- include('media-galeria', { imagenes: bloque.imagenes, grupoId: 'g' + i }) %>
+  <% } else if (bloque.tipo === 'pdf') { %>
+    <%- include('media-pdf', { adjunto: bloque.adjunto }) %>
+  <% } else if (bloque.tipo === 'word') { %>
+    <%- include('media-word', { adjunto: bloque.adjunto }) %>
+  <% } else if (bloque.tipo === 'video') { %>
+    <div class="media-bloque media-bloque--ancho" id="adjunto-<%= bloque.adjunto.id %>">
+      <video class="media-video"
+             controls
+             preload="metadata"
+             <% if (bloque.adjunto.previewUrl) { %>poster="<%= bloque.adjunto.previewUrl %>"<% } %>>
+        <source src="<%= bloque.adjunto.url %>" type="<%= bloque.adjunto.mime %>">
+        Tu navegador no puede reproducir este video.
+        <a href="<%= bloque.adjunto.url %>">Descargarlo</a>
+      </video>
+      <% if (bloque.adjunto.caption) { %>
+        <p class="media-pie"><%= bloque.adjunto.caption %></p>
+      <% } %>
+    </div>
+  <% } else { %>
+    <div class="media-bloque media-bloque--ancho" id="adjunto-<%= bloque.adjunto.id %>">
+      <article class="doc">
+        <div class="doc__head">
+          <span class="doc__icono" aria-hidden="true">
+            <%- include('../../partials/icon', { name: 'file' }) %>
+          </span>
+          <div class="doc__info">
+            <h3 class="doc__nombre"><%= bloque.adjunto.name %></h3>
+            <p class="doc__meta">
+              <%= bloque.adjunto.extension || 'Archivo' %><%= bloque.adjunto.sizeLabel ? ' · ' + bloque.adjunto.sizeLabel : '' %>
+            </p>
+          </div>
+          <div class="doc__acciones">
+            <a class="doc__accion" href="<%= bloque.adjunto.url %>" target="_blank" rel="noopener noreferrer">
+              Abrir
+            </a>
+          </div>
+        </div>
+      </article>
+    </div>
+  <% } %>
+<% }) %>

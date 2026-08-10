@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <%- include('partials/theme-head') %>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= formatPageTitle(titulo || "Verificar correo") %></title>
+  <link rel="stylesheet" href="/css/intranet.css">
+
+  <style>
+      html, body {
+        height: 100%; margin: 0; padding: 0; width: 100%;
+      }
+
+      body {
+        background: url('/img/fondo-home.png') no-repeat center center fixed !important;
+        background-size: cover !important;
+        display: flex; justify-content: center; align-items: center;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+
+      .card-login {
+        background: #00203e;
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        width: 100%;
+        max-width: 420px;
+        box-sizing: border-box;
+      }
+
+      .card-login h2 {
+        text-align: center; color: #ffffff; margin-top: 0; margin-bottom: 12px;
+        font-size: 1.8rem; font-weight: 800;
+      }
+
+      .card-login p {
+        text-align: center; font-size: 0.95rem; color: #e2e8f0;
+        margin-bottom: 25px; line-height: 1.5;
+      }
+
+      .card-login label {
+        display: block; font-weight: 700; color: #ffffff; margin-bottom: 6px; font-size: 0.95rem;
+      }
+
+      .card-login input[type="text"],
+      .card-login input[type="email"] {
+        width: 100%; padding: 12px 15px; border: none; border-radius: 6px;
+        font-size: 1rem; margin-bottom: 20px; background: #ffffff; color: #1a202c;
+        box-sizing: border-box; outline: none; font-family: inherit;
+      }
+
+      .card-login input.code-input {
+        text-align: center;
+        font-size: 1.75rem;
+        letter-spacing: 0.35em;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .card-login input:focus {
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+      }
+
+      .card-login button[type="submit"] {
+        width: 100%; padding: 14px; background: #ffffff; color: #003a70;
+        border: none; border-radius: 6px; font-size: 1.1rem; font-weight: 800;
+        cursor: pointer; transition: background 0.2s, transform 0.1s; margin-top: 5px;
+      }
+      .card-login button[type="submit"]:hover { background: #f1f5f9; transform: translateY(-1px); }
+
+      .login-links { text-align: center; margin-top: 25px; }
+      .login-links a,
+      .login-links button.link-btn {
+        color: #e2e8f0; text-decoration: none; font-size: 0.95rem; font-weight: 600;
+        background: none; border: none; cursor: pointer; padding: 0;
+        font-family: inherit;
+      }
+      .login-links a:hover,
+      .login-links button.link-btn:hover {
+        color: #ffffff; text-decoration: underline;
+      }
+
+      .mensaje-error { background: #e53e3e; color: white; padding: 12px; border-radius: 6px; text-align: center; margin-bottom: 20px; font-weight: 600; }
+      .mensaje-info { background: #3182ce; color: white; padding: 12px; border-radius: 6px; text-align: center; margin-bottom: 20px; font-weight: 600; }
+      .mensaje-pendiente { background: #d69e2e; color: #1a202c; padding: 16px; border-radius: 6px; text-align: center; margin-bottom: 20px; font-weight: 600; line-height: 1.5; }
+
+      .email-readonly {
+        background: #e2e8f0 !important;
+        color: #4a5568 !important;
+        cursor: not-allowed;
+      }
+  </style>
+</head>
+<body>
+
+  <div class="card-login">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <img src="/img/favicon2.png" alt="Transworld" style="max-width: 180px; height: auto;">
+    </div>
+
+    <% if (locals.awaitingAdmin) { %>
+      <h2>Correo verificado</h2>
+      <div class="mensaje-pendiente"><%= externalDomainMessage %></div>
+      <div class="login-links" style="margin-top: 0;">
+        <a href="/login">Volver al inicio de sesión</a>
+      </div>
+    <% } else { %>
+      <h2>Verificar correo</h2>
+      <p>
+        Enviamos un código de 6 dígitos a tu correo.<br>
+        Ingrésalo para activar tu cuenta.
+      </p>
+
+      <% if (locals.error) { %>
+        <div class="mensaje-error"><%= error %></div>
+      <% } %>
+
+      <% if (locals.info) { %>
+        <div class="mensaje-info"><%= info %></div>
+      <% } %>
+
+      <form action="/verify-email" method="POST">
+        <label for="email">Correo</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          value="<%= email %>"
+          required
+          readonly
+          class="email-readonly"
+        >
+
+        <label for="code">Código de verificación</label>
+        <input
+          type="text"
+          id="code"
+          name="code"
+          class="code-input"
+          inputmode="numeric"
+          pattern="[0-9]{6}"
+          maxlength="6"
+          minlength="6"
+          autocomplete="one-time-code"
+          placeholder="000000"
+          required
+          autofocus
+        >
+
+        <button type="submit">Verificar</button>
+      </form>
+
+      <div class="login-links">
+        <form action="/verify-email/resend" method="POST" style="display: inline;">
+          <input type="hidden" name="email" value="<%= email %>">
+          <button type="submit" class="link-btn">Reenviar código</button>
+        </form>
+        &nbsp;|&nbsp;
+        <a href="/login">Volver al inicio de sesión</a>
+      </div>
+    <% } %>
+  </div>
+
+  <% if (!locals.awaitingAdmin) { %>
+  <script>
+    const codeInput = document.getElementById('code');
+    if (codeInput) {
+      codeInput.addEventListener('input', function () {
+        this.value = this.value.replace(/\D/g, '').slice(0, 6);
+      });
+    }
+  </script>
+  <% } %>
+</body>
+</html>

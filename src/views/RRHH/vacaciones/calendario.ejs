@@ -1,0 +1,50 @@
+<link rel="stylesheet" href="/css/vacaciones.css">
+
+<div class="vac-wrap">
+  <div class="vac-header">
+    <div>
+      <h2 class="vac-title">Calendario de vacaciones</h2>
+      <p class="vac-subtitle">
+        <% if (isAdmin) { %>Vacaciones del equipo<% } else { %>Tus vacaciones programadas<% } %>
+        · <%= range.from %> → <%= range.to %>
+      </p>
+    </div>
+    <a href="/RRHH/vacaciones" class="vac-link-volver">← Volver</a>
+  </div>
+
+  <div class="vac-panel">
+    <form class="vac-filters" method="GET" action="/RRHH/vacaciones/calendario">
+      <label style="font-size:0.85rem;color:#475569;">Desde
+        <input type="date" name="from" value="<%= range.from %>" style="margin-left:6px;padding:8px;border:1px solid #cbd5e1;border-radius:6px;">
+      </label>
+      <label style="font-size:0.85rem;color:#475569;">Hasta
+        <input type="date" name="to" value="<%= range.to %>" style="margin-left:6px;padding:8px;border:1px solid #cbd5e1;border-radius:6px;">
+      </label>
+      <button type="submit" class="vac-btn vac-btn-primary vac-btn-sm">Ver</button>
+    </form>
+
+    <% if (!events || events.length === 0) { %>
+      <p class="vac-empty">No hay vacaciones programadas en este rango.</p>
+    <% } else { %>
+      <table class="vac-table">
+        <thead>
+          <tr>
+            <% if (isAdmin) { %><th>Colaborador</th><% } %>
+            <th>Desde</th><th>Hasta</th><th>Días</th><th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% events.forEach(e => { %>
+            <tr>
+              <% if (isAdmin) { %><td><%= e.collaboratorName || ('#' + e.user_id) %></td><% } %>
+              <td><%= e.startDateFmt %></td>
+              <td><%= e.endDateFmt %></td>
+              <td><%= e.days %> <%= e.dayUnit %></td>
+              <td><span class="<%= e.statusBadge %>"><%= e.statusLabel %></span></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</div>

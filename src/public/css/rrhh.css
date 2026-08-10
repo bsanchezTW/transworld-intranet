@@ -1,0 +1,282 @@
+/* ==========================================================================
+   Módulo RRHH — hoja compartida por el menú, el organigrama y vacaciones.
+   Antes cada vista repetía el mismo <style> con colores fijos; aquí vive una
+   sola versión sobre los tokens de theme.css (y por tanto con modo oscuro).
+   ========================================================================== */
+
+/* ==========================================================================
+   1. Rejilla de accesos
+   ========================================================================== */
+
+.rrhh-section-title {
+  color: var(--color-heading);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  margin: 0 0 18px;
+}
+
+.rrhh-section-title:not(:first-of-type) { margin-top: 34px; }
+
+.grid-opciones-exec {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+  margin-bottom: 10px;
+}
+
+.card-opcion-exec {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 24px 22px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  color: var(--color-text);
+  text-decoration: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  animation: cardPop 0.5s cubic-bezier(0.16, 0.84, 0.3, 1.08) backwards;
+}
+
+.card-opcion-exec:nth-child(2) { animation-delay: 0.05s; }
+.card-opcion-exec:nth-child(3) { animation-delay: 0.1s; }
+.card-opcion-exec:nth-child(n + 4) { animation-delay: 0.15s; }
+
+.card-opcion-exec:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border2);
+}
+
+.card-opcion-exec:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+}
+
+.card-icon-wrapper {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--brand-soft);
+  border: 1px solid var(--color-border);
+  color: var(--brand);
+  font-size: 1.5rem;
+}
+
+/* Los logos externos se sirven en PNG con fondo claro: se les da un lienzo
+   blanco propio para que no desaparezcan en modo oscuro. */
+.card-icon-wrapper img {
+  max-width: 78%;
+  max-height: 78%;
+  object-fit: contain;
+}
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.card-title {
+  margin: 0;
+  color: var(--brand);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.card-desc {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+/* --- Distintivo interno / externo --- */
+.link-type-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.badge-interno {
+  background: var(--brand-soft);
+  color: var(--brand);
+  border: 1px solid var(--color-border);
+}
+
+.badge-externo {
+  background: var(--green-soft);
+  color: var(--corp-green-dark);
+  border: 1px solid var(--color-border);
+}
+
+.external-icon { font-size: 0.75rem; margin-left: 3px; }
+
+/* ==========================================================================
+   2. Organigrama
+   ========================================================================== */
+
+.organigrama-link {
+  display: block;
+  cursor: zoom-in;
+  text-decoration: none;
+  border-radius: 16px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.organigrama-link:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.organigrama-link:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+
+.organigrama-full {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 16px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow);
+}
+
+.organigrama-vacio {
+  padding: 56px 24px;
+  text-align: center;
+  color: var(--subtle);
+  background: var(--color-surface);
+  border: 1px dashed var(--border2);
+  border-radius: 16px;
+}
+
+.organigrama-vacio .icon-svg {
+  font-size: 2.4rem;
+  opacity: 0.45;
+  margin-bottom: 12px;
+}
+
+.organigrama-vacio p { margin: 0; font-size: 0.95rem; }
+
+/* --- Zona de carga (solo administradores) --- */
+.upload-section {
+  margin-top: 30px;
+  padding: 24px 20px;
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px dashed var(--border2);
+  border-radius: 16px;
+}
+
+.upload-section h3 {
+  margin: 0 0 6px;
+  color: var(--brand);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.upload-section__ayuda {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.upload-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.btn-custom-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.btn-custom-upload:hover { border-color: var(--brand); color: var(--brand); transform: translateY(-1px); }
+
+/* El input real está oculto: el foco del teclado debe verse en la etiqueta. */
+.upload-input:focus-visible + .btn-custom-upload,
+.btn-custom-upload:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.nombre-archivo-seleccionado {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--corp-green-dark);
+}
+
+.btn-confirmar {
+  padding: 10px 22px;
+  border: none;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--color-bg);
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.2s ease;
+}
+
+.btn-confirmar:hover { transform: translateY(-1px); opacity: 0.9; }
+.btn-confirmar:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+
+/* ==========================================================================
+   3. Botón "volver" del módulo
+   ========================================================================== */
+
+.boton-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.boton-volver:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  border-color: var(--brand);
+}
+
+.boton-volver:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+@media (max-width: 640px) {
+  .grid-opciones-exec { grid-template-columns: 1fr; gap: 14px; }
+  .card-opcion-exec { padding: 20px 18px; gap: 14px; }
+  .card-icon-wrapper { width: 44px; height: 44px; border-radius: 13px; font-size: 1.25rem; }
+}

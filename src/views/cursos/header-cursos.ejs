@@ -1,0 +1,182 @@
+<style>
+  :root {
+    --primary-blue: #003a70;
+    --cursos-sidebar-width: 300px;
+  }
+
+  .cursos-layout-wrapper {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    margin-top: 10px;
+  }
+
+  .cursos-sidebar {
+    flex: 0 0 var(--cursos-sidebar-width);
+    background: var(--color-surface, #ffffff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 14px;
+    padding: 28px 22px;
+    box-shadow: var(--shadow-card-lg, 0 4px 20px rgba(0, 58, 112, 0.08));
+    position: sticky;
+    top: 90px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .sidebar-brand {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--color-border, #e2e8f0);
+  }
+
+  .header-logo-img {
+    max-width: 100%;
+    height: auto;
+    max-height: 96px;
+    display: block;
+  }
+
+  .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .sidebar-nav a {
+    color: var(--color-text-muted, #64748b);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.98rem;
+    padding: 12px 16px;
+    border-radius: 8px;
+    transition: background 0.2s ease, color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-left: 4px solid transparent;
+  }
+
+  .sidebar-nav a:hover {
+    background: var(--color-surface-muted, #f8fafc);
+    color: var(--primary-blue);
+  }
+
+  .sidebar-nav a.active {
+    background: rgba(0, 58, 112, 0.07);
+    color: var(--primary-blue);
+    border-left-color: var(--primary-blue);
+  }
+
+  .sidebar-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 18px;
+    border-top: 1px solid var(--color-border, #e2e8f0);
+  }
+
+  .btn-sidebar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #ffffff;
+    padding: 11px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.92rem;
+    letter-spacing: 0.2px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    border: none;
+  }
+
+  .btn-sidebar:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  }
+
+  .btn-kpi {
+    background: linear-gradient(135deg, #2b9348, #1a5e31);
+  }
+  .btn-kpi:hover {
+    background: linear-gradient(135deg, #32a852, #21753d);
+  }
+
+  .btn-cursos {
+    background: linear-gradient(135deg, #e85d04, #ba2802);
+  }
+  .btn-cursos:hover {
+    background: linear-gradient(135deg, #f56d16, #cc2d02);
+  }
+
+  .btn-volver-intranet {
+    background: var(--color-surface-muted, #f8fafc);
+    color: var(--color-text, #334155);
+    border: 1px solid var(--color-border-strong, #cbd5e1);
+    margin-top: 4px;
+  }
+  .btn-volver-intranet:hover {
+    background: var(--color-surface-elevated, #f1f5f9);
+    border-color: var(--color-border-strong, #94a3b8);
+  }
+
+  .cursos-main-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  @media (max-width: 900px) {
+    .cursos-layout-wrapper {
+      flex-direction: column;
+      gap: 20px;
+    }
+    .cursos-sidebar {
+      flex: none;
+      width: 100%;
+      position: static;
+    }
+    .sidebar-nav {
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .sidebar-buttons {
+      flex-direction: row;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+  }
+</style>
+
+<div class="cursos-layout-wrapper">
+
+  <aside class="cursos-sidebar">
+
+    <div class="sidebar-brand">
+      <img src="/img/LOGO-TRANSWORLD-ACADEMY.png" alt="Transworld Academy" class="header-logo-img">
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="/cursos" class="<%= (typeof active !== 'undefined' && active === 'inicio') ? 'active' : '' %>">Inicio</a>
+      <a href="/cursos/equipamiento-activo" class="<%= (typeof active !== 'undefined' && active === 'equipamiento') ? 'active' : '' %>">Equipamiento Activo</a>
+      <a href="/cursos/fibra-optica" class="<%= (typeof active !== 'undefined' && active === 'fibra') ? 'active' : '' %>">Fibra Óptica</a>
+      <a href="/cursos/infraestructura" class="<%= (typeof active !== 'undefined' && active === 'infraestructura') ? 'active' : '' %>">Infraestructura</a>
+      <a href="/cursos/safety-machine" class="<%= (typeof active !== 'undefined' && (active === 'safety' || active === 'safety-machine')) ? 'active' : '' %>">Safety Machine</a>
+    </nav>
+
+    <div class="sidebar-buttons">
+      <a href="/kpi-cursos" class="btn-sidebar btn-kpi">Ranking cursos</a>
+      <a href="/perfil/cursos" class="btn-sidebar btn-cursos">Mis Cursos</a>
+      <a href="/" class="btn-sidebar btn-volver-intranet">← Volver a Intranet</a>
+    </div>
+
+  </aside>
+
+  <main class="cursos-main-content">

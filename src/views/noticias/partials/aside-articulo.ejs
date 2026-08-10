@@ -1,0 +1,123 @@
+<%
+/* Columna lateral del artículo: ficha del autor, índice de adjuntos y noticias
+   relacionadas. La administración vive al pie del artículo, no aquí.
+   Recibe: noticia (modelo de vista), resumen, adjuntos y relacionadas.
+
+   Las imágenes se agrupan en una sola entrada porque en el cuerpo también se
+   agrupan en una galería: enlazar imagen por imagen llenaría el aside. */
+const imagenes = adjuntos.filter(a => a.kind === 'image');
+const otros = adjuntos.filter(a => a.kind !== 'image');
+
+const entradas = [];
+if (imagenes.length) {
+  entradas.push({
+    ancla: 'adjunto-' + imagenes[0].id,
+    etiqueta: 'IMG',
+    kind: 'image',
+    nombre: imagenes.length === 1 ? imagenes[0].name : imagenes.length + ' imágenes',
+    meta: imagenes.length === 1 ? (imagenes[0].sizeLabel || 'Imagen') : 'Galería',
+  });
+}
+otros.forEach(a => {
+  const meta = [a.extension || 'Archivo'];
+  if (a.pages) meta.push(a.pages + ' pág.');
+  if (a.sizeLabel) meta.push(a.sizeLabel);
+  entradas.push({
+    ancla: 'adjunto-' + a.id,
+    etiqueta: (a.extension || 'DOC').slice(0, 4),
+    kind: a.kind,
+    nombre: a.name,
+    meta: meta.join(' · '),
+  });
+});
+%>
+
+<aside class="articulo__aside">
+
+  <%# ---------- Ficha del autor y acciones de lectura ---------- %>
+  <section class="aside-bloque aside-autor">
+    <div class="aside-autor__cabecera">
+      <span class="aside-autor__avatar" aria-hidden="true"><%= noticia.autorIniciales %></span>
+      <span class="aside-autor__texto">
+        <span class="aside-autor__nombre"><%= noticia.autor %></span>
+        <span class="aside-autor__rol">Publicó esta noticia</span>
+      </span>
+    </div>
+
+    <dl class="aside-datos">
+      <div>
+        <dt>Publicada</dt>
+        <dd><time datetime="<%= noticia.fechaISO %>"><%= noticia.fechaLarga %></time></dd>
+      </div>
+      <div>
+        <dt>Lectura</dt>
+        <dd><%= noticia.lecturaLabel %></dd>
+      </div>
+      <% if (resumen.total) { %>
+        <div>
+          <dt>Adjuntos</dt>
+          <dd><%= resumen.chips.map(c => c.text).join(' · ') %></dd>
+        </div>
+      <% } %>
+    </dl>
+
+    <%# Acciones de lectura: no dependen de permisos, las usa cualquiera. %>
+    <div class="aside-acciones">
+      <button type="button" class="btn-nt btn-nt--sutil" data-copiar-enlace>
+        <%- include('../../partials/icon', { name: 'link' }) %>
+        <span data-copiar-texto>Copiar enlace</span>
+      </button>
+      <button type="button" class="btn-nt btn-nt--sutil" data-imprimir>
+        <%- include('../../partials/icon', { name: 'printer' }) %>
+        Imprimir
+      </button>
+    </div>
+  </section>
+
+  <%# ---------- Índice de documentos ---------- %>
+  <% if (entradas.length) { %>
+    <section class="aside-bloque">
+      <h2 class="aside-bloque__titulo">Documentos adjuntos</h2>
+      <ul class="aside-lista">
+        <% entradas.forEach(entrada => { %>
+          <li>
+            <a class="doc-mini" href="#<%= entrada.ancla %>">
+              <span class="doc-mini__ext doc-mini__ext--<%= entrada.kind %>" aria-hidden="true"><%= entrada.etiqueta %></span>
+              <span class="doc-mini__texto">
+                <span class="doc-mini__nombre"><%= entrada.nombre %></span>
+                <span class="doc-mini__meta"><%= entrada.meta %></span>
+              </span>
+            </a>
+          </li>
+        <% }) %>
+      </ul>
+    </section>
+  <% } %>
+
+  <%# ---------- Noticias relacionadas ---------- %>
+  <% if (relacionadas && relacionadas.length) { %>
+    <section class="aside-bloque">
+      <h2 class="aside-bloque__titulo">También te interesa</h2>
+      <ul class="aside-lista">
+        <% relacionadas.forEach(r => { %>
+          <li>
+            <a class="rel-mini" href="/noticias/<%= r.id %>">
+              <span class="rel-mini__media">
+                <% if (r.image) { %>
+                  <img src="<%= r.image %>" alt="" loading="lazy" decoding="async" onerror="this.remove()">
+                <% } else { %>
+                  <span class="rel-mini__icono" aria-hidden="true"><%- include('../../partials/icon', { name: 'news' }) %></span>
+                <% } %>
+              </span>
+              <span class="rel-mini__texto">
+                <span class="rel-mini__titulo"><%= r.title %></span>
+                <time class="rel-mini__fecha" datetime="<%= r.fechaISO %>"><%= r.fechaCorta %></time>
+              </span>
+            </a>
+          </li>
+        <% }) %>
+      </ul>
+    </section>
+  <% } %>
+
+</aside>

@@ -1,0 +1,187 @@
+<%
+/* Bloque de un adjunto dentro del correo. Recibe: adjunto, noticiaUrl.
+   Imágenes y PDF se muestran COMPLETOS dentro del mensaje (URL firmadas),
+   nunca como archivo adjunto. Tablas + estilos en línea por compatibilidad
+   con Outlook/Gmail. */
+const a = adjunto;
+const cardOpen = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; border:1px solid #e3e9f0; border-radius:12px; background:#ffffff; margin:0 0 20px 0;"><tr><td style="padding:0;">';
+const cardClose = '</td></tr></table>';
+const emailPages = Array.isArray(a.emailPages) ? a.emailPages : (a.emailUrl ? [{ url: a.emailUrl, width: a.preview_width || a.width, height: a.preview_height || a.height }] : []);
+%>
+
+<% if (a.kind === 'image' && emailPages.length) { %>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; margin:0 0 20px 0;">
+    <% emailPages.forEach(function (page) { %>
+      <tr>
+        <td style="padding:0;">
+          <img src="<%= page.url %>"
+               alt="<%= a.alt || a.name %>"
+               width="536"
+               <% if (page.width && page.height) { %>height="<%= Math.round(536 * page.height / page.width) %>"<% } %>
+               style="width:100%; max-width:536px; height:auto; display:block; border:0; border-radius:12px;">
+        </td>
+      </tr>
+    <% }); %>
+    <% if (a.caption) { %>
+      <tr>
+        <td style="padding:8px 2px 0 2px; color:#8494a7; font-size:13px; line-height:1.5; font-style:italic;">
+          <%= a.caption %>
+        </td>
+      </tr>
+    <% } %>
+  </table>
+
+<% } else if (a.kind === 'pdf' && emailPages.length) { %>
+  <%/* Documento completo visible: cada página es una imagen a ancho completo.
+       Sin tarjeta de “adjunto” ni botón de descarga. */%>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; margin:0 0 24px 0;">
+    <% emailPages.forEach(function (page, index) { %>
+      <tr>
+        <td style="padding:<%= index === 0 ? '0' : '16px' %> 0 0 0;">
+          <img src="<%= page.url %>"
+               alt="<%= a.name %><%= emailPages.length > 1 ? ' — página ' + (page.page || (index + 1)) : '' %>"
+               width="536"
+               <% if (page.width && page.height) { %>height="<%= Math.round(536 * page.height / page.width) %>"<% } %>
+               style="width:100%; max-width:536px; height:auto; display:block; border:1px solid #e3e9f0; border-radius:4px; background:#ffffff;">
+        </td>
+      </tr>
+    <% }); %>
+    <% if (a.emailPagesTruncated) { %>
+      <tr>
+        <td style="padding:14px 0 0 0;">
+          <p style="margin:0 0 10px 0; color:#8494a7; font-size:13px; line-height:1.5;">
+            Se muestran <%= emailPages.length %> de <%= a.pages %> páginas.
+          </p>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td style="border-radius:8px; background:#0f4c81;">
+                <a href="<%= a.viewUrl %>" target="_blank" style="display:inline-block; padding:10px 18px; color:#ffffff; font-size:14px; font-weight:700; text-decoration:none; border-radius:8px;">Ver documento completo →</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    <% } %>
+  </table>
+
+<% } else if (a.kind === 'pdf') { %>
+  <%/* Sin páginas rasterizadas: extracto + enlace a la intranet (último recurso). */%>
+  <%- cardOpen %>
+    <% if (a.excerpt) { %>
+      <div style="padding:20px 20px 4px 20px; color:#51637a; font-size:14px; line-height:1.65; font-style:italic;">
+        “<%= a.excerpt %>”
+      </div>
+    <% } %>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td style="padding:16px 20px;">
+          <p style="margin:0 0 2px 0; color:#0b3a63; font-size:15px; font-weight:700; line-height:1.4;"><%= a.name %></p>
+          <p style="margin:0; color:#8494a7; font-size:13px;">
+            PDF<% if (a.pages) { %> · <%= a.pages %> página<%= a.pages === 1 ? '' : 's' %><% } %>
+          </p>
+        </td>
+        <td align="right" style="padding:16px 20px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td style="border-radius:8px; background:#0f4c81;">
+                <a href="<%= a.viewUrl %>" target="_blank" style="display:inline-block; padding:10px 18px; color:#ffffff; font-size:14px; font-weight:700; text-decoration:none; border-radius:8px; white-space:nowrap;">Ver documento →</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  <%- cardClose %>
+
+<% } else if (a.kind === 'word') { %>
+  <%- cardOpen %>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td style="padding:16px 20px; background:#f5f7fa; border-bottom:1px solid #e3e9f0; border-radius:11px 11px 0 0;">
+          <p style="margin:0 0 2px 0; color:#0b3a63; font-size:15px; font-weight:700; line-height:1.4;"><%= a.name %></p>
+          <p style="margin:0; color:#8494a7; font-size:13px;">
+            Documento Word<% if (a.sizeLabel) { %> · <%= a.sizeLabel %><% } %>
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:22px 20px 6px 20px;">
+          <% if (a.emailHtml) { %>
+            <%- a.emailHtml %>
+            <% if (a.emailHtmlTruncated) { %>
+              <p style="margin:4px 0 16px 0; color:#8494a7; font-size:14px; font-style:italic;">
+                El documento continúa…
+              </p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="border-radius:8px; background:#0f4c81;">
+                    <a href="<%= a.viewUrl %>" target="_blank" style="display:inline-block; padding:11px 20px; color:#ffffff; font-size:14px; font-weight:700; text-decoration:none; border-radius:8px;">Leer documento completo →</a>
+                  </td>
+                </tr>
+              </table>
+            <% } %>
+          <% } else { %>
+            <p style="margin:0 0 16px 0; color:#51637a; font-size:15px; line-height:1.7;">
+              <%= a.excerpt || 'Este documento se puede leer completo en la intranet.' %>
+            </p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="border-radius:8px; background:#0f4c81;">
+                  <a href="<%= a.viewUrl %>" target="_blank" style="display:inline-block; padding:11px 20px; color:#ffffff; font-size:14px; font-weight:700; text-decoration:none; border-radius:8px;">Leer documento →</a>
+                </td>
+              </tr>
+            </table>
+          <% } %>
+        </td>
+      </tr>
+    </table>
+  <%- cardClose %>
+
+<% } else if (a.kind === 'video') { %>
+  <%- cardOpen %>
+    <a href="<%= a.viewUrl %>" target="_blank" style="display:block; text-decoration:none;">
+      <% if (a.emailUrl) { %>
+        <img src="<%= a.emailUrl %>" alt="<%= a.name %>" width="534" style="width:100%; max-width:534px; height:auto; display:block; border-radius:11px 11px 0 0;">
+      <% } %>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="padding:16px 20px;">
+            <p style="margin:0 0 2px 0; color:#0b3a63; font-size:15px; font-weight:700;">▶ <%= a.name %></p>
+            <p style="margin:0; color:#8494a7; font-size:13px;">Video<% if (a.sizeLabel) { %> · <%= a.sizeLabel %><% } %> · Reproducir en la intranet</p>
+          </td>
+        </tr>
+      </table>
+    </a>
+  <%- cardClose %>
+
+<% } else if (a.kind === 'image') { %>
+  <%/* Imagen sin URL firmada: último recurso con enlace a la intranet. */%>
+  <%- cardOpen %>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td style="padding:16px 20px;">
+          <p style="margin:0 0 2px 0; color:#0b3a63; font-size:15px; font-weight:700;"><%= a.name %></p>
+          <p style="margin:0; color:#8494a7; font-size:13px;">Imagen</p>
+        </td>
+        <td align="right" style="padding:16px 20px;">
+          <a href="<%= a.viewUrl %>" target="_blank" style="color:#0f4c81; font-size:14px; font-weight:700; text-decoration:none; white-space:nowrap;">Ver →</a>
+        </td>
+      </tr>
+    </table>
+  <%- cardClose %>
+
+<% } else { %>
+  <%- cardOpen %>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td style="padding:16px 20px;">
+          <p style="margin:0 0 2px 0; color:#0b3a63; font-size:15px; font-weight:700;"><%= a.name %></p>
+          <p style="margin:0; color:#8494a7; font-size:13px;"><%= a.extension || 'Archivo' %><% if (a.sizeLabel) { %> · <%= a.sizeLabel %><% } %></p>
+        </td>
+        <td align="right" style="padding:16px 20px;">
+          <a href="<%= a.viewUrl %>" target="_blank" style="color:#0f4c81; font-size:14px; font-weight:700; text-decoration:none; white-space:nowrap;">Abrir →</a>
+        </td>
+      </tr>
+    </table>
+  <%- cardClose %>
+<% } %>

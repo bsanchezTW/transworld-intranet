@@ -1,0 +1,49 @@
+{
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.104.2",
+    "@azure/msal-node": "^5.2.2",
+    "@getbrevo/brevo": "^3.0.1",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "@napi-rs/canvas": "^1.0.3",
+    "@supabase/supabase-js": "^2.112.2",
+    "compression": "^1.8.1",
+    "dotenv": "^17.4.2",
+    "ejs": "^3.1.10",
+    "exceljs": "^4.4.0",
+    "express": "^5.1.0",
+    "express-ejs-layouts": "^2.5.1",
+    "express-session": "^1.18.2",
+    "html-to-docx": "^1.8.0",
+    "imapflow": "^1.1.1",
+    "isomorphic-fetch": "^3.0.0",
+    "mailparser": "^3.9.0",
+    "mammoth": "^1.12.0",
+    "marked": "^18.0.5",
+    "multer": "^2.0.2",
+    "pdfjs-dist": "^4.10.38",
+    "pdfkit": "^0.19.1",
+    "pg": "^8.21.0",
+    "qrcode": "^1.5.4",
+    "sanitize-html": "^2.17.6",
+    "word-extractor": "^1.0.4",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  },
+  "name": "intranet-transworld",
+  "version": "2.1.1",
+  "description": "Intranet corporativa de Transworld Power & Telecom: comunicación, Academy, RRHH, tickets TI y asistente de IA",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node src/app.js",
+    "start": "node src/app.js",
+    "test": "node --test test/**/*.test.js",
+    "email-listener": "node src/email-listener",
+    "build": "vite build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

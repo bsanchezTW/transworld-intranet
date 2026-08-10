@@ -1,0 +1,330 @@
+/* ==========================================================================
+   Módulo de Vacaciones — mismo sistema visual que el resto de RRHH.
+   Todo el color sale de los tokens de theme.css, así el modo oscuro funciona
+   sin hojas paralelas.
+   ========================================================================== */
+
+.vac-wrap {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 0 60px;
+  font-family: var(--font-sans, 'Instrument Sans', 'Segoe UI', system-ui, sans-serif);
+  animation: fadeUp 0.45s ease both;
+}
+
+.vac-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.vac-title {
+  color: var(--brand);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+  letter-spacing: -0.02em;
+}
+
+.vac-subtitle { color: var(--muted); font-size: 0.9rem; margin: 0; }
+
+.vac-link-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: color 0.15s ease;
+}
+
+.vac-link-volver:hover { color: var(--brand); }
+
+/* Rejilla genérica del módulo (el menú usa las tarjetas de rrhh.css). */
+.vac-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+/* ==========================================================================
+   Tarjetas de saldo
+   ========================================================================== */
+
+.vac-balance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.vac-stat {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+}
+
+.vac-stat-label {
+  color: var(--subtle);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.vac-stat-value {
+  color: var(--brand);
+  font-size: 2rem;
+  font-weight: 800;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vac-stat-value.danger { color: var(--down); }
+.vac-stat-value.warn { color: #b4700a; }
+html[data-theme="dark"] .vac-stat-value.warn { color: #e0a94a; }
+
+.vac-stat-unit { color: var(--subtle); font-size: 0.75rem; font-weight: 600; }
+
+/* ==========================================================================
+   Paneles y tablas
+   ========================================================================== */
+
+.vac-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+
+.vac-panel-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--surface2);
+  font-weight: 700;
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.vac-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; text-align: left; }
+
+.vac-table th {
+  background: var(--color-surface);
+  color: var(--subtle);
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 11px 16px;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.vac-table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  vertical-align: middle;
+}
+
+.vac-table tbody tr:last-child td { border-bottom: none; }
+.vac-table tbody tr { transition: background 0.12s ease; }
+.vac-table tbody tr:hover td { background: var(--surface2); }
+
+.vac-empty { text-align: center; color: var(--subtle); padding: 36px 16px; }
+
+/* ==========================================================================
+   Distintivos de estado — un matiz por estado, fondo y texto derivados.
+   ========================================================================== */
+
+.vac-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  /* Matiz por defecto; cada estado lo redefine más abajo (misma especificidad,
+     gana el que aparece después). */
+  --badge-h: 215;
+  --badge-s: 16%;
+  background: hsl(var(--badge-h) var(--badge-s) 92%);
+  color: hsl(var(--badge-h) var(--badge-s) 28%);
+}
+
+html[data-theme="dark"] .vac-badge {
+  background: hsl(var(--badge-h) var(--badge-s) 20%);
+  color: hsl(var(--badge-h) calc(var(--badge-s) + 18%) 78%);
+}
+
+.vac-badge-pending   { --badge-h: 45;  --badge-s: 70%; }
+.vac-badge-approved  { --badge-h: 142; --badge-s: 55%; }
+.vac-badge-rejected  { --badge-h: 0;   --badge-s: 60%; }
+.vac-badge-cancelled { --badge-h: 215; --badge-s: 14%; }
+.vac-badge-progress  { --badge-h: 215; --badge-s: 65%; }
+.vac-badge-completed { --badge-h: 258; --badge-s: 58%; }
+
+.vac-country { font-size: 0.85rem; color: var(--color-text-muted); white-space: nowrap; }
+
+/* ==========================================================================
+   Formularios
+   ========================================================================== */
+
+.vac-form { padding: 18px 18px 22px; }
+.vac-form .campo { margin-bottom: 16px; }
+
+.vac-form label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--color-text);
+}
+
+.vac-form input,
+.vac-form select,
+.vac-form textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  font-size: 0.94rem;
+  font-family: inherit;
+  color: var(--color-input-text);
+  background: var(--color-input-bg);
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vac-form input:focus,
+.vac-form select:focus,
+.vac-form textarea:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+
+.vac-form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+.vac-hint { font-size: 0.8rem; color: var(--muted); margin-top: 4px; display: block; }
+
+.vac-preview {
+  margin: 4px 0 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--brand-soft);
+  border: 1px solid var(--color-border);
+  color: var(--brand);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   Botones
+   ========================================================================== */
+
+.vac-btn {
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.vac-btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.vac-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+.vac-btn-primary { background: var(--corp-blue); color: #fff; }
+.vac-btn-approve { background: var(--corp-green-dark); color: #fff; }
+.vac-btn-reject  { background: var(--down); color: #fff; }
+
+.vac-btn-cancel {
+  background: var(--color-surface);
+  border-color: var(--border2);
+  color: var(--color-text-muted);
+}
+
+.vac-btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+
+html[data-theme="dark"] .vac-btn-primary,
+html[data-theme="dark"] .vac-btn-approve { color: var(--color-bg); }
+
+.vac-inline-form { display: inline; }
+
+/* ==========================================================================
+   Avisos y filtros
+   ========================================================================== */
+
+.vac-alert {
+  margin-bottom: 16px;
+  padding: 12px 15px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.vac-alert-error {
+  background: rgba(208, 92, 92, 0.1);
+  border-color: rgba(208, 92, 92, 0.3);
+  color: var(--down);
+}
+
+.vac-alert-success {
+  background: var(--green-soft);
+  border-color: rgba(92, 143, 29, 0.3);
+  color: var(--corp-green-dark);
+}
+
+.vac-alert-info {
+  background: var(--brand-soft);
+  border-color: var(--color-border);
+  color: var(--brand);
+}
+
+.vac-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--surface2);
+}
+
+.vac-filters select {
+  padding: 9px 12px;
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  color: var(--color-input-text);
+  background: var(--color-input-bg);
+}
+
+.vac-filters select:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+
+@media (max-width: 640px) {
+  .vac-form-grid-2 { grid-template-columns: 1fr; }
+  .vac-grid { gap: 14px; }
+  .vac-btn { width: 100%; }
+  .vac-btn-sm { width: auto; }
+}

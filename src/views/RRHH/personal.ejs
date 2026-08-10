@@ -1,0 +1,248 @@
+<%
+  const puedeEditar = typeof isAdministrador !== 'undefined' && isAdministrador;
+  const mostrarRol = typeof mostrarColumnaRol !== 'undefined' ? mostrarColumnaRol : puedeEditar;
+  const listado = personas || [];
+
+  function pillRol(rol) {
+    if (!rol) return 'pill pill-rol-deshabilitado';
+    const r = rol.toLowerCase();
+    if (r === 'administrador' || r === 'admin') return 'pill pill-rol-admin';
+    if (r === 'deshabilitado') return 'pill pill-rol-deshabilitado';
+    return 'pill pill-rol-usuario';
+  }
+
+  // Solo se ofrecen como filtro las áreas que tienen a alguien: un chip que
+  // siempre deja la tabla vacía es ruido.
+  const areasConGente = (areas || []).filter(
+    (a) => listado.some((p) => p.area === a.area_name),
+  );
+
+  const successMsg = (typeof success !== 'undefined' && success) ? success : null;
+  const errorMsg   = (typeof error   !== 'undefined' && error)   ? error   : null;
+%>
+
+<link rel="stylesheet" href="/css/personal.css?v=20260803b">
+<link rel="stylesheet" href="/css/phone-chile.css">
+<% if (puedeEditar) { %>
+<link rel="stylesheet" href="/css/horizontal-forms.css">
+<link rel="stylesheet" href="/css/profile-photo-crop.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+<% } %>
+
+<div id="popup" class="popup-notification <%= successMsg ? 'success show' : errorMsg ? 'error show' : '' %>" role="status">
+  <span><%= successMsg || errorMsg || '' %></span>
+  <button type="button" class="popup-close" data-popup-close aria-label="Cerrar aviso">&times;</button>
+</div>
+
+<div class="contenedor-personal">
+  <div class="page-header page-header--toolbar">
+    <div class="page-header__text">
+      <h2 class="page-title">Colaboradores de Transworld Chile</h2>
+      <p class="page-description"><span id="contadorColaboradores"><%= listado.length %></span> colaboradores en el registro</p>
+    </div>
+    <div class="page-header-actions">
+      <a href="/RRHH" class="link-volver">← Volver al menú</a>
+      <% if (puedeEditar) { %>
+      <button type="button" class="btn-agregar-persona" data-abrir-crear>
+        <span aria-hidden="true">+</span> Agregar persona
+      </button>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (!listado.length) { %>
+    <div class="panel">
+      <p class="personal-empty">No hay colaboradores registrados.</p>
+    </div>
+  <% } else { %>
+
+    <div class="personal-toolbar">
+      <label class="personal-search" for="buscarColaborador">
+        <span class="personal-search-icon" aria-hidden="true"><%- include('../partials/icon', { name: 'search' }) %></span>
+        <input type="search" id="buscarColaborador"
+               placeholder="Buscar por nombre, correo o teléfono…"
+               autocomplete="off" aria-label="Buscar colaboradores">
+      </label>
+
+      <% if (areasConGente.length) { %>
+        <div class="personal-chips" role="group" aria-label="Filtrar por área">
+          <button type="button" class="personal-chip is-activo" data-filtro-area="" aria-pressed="true">Todas</button>
+          <% areasConGente.forEach(area => { %>
+            <button type="button" class="personal-chip" data-filtro-area="<%= area.area_name %>" aria-pressed="false"><%= area.area_name %></button>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="panel">
+      <table class="tabla-personal" id="tablaPersonal">
+        <thead>
+          <tr>
+            <th data-ordenable aria-sort="none">
+              <button type="button">Colaborador</button>
+            </th>
+            <th data-ordenable aria-sort="none">
+              <button type="button">Área</button>
+            </th>
+            <th class="col-desktop" data-ordenable aria-sort="none">
+              <button type="button">Correo</button>
+            </th>
+            <th class="col-desktop" data-ordenable aria-sort="none">
+              <button type="button">Teléfono</button>
+            </th>
+            <th class="col-desktop" data-ordenable aria-sort="none">
+              <button type="button">Cumpleaños</button>
+            </th>
+            <% if (mostrarRol) { %>
+              <th class="col-desktop" data-ordenable aria-sort="none">
+                <button type="button">Rol</button>
+              </th>
+            <% } %>
+            <% if (puedeEditar) { %>
+              <th class="col-centro col-desktop" data-ordenable aria-sort="none">
+                <button type="button">Email</button>
+              </th>
+            <% } %>
+          </tr>
+        </thead>
+        <tbody>
+          <% listado.forEach((p, idx) => { %>
+            <%
+              const firstName  = p.first_name  || '';
+              const lastName   = p.last_name   || '';
+              // Lista compacta: un solo nombre + un solo apellido (primera palabra).
+              const primerNombre = String(firstName).trim().split(/\s+/)[0] || '';
+              const primerApellido = String(lastName).trim().split(/\s+/)[0] || '';
+              const nombreLista = [primerNombre, primerApellido].filter(Boolean).join(' ') || '-';
+              const nombreCompleto = [firstName, lastName].filter(Boolean).join(' ') || '-';
+              const sortApellido = (primerApellido || primerNombre || '').toLowerCase();
+              const inicial    = (primerNombre || primerApellido || '?').charAt(0).toUpperCase();
+              const paletaAvatar = 'avatar-fallback--c' + ((idx % 6) + 1);
+              const areaNombre = p.area || '-';
+              const correo   = p.email    || '-';
+              const telefono = p.phone || '-';
+              const telefonoHref = p.telefonoHref || null;
+              const rol = p.role || 'Usuario';
+              const cumpleSort = p.ordenCumple !== undefined ? p.ordenCumple : 9999;
+              const cumpleFmt  = p.fechaCumpleFmt || '-';
+              const tieneCorreo = Boolean(p.email && String(p.email).trim());
+              const correoVerificado = p.email_confirmed === true || p.email_confirmed === 't' || p.email_confirmed === 1;
+            %>
+            <tr
+              data-area="<%= areaNombre %>"
+              data-search="<%= [nombreCompleto, correo !== '-' ? correo : '', telefono !== '-' ? telefono : ''].join(' ').toLowerCase() %>"
+            >
+              <td class="col-nombre" data-sort="<%= sortApellido %>" data-label="Colaborador">
+                <span class="persona">
+                  <% if (p.photo) { %>
+                    <img src="<%= p.photo %>" alt="" class="avatar" loading="lazy" decoding="async">
+                  <% } else { %>
+                    <span class="avatar-fallback <%= paletaAvatar %>" aria-hidden="true"><%= inicial %></span>
+                  <% } %>
+                  <% if (puedeEditar) { %>
+                    <a href="/RRHH/personal?editar=<%= p.id %>" class="link-nombre-colaborador"
+                       data-editar-id="<%= p.id %>" title="Editar colaborador"><%= nombreLista %></a>
+                  <% } else { %>
+                    <span class="nombre-solo"><%= nombreLista %></span>
+                  <% } %>
+                </span>
+              </td>
+
+              <td class="col-area" data-label="Área">
+                <span class="<%= getWorkAreaPillClass(areaNombre) %>"><%= areaNombre %></span>
+              </td>
+
+              <td class="col-correo col-desktop" data-label="Correo">
+                <% if (correo !== '-') { %>
+                  <a href="mailto:<%= correo %>" class="link-discreto"><%= correo %></a>
+                <% } else { %>
+                  <span class="dato-vacio">-</span>
+                <% } %>
+              </td>
+
+              <td class="col-telefono col-desktop" data-label="Teléfono">
+                <% if (telefonoHref) { %>
+                  <a href="<%= telefonoHref %>" class="link-discreto"><%= telefono %></a>
+                <% } else if (telefono !== '-') { %>
+                  <%= telefono %>
+                <% } else { %>
+                  <span class="dato-vacio">-</span>
+                <% } %>
+              </td>
+
+              <td class="col-cumple col-desktop" data-sort="<%= cumpleSort %>" data-label="Cumpleaños">
+                <% if (cumpleFmt !== '-') { %>
+                  <%= cumpleFmt %>
+                <% } else { %>
+                  <span class="dato-vacio">-</span>
+                <% } %>
+              </td>
+
+              <% if (mostrarRol) { %>
+                <td class="col-desktop" data-label="Rol">
+                  <span class="<%= pillRol(rol) %>"><%= rol %></span>
+                </td>
+              <% } %>
+
+              <% if (puedeEditar) { %>
+                <td class="col-centro col-desktop" data-label="Email" data-sort="<%= !tieneCorreo ? 2 : correoVerificado ? 0 : 1 %>">
+                  <% if (!tieneCorreo) { %>
+                    <span class="dato-vacio" title="Sin correo registrado">-</span>
+                  <% } else if (correoVerificado) { %>
+                    <span class="estado-si" title="Correo verificado"><%- include('../partials/icon', { name: 'check' }) %><span class="sr-only">Verificado</span></span>
+                  <% } else { %>
+                    <span class="estado-no" title="Correo pendiente de verificación" aria-label="Pendiente">✕</span>
+                  <% } %>
+                </td>
+              <% } %>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+
+      <p id="personalSinResultados" class="personal-sin-resultados" role="status" hidden>
+        No se encontraron colaboradores con los filtros aplicados.
+      </p>
+    </div>
+  <% } %>
+</div>
+
+<% if (puedeEditar) { %>
+  <div id="modalCrearColaborador" class="modal-overlay modal-crear-colaborador" role="dialog" aria-modal="true" aria-labelledby="crearColaboradorTitle" aria-hidden="true">
+    <div class="modal-content modal-content--large">
+      <button type="button" class="modal-close" data-modal-close aria-label="Cerrar">&times;</button>
+      <h2 id="crearColaboradorTitle" class="modal-title">Agregar Colaborador</h2>
+      <p class="modal-description modal-crear-desc">Puede agregar a un colaborador con su correo electrónico, o también puede agregar el cumpleaños de un colaborador.</p>
+      <div id="crearColaboradorError" class="modal-crear-error" role="alert"></div>
+      <%- include('partials/persona_crear_form') %>
+    </div>
+  </div>
+
+  <div id="modalEditarColaborador" class="modal-overlay modal-editar-colaborador" role="dialog" aria-modal="true" aria-labelledby="editarColaboradorTitle" aria-hidden="true">
+    <div class="modal-content modal-editar-panel">
+      <button type="button" class="modal-close" data-modal-close aria-label="Cerrar">&times;</button>
+      <div id="editarColaboradorError" class="modal-crear-error" role="alert" style="margin: 16px 20px 0;"></div>
+      <div id="modalEditarColaboradorBody">
+        <p class="modal-loading">Cargando colaborador…</p>
+      </div>
+    </div>
+  </div>
+<% } %>
+
+<%# Estado inicial para personal-tabla.js: sin interpolar JS dentro del script. %>
+<script type="application/json" id="personal-config"><%- JSON.stringify({
+  puedeEditar,
+  crearError: (typeof crearError !== 'undefined' && crearError) ? crearError : '',
+  abrirCrear: Boolean(typeof abrirCrearModal !== 'undefined' && abrirCrearModal),
+  editarId: (typeof editarId !== 'undefined' && editarId) ? String(editarId) : '',
+  editarError: (typeof editarError !== 'undefined' && editarError) ? editarError : '',
+}).replace(/</g, '\\u003c') %></script>
+
+<script src="/js/email-validate.js"></script>
+<script src="/js/phone-chile.js"></script>
+<% if (puedeEditar) { %>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="/js/profile-photo-cropper.js"></script>
+<script src="/js/persona-editar-form.js"></script>
+<% } %>
+<script src="/js/personal-tabla.js?v=20260803b" defer></script>

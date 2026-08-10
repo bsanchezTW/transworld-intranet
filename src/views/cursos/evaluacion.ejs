@@ -1,0 +1,212 @@
+<%- include('header-cursos') %>
+<style>
+  .eval-container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.08); }
+  .curso-titulo { color: #003a70; font-size: 1.6rem; font-weight: 800; margin-top: 0; margin-bottom: 30px; text-align: center; border-bottom: 2px solid #eee; padding-bottom: 20px;}
+  .pregunta-card { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin-bottom: 20px; transition: all 0.3s;}
+  .pregunta-enunciado { font-weight: bold; color: #333; font-size: 1.1rem; margin-top: 0; margin-bottom: 15px;}
+  
+  .alternativa-label { display: block; background: white; border: 1px solid #ccc; padding: 12px 15px; border-radius: 6px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s;}
+  .alternativa-label:hover { border-color: #003a70; background: #eef4fb;}
+  .alternativa-label input { margin-right: 10px; transform: scale(1.2); cursor: pointer;}
+  
+  .alt-correcta { background-color: #d4edda !important; border-color: #28a745 !important; color: #155724; font-weight: bold;}
+  .alt-incorrecta { background-color: #f8d7da !important; border-color: #dc3545 !important; color: #721c24; opacity: 0.8;}
+
+  .btn-enviar { width: 100%; background: #003a70; color: white; border: none; padding: 15px; font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.3s;}
+  .btn-enviar:hover { background: #002a52;}
+  
+  .feedback-box { margin-top: 15px; padding: 15px; background-color: #f0f7ff; border-left: 5px solid #003a70; border-radius: 6px; font-size: 0.95rem; color: #333; line-height: 1.5; }
+  .consejos-generales-box { margin-top: 25px; padding: 20px; background-color: #fffaf0; border: 2px solid #ffda75; border-radius: 8px; text-align: left; font-size: 0.95rem; color: #333; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+  .resultado-box { display: none; text-align: center; padding: 30px; border-radius: 8px; margin-bottom: 30px; border: 2px solid; }
+  .resultado-title { font-size: 2rem; font-weight: bold; margin: 0; }
+  .resultado-sub { font-size: 1.1rem; margin-top: 10px; color: #555;}
+</style>
+
+<div class="eval-container">
+  <h2 class="curso-titulo">Evaluación: <%= curso.title %></h2>
+
+  <div id="resultado-container" class="resultado-box" style="<%= yaEvaluado ? 'display: block;' : 'display: none;' %>">
+      <h3 id="resultado-title" class="resultado-title">
+         <%= yaEvaluado ? `${Math.round(notaGuardada)}% de Aprobación` : '' %>
+      </h3>
+      <p id="resultado-sub" class="resultado-sub">
+         <% if (yaEvaluado) { %>
+             <% if (notaGuardada >= 80) { %>
+                 ¡Felicidades! Has aprobado el curso.
+             <% } else { %>
+                 No has alcanzado el puntaje mínimo. Deberás repasar y volver a intentarlo.
+             <% } %>
+         <% } %>
+      </p>
+
+      <% if (curso.commercial_tips) { %>
+        <div id="consejos-extras" class="consejos-generales-box" style="display: <%= (yaEvaluado && notaGuardada >= 80) ? 'block' : 'none' %>;">
+          <h3 style="margin-top: 0; color: #003a70; text-align: center; border-bottom: 1px solid #ffda75; padding-bottom: 10px;">Material de Apoyo Comercial</h3>
+          <%- curso.commercial_tips %>
+        </div>
+      <% } %>
+      
+      <div style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
+          <button class="btn-enviar" style="width: auto; padding: 10px 30px; background: #82D200;" onclick="window.location.href='/cursos'">Volver a Cursos</button>
+          <button id="btn-reintentar" class="btn-enviar" style="width: auto; padding: 10px 30px; background: #e74c3c; display: <%= yaEvaluado ? 'inline-block' : 'none' %>;" onclick="reintentarCurso()">Repetir curso</button>
+      </div>
+  </div>
+
+  <% 
+    let isAprobado = typeof correctasIds !== 'undefined' && correctasIds.length > 0;
+  %>
+
+  <form id="formExamen" style="<%= (yaEvaluado && notaGuardada < 80) ? 'display: none;' : 'display: block;' %>">
+    <% preguntas.forEach((p, index) => { %>
+      <div class="pregunta-card" id="card_<%= p.id %>">
+        <p class="pregunta-enunciado"><%= index + 1 %>. <%= p.question_text %></p>
+        
+        <% p.alternativas.forEach(alt => { 
+             let extraClass = (isAprobado && correctasIds.includes(alt.id)) ? 'alt-correcta' : '';
+        %>
+          <label class="alternativa-label <%= extraClass %>" id="label_alt_<%= alt.id %>">
+            <input type="radio" name="preg_<%= p.id %>" value="<%= alt.id %>" required <%= isAprobado ? 'disabled' : '' %>>
+            <%= alt.text %>
+          </label>
+        <% }) %>
+
+        <% if (p.feedback) { %>
+          <div class="feedback-box" id="feedback_<%= p.id %>" style="display: <%= isAprobado ? 'block' : 'none' %>;">
+            <%= p.feedback %>
+          </div>
+        <% } %>
+      </div>
+    <% }) %>
+
+    <button type="submit" class="btn-enviar" id="btn-submit" style="<%= isAprobado ? 'display: none;' : 'display: block;' %>">Enviar Evaluación</button>
+  </form>
+</div>
+
+<script>
+  const cursoId = "<%= curso.id %>";
+  const form = document.getElementById('formExamen');
+  const radios = document.querySelectorAll('input[type="radio"]');
+
+  const yaEvaluadoLocal = <%= yaEvaluado ? 'true' : 'false' %>;
+  const notaLocal = <%= notaGuardada || 0 %>;
+
+  if (yaEvaluadoLocal) {
+       const resBox = document.getElementById('resultado-container');
+       const resTitle = document.getElementById('resultado-title');
+       if (notaLocal >= 80) {
+            resBox.style.borderColor = '#28a745';
+            resBox.style.backgroundColor = '#d4edda';
+            resTitle.style.color = '#155724';
+       } else {
+            resBox.style.borderColor = '#dc3545';
+            resBox.style.backgroundColor = '#f8d7da';
+            resTitle.style.color = '#721c24';
+       }
+  }
+
+  // 1. RECUPERAR RESPUESTAS
+  if (!yaEvaluadoLocal) {
+      window.addEventListener('DOMContentLoaded', () => {
+        radios.forEach(radio => {
+            const savedValue = localStorage.getItem(`curso_${cursoId}_${radio.name}`);
+            if (savedValue === radio.value) radio.checked = true;
+            
+            radio.addEventListener('change', (e) => {
+                localStorage.setItem(`curso_${cursoId}_${e.target.name}`, e.target.value);
+            });
+        });
+      });
+  }
+
+  // 2. ENVIAR FORMULARIO POR AJAX
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btnSubmit = document.getElementById('btn-submit');
+    btnSubmit.innerText = "Enviando...";
+    btnSubmit.disabled = true;
+
+    const formData = new FormData(form);
+    const payload = {};
+    formData.forEach((value, key) => { payload[key] = value; });
+
+    try {
+        const res = await fetch(`/cursos/api/evaluacion/${cursoId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            radios.forEach(r => localStorage.removeItem(`curso_${cursoId}_${r.name}`));
+
+            const resBox = document.getElementById('resultado-container');
+            const resTitle = document.getElementById('resultado-title');
+            const resSub = document.getElementById('resultado-sub');
+            const btnReintentar = document.getElementById('btn-reintentar');
+            
+            resBox.style.display = 'block';
+            resTitle.innerText = `${data.porcentaje}% de Aprobación`;
+            
+            if (data.porcentaje >= 80) {
+                resBox.style.borderColor = '#28a745';
+                resBox.style.backgroundColor = '#d4edda';
+                resTitle.style.color = '#155724';
+                resSub.innerText = "¡Felicidades! Has aprobado el curso.";
+                
+                form.style.display = 'block';
+                btnSubmit.style.display = 'none';
+                radios.forEach(r => r.disabled = true);
+                btnReintentar.style.display = 'inline-block';
+                
+                const consejosBox = document.getElementById('consejos-extras');
+                if (consejosBox) consejosBox.style.display = 'block';
+                
+                if (data.mostrarFeedback && data.respuestasCorrectas) {
+                    Object.keys(data.respuestasCorrectas).forEach(pregId => {
+                        const correctaId = data.respuestasCorrectas[pregId];
+                        const idSeleccionada = payload[`preg_${pregId}`];
+
+                        const labelCorrecta = document.getElementById(`label_alt_${correctaId}`);
+                        if(labelCorrecta) labelCorrecta.classList.add('alt-correcta');
+
+                        if (idSeleccionada != correctaId) {
+                            const labelMala = document.getElementById(`label_alt_${idSeleccionada}`);
+                            if(labelMala) labelMala.classList.add('alt-incorrecta');
+                        }
+                    });
+                    document.querySelectorAll('.feedback-box').forEach(box => box.style.display = 'block');
+                }
+            } else {
+                resBox.style.borderColor = '#dc3545';
+                resBox.style.backgroundColor = '#f8d7da';
+                resTitle.style.color = '#721c24';
+                resSub.innerText = "No has alcanzado el puntaje mínimo. Deberás repasar y volver a intentarlo. (Las respuestas correctas se mostrarán únicamente al aprobar el curso).";
+                
+                btnReintentar.style.display = 'inline-block';
+                form.style.display = 'none'; 
+            }
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Ocurrió un error al enviar la evaluación.");
+        btnSubmit.innerText = "Enviar Evaluación";
+        btnSubmit.disabled = false;
+    }
+  });
+
+  // 3. FUNCIÓN PARA REINTENTAR / REPETIR
+  async function reintentarCurso() {
+      if (confirm("¿Seguro que deseas reintentarlo? (Se reiniciará tu progreso de video)")) {
+          try {
+              const res = await fetch(`/cursos/api/reintentar/${cursoId}`, { method: 'POST' });
+              const data = await res.json();
+              if (data.success) {
+                  window.location.href = `/cursos/reproductor/${cursoId}`;
+              }
+          } catch (e) {
+              alert("Error al reiniciar el curso.");
+          }
+      }
+  }
+</script>
