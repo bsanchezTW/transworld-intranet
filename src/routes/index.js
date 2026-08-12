@@ -5,17 +5,21 @@ const db = require("../db");
 const multer = require("multer");
 const fileStorage = require("../services/fileStorage");
 const userPhotoStorage = require("../services/userPhotoStorage");
+const { UPLOAD_LIMITS_BYTES } = require("../config/uploadLimits");
 const { getIndicadores } = require("../services/usdService");
 const { getWeather } = require("../services/weatherService");
 const linkedinService = require("../services/linkedinService");
 const { ROLES, isAdministrador, normalizeRole } = require("../constants/roles");
+const { getLocale, getCountryConfig } = require("../config/country");
+const { isFeatureEnabled } = require("../config/features");
 const requireRole = require("../middlewares/requireRole");
+const requireFeature = require("../middlewares/requireFeature");
 const { toTitleCase } = require("../utils/formatName");
 const {
   toTelHref,
   formatPhoneForDisplay,
-  validateChileMobilePhone,
-} = require("../utils/phoneChile");
+  validateMobilePhone,
+} = require("../utils/phone");
 const { sendMail } = require("../services/mailer");
 const attachmentModel = require("../services/noticias/attachmentModel");
 const {
@@ -33,7 +37,20 @@ const {
 } = require("../utils/schemaMappers");
 
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: UPLOAD_LIMITS_BYTES.COURSE_MATERIAL },
+});
+const uploadProfilePhoto = multer({
+  storage,
+  limits: { fileSize: UPLOAD_LIMITS_BYTES.PROFILE_PHOTO },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype || !file.mimetype.startsWith("image/")) {
+      return cb(new Error("Formato de imagen no permitido."));
+    }
+    return cb(null, true);
+  },
+});
 
 // ==========================================
 // SISTEMA DE CACHÉ
@@ -53,7 +70,9 @@ let cachedIndicadores = {
   uf: { valor: null, tendencia: "igual" },
 };
 let cachedClima = { temp: "--", icon: "⏳", desc: "Cargando...", sunset: null, manana: null };
-let cachedLinkedin = linkedinService.getPlaceholderPosts();
+let cachedLinkedin = isFeatureEnabled("linkedinFeed")
+  ? linkedinService.getPlaceholderPosts()
+  : [];
 let cachedEventosPool = [];
 let cachedEventosCarouselAt = 0;
 let eventosCarouselRefreshPromise = null;
@@ -72,7 +91,9 @@ function shuffleArray(items) {
 
 async function updateDataBackground() {
   try {
-    const nuevosIndicadores = await getIndicadores();
+    const nuevosIndicadores = await getIndicadores({
+      includeUf: isFeatureEnabled("chileUfIndicator"),
+    });
     if (nuevosIndicadores) {
       const calcularTendencia = (ind) => {
         if (!ind || !ind.valor || !ind.valorAyer) return "igual";
@@ -106,6 +127,11 @@ async function updateDataBackground() {
     console.error("[CLIMA] Error:", err.message);
   }
 
+  if (!isFeatureEnabled("linkedinFeed")) {
+    cachedLinkedin = [];
+    return;
+  }
+
   try {
     const posts = await linkedinService.getCompanyPosts();
     if (posts && posts.length > 0) {
@@ -116,7 +142,7 @@ async function updateDataBackground() {
   }
 }
 
-if (process.env.LINKEDIN_CLIENT_ID) {
+if (isFeatureEnabled("linkedinFeed") && process.env.LINKEDIN_CLIENT_ID) {
   console.log(
     "[LINKEDIN] OAuth callback:",
     linkedinService.getRedirectUri(),
@@ -286,7 +312,7 @@ router.get("/", async (req, res) => {
     const hoy = new Date();
     const mes = hoy.getMonth() + 1;
     const diaHoy = hoy.getDate();
-    const mesNombreRaw = new Intl.DateTimeFormat("es-CL", {
+    const mesNombreRaw = new Intl.DateTimeFormat(getLocale(), {
       month: "long",
     }).format(hoy);
     const mesNombre =
@@ -300,7 +326,7 @@ router.get("/", async (req, res) => {
         : horaActual < 19
           ? "Buenas tardes"
           : "Buenas noches";
-    const fechaLargaRaw = new Intl.DateTimeFormat("es-CL", {
+    const fechaLargaRaw = new Intl.DateTimeFormat(getLocale(), {
       weekday: "long",
       day: "numeric",
       month: "long",
@@ -378,7 +404,8 @@ router.get("/", async (req, res) => {
       : null;
 
     res.render("home", {
-      titulo: "Home | Intranet Transworld Chile",
+      // El sufijo por país lo añade formatPageTitle en la vista.
+      titulo: "Home",
       finanzas: dataFinanciera,
       clima: dataClima,
       saludo,
@@ -392,7 +419,7 @@ router.get("/", async (req, res) => {
       mixedCarousel: mixedFeed,
       noticiaDestacada,
       noticiasLista,
-      linkedinFeed: dataLinkedin,
+      linkedinFeed: isFeatureEnabled("linkedinFeed") ? dataLinkedin : [],
       platoDelDia,
       platoManana,
       menuSemanal: platosRows,
@@ -526,7 +553,7 @@ router.post("/perfil", async (req, res) => {
   const lastName = toTitleCase(req.body.last_name);
   const fechaNacimiento =
     String(req.body.birth_date || req.body.fecha_nacimiento || "").trim() || null;
-  const telefonoCheck = validateChileMobilePhone(req.body.phone || req.body.telefono, {
+  const telefonoCheck = validateMobilePhone(req.body.phone || req.body.telefono, {
     required: true,
   });
 
@@ -573,7 +600,7 @@ router.post("/perfil", async (req, res) => {
   }
 });
 
-router.post("/perfil/foto", upload.single("foto_perfil"), async (req, res) => {
+router.post("/perfil/foto", uploadProfilePhoto.single("foto_perfil"), async (req, res) => {
   if (!req.session.user || !req.file) return res.redirect("/perfil");
   try {
     const userId = req.session.user.id;
@@ -906,10 +933,9 @@ router.post(
 
       let imageUrl = current_url;
       if (req.file) {
-        if (current_url && current_url.includes("/uploads/")) {
+        if (current_url) {
           try {
-            const publicId = current_url.replace(/^\/uploads\//, "");
-            await fileStorage.deleteFile(publicId);
+            await fileStorage.deleteFile(current_url);
           } catch (err) {
             console.error("Error al intentar borrar imagen antigua:", err);
           }
@@ -1521,6 +1547,12 @@ router.post(
     const { url_pc, url_apk, url_web } = req.body;
 
     try {
+      const { rows: existingRows } = await db.query(
+        "SELECT icon_url, url_ios FROM applications WHERE id = $1",
+        [id],
+      );
+      const existing = existingRows[0] || {};
+
       let updateQuery = `UPDATE applications SET name = $1, description = $2, url_pc = $3, url_apk = $4, url_web = $5, updated_at = NOW(), notified = false`;
       let queryParams = [
         name,
@@ -1530,12 +1562,14 @@ router.post(
         url_web || null,
       ];
       let paramIndex = 6;
+      const obsoleteFiles = [];
 
       if (req.files && req.files["instructivo_ios"]) {
         const result = await subirInstructivoIos(req.files["instructivo_ios"][0]);
         updateQuery += `, url_ios = $${paramIndex}`;
         queryParams.push(result.secure_url);
         paramIndex++;
+        if (existing.url_ios) obsoleteFiles.push(existing.url_ios);
       }
 
       if (req.files && req.files["icon"]) {
@@ -1547,12 +1581,20 @@ router.post(
         updateQuery += `, icon_url = $${paramIndex}`;
         queryParams.push(result.secure_url);
         paramIndex++;
+        if (existing.icon_url) obsoleteFiles.push(existing.icon_url);
       }
 
       updateQuery += ` WHERE id = $${paramIndex}`;
       queryParams.push(id);
 
       await db.query(updateQuery, queryParams);
+
+      if (obsoleteFiles.length) {
+        fileStorage.deleteFiles(obsoleteFiles).catch((err) => {
+          console.warn("[Apps] Limpieza de archivos antiguos incompleta:", err.message || err);
+        });
+      }
+
       res.redirect("/apps?ok=Aplicación+actualizada+correctamente");
     } catch (err) {
       console.error("Error al editar aplicación:", err);
@@ -1570,7 +1612,22 @@ router.post(
   async (req, res) => {
     const { id } = req.params;
     try {
+      const { rows } = await db.query(
+        "SELECT icon_url, url_ios FROM applications WHERE id = $1",
+        [id],
+      );
+      const app = rows[0];
+
       await db.query("DELETE FROM applications WHERE id = $1", [id]);
+
+      if (app) {
+        fileStorage
+          .deleteFiles([app.icon_url, app.url_ios])
+          .catch((err) => {
+            console.warn("[Apps] Limpieza de archivos incompleta:", err.message || err);
+          });
+      }
+
       res.redirect("/apps?ok=Aplicación+eliminada+con+éxito");
     } catch (err) {
       console.error("Error al eliminar aplicación:", err);
@@ -1582,9 +1639,13 @@ router.post(
 // ==========================================
 // LINKEDIN
 // ==========================================
-router.get("/auth/linkedin/renovar", (req, res) => {
-  res.redirect(linkedinService.getAuthorizationUrl(req));
-});
+router.get(
+  "/auth/linkedin/renovar",
+  requireFeature("linkedinFeed"),
+  (req, res) => {
+    res.redirect(linkedinService.getAuthorizationUrl(req));
+  },
+);
 
 // ==========================================
 // NOTIFICACIÓN DE APP
@@ -1632,7 +1693,7 @@ router.post("/apps/notificar/:id", requireRole.administrador(), async (req, res)
       `;
 
       await sendMail({
-        to: process.env.MAIL_FROM || "noreply@transworld.cl",
+        to: process.env.MAIL_FROM || getCountryConfig().noReplyEmail,
         bcc: listaCorreos,
         subject: `Actualización: ${nombreApp}`,
         html: htmlCorreo,

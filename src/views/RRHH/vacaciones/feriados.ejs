@@ -29,18 +29,12 @@
   <div class="vac-panel">
     <div class="vac-panel-head">Agregar feriado</div>
     <form class="vac-form" action="/RRHH/vacaciones/feriados" method="POST">
-      <div class="vac-form-grid-2">
-        <div class="campo">
-          <label for="country_code">País *</label>
-          <select id="country_code" name="country_code" required>
-            <option value="CL">Chile</option>
-            <option value="PE">Perú</option>
-          </select>
-        </div>
-        <div class="campo">
-          <label for="holiday_date">Fecha *</label>
-          <input type="date" id="holiday_date" name="holiday_date" required>
-        </div>
+      <%# El país no se elige: esta instancia solo administra sus propios
+          feriados. El servidor rechaza cualquier otro. %>
+      <input type="hidden" name="country_code" value="<%= country %>">
+      <div class="campo">
+        <label for="holiday_date">Fecha *</label>
+        <input type="date" id="holiday_date" name="holiday_date" required>
       </div>
       <div class="campo">
         <label for="name">Nombre *</label>
@@ -50,56 +44,29 @@
     </form>
   </div>
 
-  <!-- Listados -->
-  <div class="vac-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
-    <div class="vac-panel">
-      <div class="vac-panel-head">Chile (<%= holidaysCL.length %>)</div>
-      <% if (!holidaysCL.length) { %>
-        <p class="vac-empty">Sin feriados.</p>
-      <% } else { %>
-        <table class="vac-table">
-          <thead><tr><th>Fecha</th><th>Nombre</th><th></th></tr></thead>
-          <tbody>
-            <% holidaysCL.forEach(h => { %>
-              <tr>
-                <td><%= fmt(h.holiday_date) %></td>
-                <td><%= h.name %></td>
-                <td>
-                  <form class="vac-inline-form" action="/RRHH/vacaciones/feriados/<%= h.id %>/eliminar" method="POST"
-                        onsubmit="return confirm('¿Eliminar feriado?');">
-                    <button type="submit" class="vac-btn vac-btn-cancel vac-btn-sm">Eliminar</button>
-                  </form>
-                </td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
-      <% } %>
-    </div>
-
-    <div class="vac-panel">
-      <div class="vac-panel-head">Perú (<%= holidaysPE.length %>)</div>
-      <% if (!holidaysPE.length) { %>
-        <p class="vac-empty">Sin feriados.</p>
-      <% } else { %>
-        <table class="vac-table">
-          <thead><tr><th>Fecha</th><th>Nombre</th><th></th></tr></thead>
-          <tbody>
-            <% holidaysPE.forEach(h => { %>
-              <tr>
-                <td><%= fmt(h.holiday_date) %></td>
-                <td><%= h.name %></td>
-                <td>
-                  <form class="vac-inline-form" action="/RRHH/vacaciones/feriados/<%= h.id %>/eliminar" method="POST"
-                        onsubmit="return confirm('¿Eliminar feriado?');">
-                    <button type="submit" class="vac-btn vac-btn-cancel vac-btn-sm">Eliminar</button>
-                  </form>
-                </td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
-      <% } %>
-    </div>
+  <!-- Listado del país de la instancia -->
+  <div class="vac-panel">
+    <div class="vac-panel-head"><%= countryConfig.name %> (<%= holidays.length %>)</div>
+    <% if (!holidays.length) { %>
+      <p class="vac-empty">Sin feriados.</p>
+    <% } else { %>
+      <table class="vac-table">
+        <thead><tr><th>Fecha</th><th>Nombre</th><th></th></tr></thead>
+        <tbody>
+          <% holidays.forEach(h => { %>
+            <tr>
+              <td><%= fmt(h.holiday_date) %></td>
+              <td><%= h.name %></td>
+              <td>
+                <form class="vac-inline-form" action="/RRHH/vacaciones/feriados/<%= h.id %>/eliminar" method="POST"
+                      onsubmit="return confirm('¿Eliminar feriado?');">
+                  <button type="submit" class="vac-btn vac-btn-cancel vac-btn-sm">Eliminar</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
   </div>
 </div>

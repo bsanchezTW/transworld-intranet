@@ -2,16 +2,16 @@
 //
 // Regla del módulo: el destinatario ve el contenido AL ABRIR el correo, sin
 // descargar nada. Las imágenes (y las páginas rasterizadas del PDF) viajan
-// embebidas como data-URI: la ruta /media de producción aún redirige a /login
-// para clientes sin sesión (Gmail, Outlook), así que una URL firmada no sirve.
-// El Word va convertido a HTML dentro del propio mensaje.
+// embebidas como data-URI para que el mensaje no dependa de cookies, bloqueos
+// de contenido remoto ni disponibilidad posterior del proxy /media. El Word va
+// convertido a HTML dentro del propio mensaje.
 
 const path = require("path");
 const fs = require("fs");
 const ejs = require("ejs");
 
 const { sendMail } = require("../mailer");
-const sharepoint = require("../sharepointService");
+const storage = require("../storage/storageService");
 const fileStorage = require("../fileStorage");
 const signedMedia = require("../media/signedMedia");
 const attachmentModel = require("./attachmentModel");
@@ -19,6 +19,7 @@ const documentCache = require("./documentCache");
 const emailStyles = require("./emailStyles");
 const pdfRenderer = require("./pdfRenderer");
 const repository = require("./noticiaRepository");
+const { getLocale, getCountryConfig } = require("../../config/country");
 const { sanitizeArticleHtml, htmlToText, excerptFrom } = require("../../utils/sanitizeContent");
 
 const TEMPLATE_PATH = path.join(__dirname, "..", "..", "views", "emails", "noticia.ejs");
@@ -32,13 +33,19 @@ const PREVIEW_FOLDER = "noticias_adjuntos/previews";
 const MAX_EMBED_BYTES = 1.5 * 1024 * 1024;
 
 function baseUrl() {
-  return (process.env.APP_BASE_URL || "https://intranet.transworld.cl").replace(/\/+$/, "");
+  // Sin fallback a un dominio fijo: un correo de Perú nunca debe enlazar a
+  // intranet.transworld.cl. APP_BASE_URL es obligatoria y la valida config/env.
+  return process.env.APP_BASE_URL.replace(/\/+$/, "");
 }
 
 function formatFecha(date) {
   const value = date ? new Date(date) : new Date();
   return value
-    .toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" })
+    .toLocaleDateString(getLocale(), {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })
     .replace(/^\w/, (char) => char.toUpperCase());
 }
 
@@ -66,7 +73,7 @@ function mimeFromPath(filePath) {
 async function loadAsDataUri(relativePath) {
   if (!relativePath) return null;
   try {
-    const { buffer, contentType } = await sharepoint.downloadFile(relativePath);
+    const { buffer, contentType } = await storage.downloadFile(relativePath);
     return toDataUri(buffer, contentType || mimeFromPath(relativePath));
   } catch (err) {
     console.warn(
@@ -87,17 +94,17 @@ function logoDataUri() {
 }
 
 /**
- * Rasteriza el PDF (o usa la miniatura de Graph) y deja las páginas listas
+ * Usa previews persistidos o rasteriza localmente el PDF y deja las páginas listas
  * como data-URI para el correo.
  */
 async function buildPdfEmailPages(item) {
   const pages = [];
 
-  // 1) Páginas ya guardadas en SharePoint (descartar basura < 8 KB).
+  // 1) Páginas ya guardadas en Storage (descartar basura < 8 KB).
   if (Array.isArray(item.preview_pages) && item.preview_pages.length) {
     for (const page of item.preview_pages.slice(0, MAX_EMAIL_PDF_PAGES)) {
       try {
-        const { buffer, contentType } = await sharepoint.downloadFile(page.path);
+        const { buffer, contentType } = await storage.downloadFile(page.path);
         if (!buffer || buffer.length < 8 * 1024) continue;
         const dataUri = toDataUri(buffer, contentType || mimeFromPath(page.path));
         if (dataUri) {
@@ -136,7 +143,7 @@ async function buildPdfEmailPages(item) {
   // 2) Rasterizado local (proceso hijo por página).
   console.log(`[Noticias] Rasterizando PDF "${item.name}" para el correo…`);
   try {
-    const { buffer } = await sharepoint.downloadFile(item.public_id);
+    const { buffer } = await storage.downloadFile(item.public_id);
     const { pages: numPages, excerpt, previews } = await pdfRenderer.analyze(buffer);
 
     if (previews.length) {
@@ -151,6 +158,7 @@ async function buildPdfEmailPages(item) {
             pagePreview.buffer,
             PREVIEW_FOLDER,
             `${baseName}-p${i + 1}.${ext}`,
+            { contentType: pagePreview.mime || "image/png" },
           );
           savedPages.push({
             path: saved.public_id,
@@ -192,25 +200,6 @@ async function buildPdfEmailPages(item) {
       `[Noticias] Rasterizado local de "${item.name}" falló:`,
       err.message || err,
     );
-  }
-
-  // 3) Miniatura de Graph (al menos la portada visible).
-  if (!pages.length) {
-    try {
-      const thumb = await sharepoint.downloadThumbnail(item.public_id, "large");
-      if (thumb?.buffer) {
-        const dataUri = toDataUri(thumb.buffer, thumb.contentType || "image/jpeg");
-        if (dataUri) {
-          console.log(`[Noticias] PDF "${item.name}": usando miniatura de SharePoint.`);
-          pages.push({ url: dataUri, width: null, height: null, page: 1 });
-        }
-      }
-    } catch (err) {
-      console.warn(
-        `[Noticias] Miniatura Graph de "${item.name}" falló:`,
-        err.message || err,
-      );
-    }
   }
 
   return { pages, expanded: null };
@@ -312,7 +301,7 @@ async function buildEmailHtml(noticia) {
 
   const contenidoLimpio = sanitizeArticleHtml(noticia.content);
 
-  // Portada también embebida: /media redirige a login en producción.
+  // Portada también embebida para no depender de la carga remota del cliente.
   let coverUrl = null;
   if (noticia.image) {
     const coverPath = signedMedia.toRelativePath(noticia.image) || noticia.image;
@@ -371,7 +360,7 @@ async function enviarNoticia(noticia, opciones = {}) {
   const html = await buildEmailHtml(noticia);
 
   await sendMail({
-    to: process.env.MAIL_FROM || "noreply@transworld.cl",
+    to: process.env.MAIL_FROM || getCountryConfig().noReplyEmail,
     bcc: destinatarios,
     subject: noticia.title,
     html,

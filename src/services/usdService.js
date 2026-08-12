@@ -56,32 +56,39 @@ async function fetchIndicator(codigo) {
   }
 }
 
-async function getIndicadores() {
+async function getIndicadores({ includeUf = true } = {}) {
   const now = Date.now();
 
-  // Si el caché es válido, devolverlo
+  // Si el caché es válido, devolverlo (ajustando UF si esta instancia no la usa)
   if (cache.data && (now - cache.fetchedAt < CACHE_TTL_MS)) {
-    return cache.data;
+    if (includeUf) return cache.data;
+    return {
+      ...cache.data,
+      uf: { valor: null, valorAyer: null },
+    };
   }
 
   try {
-    // Consultamos los 3 en paralelo
-    const [dolar, euro, uf] = await Promise.all([
-      fetchIndicator('dolar'),
-      fetchIndicator('euro'),
-      fetchIndicator('uf')
-    ]);
+    const fetches = [fetchIndicator('dolar'), fetchIndicator('euro')];
+    if (includeUf) fetches.push(fetchIndicator('uf'));
 
-    // Si alguno falló (null), intentamos usar el valor del caché antiguo si existe, o ponemos 0
+    const [dolar, euro, uf] = await Promise.all(fetches);
+
     const result = {
       dolar: dolar || (cache.data ? cache.data.dolar : { valor: 0, valorAyer: 0 }),
       euro: euro || (cache.data ? cache.data.euro : { valor: 0, valorAyer: 0 }),
-      uf: uf || (cache.data ? cache.data.uf : { valor: 0, valorAyer: 0 })
+      uf: includeUf
+        ? (uf || (cache.data ? cache.data.uf : { valor: 0, valorAyer: 0 }))
+        : { valor: null, valorAyer: null },
     };
 
-    // Solo actualizamos el caché si al menos uno trajo datos reales
     if (dolar || euro || uf) {
-        cache.data = result;
+        cache.data = includeUf
+          ? result
+          : {
+              ...result,
+              uf: cache.data?.uf || { valor: 0, valorAyer: 0 },
+            };
         cache.fetchedAt = now;
     }
 
@@ -89,12 +96,14 @@ async function getIndicadores() {
 
   } catch (err) {
     console.error('Error fetching indicadores:', err.message);
-    // Si falla todo, devolver caché viejo o ceros
-    if (cache.data) return cache.data;
+    if (cache.data) {
+      if (includeUf) return cache.data;
+      return { ...cache.data, uf: { valor: null, valorAyer: null } };
+    }
     return {
       dolar: { valor: 0, valorAyer: 0 },
       euro: { valor: 0, valorAyer: 0 },
-      uf: { valor: 0, valorAyer: 0 }
+      uf: includeUf ? { valor: 0, valorAyer: 0 } : { valor: null, valorAyer: null },
     };
   }
 }

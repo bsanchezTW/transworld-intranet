@@ -16,13 +16,33 @@ const holidayService = require("../services/vacations/holidayService");
 const {
   countBusinessMinutes,
   formatBusinessDuration,
-  getSantiagoDateOnly,
+  getLocalDateOnly,
+  getTZ,
 } = require("../utils/businessHours");
+const { getCurrentCountry, getCountryConfig } = require("../config/country");
+const { UPLOAD_LIMITS_BYTES } = require("../config/uploadLimits");
 
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: UPLOAD_LIMITS_BYTES.TICKET_ATTACHMENT },
+});
 
-const TICKET_LIST_SQL = `
+/**
+ * Las marcas de tiempo se guardan en UTC y se muestran en la hora local de la
+ * instancia. La zona sale de la configuración de país, no de un literal: Chile
+ * es America/Santiago y Perú America/Lima.
+ *
+ * Va interpolada (no como parámetro) porque AT TIME ZONE exige un literal en el
+ * plan de la consulta; el valor proviene de una lista cerrada en
+ * config/country.js, nunca de entrada del usuario.
+ */
+function localTs(column, alias) {
+  return `${column} AT TIME ZONE 'UTC' AT TIME ZONE '${getTZ()}' AS ${alias}`;
+}
+
+function ticketListSql() {
+  return `
       SELECT t.id,
              t.title,
              t.category,
@@ -33,12 +53,16 @@ const TICKET_LIST_SQL = `
              t.read_by_admin,
              t.read_by_user,
              t.assigned_to,
-             t.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago' AS created_at,
-             (SELECT MAX(created_at) FROM ticket_replies WHERE ticket_id = t.id) AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago' AS fecha_ultima_respuesta
+             ${localTs("t.created_at", "created_at")},
+             ${localTs(
+               "(SELECT MAX(created_at) FROM ticket_replies WHERE ticket_id = t.id)",
+               "fecha_ultima_respuesta",
+             )}
       FROM support_tickets t
 `;
+}
 
-const EMAIL_SUPPORT = "soporte@transworld.cl";
+const EMAIL_SUPPORT = getCountryConfig().supportEmail;
 const NOTIFICATION_COUNT_TTL_MS = 30 * 1000;
 
 function getNotificationCacheKey(user) {
@@ -182,9 +206,9 @@ router.get("/tickets", async (req, res) => {
   let params = [];
 
   if (isAdministrador(user.role)) {
-    sql = `${TICKET_LIST_SQL} ORDER BY t.created_at DESC`;
+    sql = `${ticketListSql()} ORDER BY t.created_at DESC`;
   } else {
-    sql = `${TICKET_LIST_SQL} WHERE t.requester_email = $1 OR t.requester_name = $1 ORDER BY t.created_at DESC`;
+    sql = `${ticketListSql()} WHERE t.requester_email = $1 OR t.requester_name = $1 ORDER BY t.created_at DESC`;
     params = [userEmail];
   }
 
@@ -197,14 +221,19 @@ router.get("/tickets", async (req, res) => {
     );
     if (ticketsWithResponse.length > 0) {
       const rangeStart = ticketsWithResponse.reduce((min, t) => {
-        const d = getSantiagoDateOnly(new Date(t.created_at));
+        const d = getLocalDateOnly(new Date(t.created_at));
         return d < min ? d : min;
-      }, getSantiagoDateOnly(new Date(ticketsWithResponse[0].created_at)));
+      }, getLocalDateOnly(new Date(ticketsWithResponse[0].created_at)));
       const rangeEnd = ticketsWithResponse.reduce((max, t) => {
-        const d = getSantiagoDateOnly(new Date(t.fecha_ultima_respuesta));
+        const d = getLocalDateOnly(new Date(t.fecha_ultima_respuesta));
         return d > max ? d : max;
-      }, getSantiagoDateOnly(new Date(ticketsWithResponse[0].fecha_ultima_respuesta)));
-      holidaySet = await holidayService.getHolidaySet("CL", rangeStart, rangeEnd);
+      }, getLocalDateOnly(new Date(ticketsWithResponse[0].fecha_ultima_respuesta)));
+      // Los feriados que descuenta el SLA son los del país de la instancia.
+      holidaySet = await holidayService.getHolidaySet(
+        getCurrentCountry(),
+        rangeStart,
+        rangeEnd,
+      );
     }
 
     const tickets = results.map((ticket) => {
@@ -554,17 +583,17 @@ router.get("/tickets/:id", async (req, res) => {
     SELECT id, title, description, category, priority, status,
            requester_name, requester_email, attachments, read_by_admin, read_by_user,
            assigned_to, auto_closed,
-           created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago' AS created_at,
-           resolved_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago' AS fecha_resolucion,
-           closed_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago' AS fecha_cierre
+           ${localTs("created_at", "created_at")},
+           ${localTs("resolved_at", "fecha_resolucion")},
+           ${localTs("closed_at", "fecha_cierre")}
     FROM support_tickets WHERE id = $1
   `;
 
   const sqlRespuestas = `
-    SELECT id, message, sender, file_url, file_name, file_type, attachments, 
-           created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago' AS fecha 
-    FROM ticket_replies 
-    WHERE ticket_id = $1 
+    SELECT id, message, sender, file_url, file_name, file_type, attachments,
+           ${localTs("created_at", "fecha")}
+    FROM ticket_replies
+    WHERE ticket_id = $1
     ORDER BY created_at ASC
   `;
 

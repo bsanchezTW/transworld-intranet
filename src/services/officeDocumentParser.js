@@ -2,6 +2,7 @@ const path = require("path");
 const mammoth = require("mammoth");
 const WordExtractor = require("word-extractor");
 const officeExcelFormat = require("./officeExcelFormat");
+const { getLocale } = require("../config/country");
 
 const WORD_EXTENSIONS = new Set([".doc", ".docx"]);
 const EXCEL_EXTENSIONS = new Set([".xls", ".xlsx", ".xlsm"]);
@@ -32,7 +33,7 @@ function truncateExtractedText(text, filename) {
   if (text.length <= MAX_EXTRACTED_CHARS) return text;
   return (
     text.slice(0, MAX_EXTRACTED_CHARS) +
-    `\n\n[... contenido truncado: "${filename}" supera el límite de ${MAX_EXTRACTED_CHARS.toLocaleString("es-CL")} caracteres procesables ...]`
+    `\n\n[... contenido truncado: "${filename}" supera el límite de ${MAX_EXTRACTED_CHARS.toLocaleString(getLocale())} caracteres procesables ...]`
   );
 }
 

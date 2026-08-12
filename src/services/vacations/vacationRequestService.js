@@ -1,10 +1,10 @@
 const db = require("../../db");
-const { getStrategy } = require("./VacationEngine");
+const { getStrategy, resolveCountryForUser } = require("./VacationEngine");
 const balanceService = require("./vacationBalanceService");
 const holidayService = require("./holidayService");
 const { VACATION_STATUS, VACATION_ACTIVE_STATUSES } = require("../../constants/vacationStatuses");
 const { VACATION_CONFIG } = require("../../constants/vacationConfig");
-const { toDateOnly } = require("../../utils/vacationDateUtils");
+const { toDateOnly, todayInCountry } = require("../../utils/vacationDateUtils");
 
 /**
  * Lógica de solicitudes de vacaciones: creación con validación por país,
@@ -64,7 +64,7 @@ async function createRequest({
     };
   }
 
-  const country = user.employment_country || "CL";
+  const country = resolveCountryForUser(user);
   const strategy = getStrategy(country);
 
   await balanceService.recalculatePeriods(userId);
@@ -95,7 +95,7 @@ async function createRequest({
     holidays,
     availableBalance,
     existingActiveRequests,
-    referenceDate: toDateOnly(new Date()),
+    referenceDate: todayInCountry(),
     config: vacationConfigForValidation(),
     allowPast,
     primaryPeriod,
@@ -277,7 +277,7 @@ async function cancelRequest({ requestId, userId, isAdmin = false }) {
       return { ok: false, error: "No puedes cancelar solicitudes de otro colaborador." };
     }
 
-    const today = toDateOnly(new Date());
+    const today = todayInCountry();
     if (request.status === VACATION_STATUS.PENDING) {
       // Solo cambia estado.
     } else if (request.status === VACATION_STATUS.APPROVED) {
@@ -335,7 +335,7 @@ async function previewRequest({
     return { ok: false, error: "Perfil incompleto." };
   }
 
-  const country = user.employment_country || "CL";
+  const country = resolveCountryForUser(user);
   const strategy = getStrategy(country);
   const availableBalance = await balanceService.getAvailableBalance(userId);
   const existingActiveRequests = await getActiveRequests(userId);
@@ -364,7 +364,7 @@ async function previewRequest({
     holidays,
     availableBalance,
     existingActiveRequests,
-    referenceDate: toDateOnly(new Date()),
+    referenceDate: todayInCountry(),
     config: vacationConfigForValidation(),
     primaryPeriod,
     fifoPeriods,
@@ -449,7 +449,7 @@ async function listApprovedInRange({ startDate, endDate, userId } = {}) {
 }
 
 async function runDailyStatusTransitions() {
-  const today = toDateOnly(new Date());
+  const today = todayInCountry();
   const toProgress = await db.query(
     `UPDATE vacation_requests SET status = 'in_progress', updated_at = NOW()
      WHERE status = 'approved' AND start_date <= $1 AND end_date >= $1`,

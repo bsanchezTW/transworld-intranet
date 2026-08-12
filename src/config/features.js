@@ -1,0 +1,101 @@
+/**
+ * Capacidades disponibles por país.
+ *
+ * Una feature responde "¿esta instancia tiene esta capacidad?", no "¿esta
+ * instancia es Perú?". Así la lógica funcional deja de depender de la
+ * geografía y agregar un país es completar una columna, no repartir ifs.
+ *
+ * OJO: una feature apagada no es solo ocultar el botón. Hay que proteger
+ * también la ruta y la operación de backend — para eso está requireFeature en
+ * middlewares/requireFeature.js.
+ *
+ * Las diferencias que NO son features:
+ *   - mismo comportamiento con otros valores  → config/country.js
+ *   - misma capacidad con otras reglas        → policy (p. ej. VacationEngine)
+ */
+
+const { COUNTRY_CODES, getCurrentCountry } = require("./country");
+
+/** Claves de capacidad. Toda clave debe declararse para TODOS los países. */
+const FEATURE_KEYS = ["eventRegistration", "linkedinFeed", "chileUfIndicator"];
+
+const FEATURE_MATRIX = {
+  CL: {
+    // Formulario público de registro a eventos (/registro-forms) + envío de QR.
+    eventRegistration: true,
+    // Feed de comunicaciones LinkedIn (tabla linkedin_posts + OAuth).
+    linkedinFeed: true,
+    // Contador UF en home (mindicador.cl; indicador chileno).
+    chileUfIndicator: true,
+  },
+  PE: {
+    // Apagado: el registro de eventos usa un proyecto Supabase propio que hoy
+    // es único y compartido. Hasta que Perú tenga el suyo, el servicio es solo
+    // de Chile para no mezclar inscritos de los dos países.
+    eventRegistration: false,
+    // Sin tabla linkedin_posts ni tokens; no se sincroniza el feed.
+    linkedinFeed: false,
+    // UF es un indicador chileno; no aplica en la home de Perú.
+    chileUfIndicator: false,
+  },
+};
+
+// Chequeo de exhaustividad al cargar: equivale al Record<Country, Record<Key,
+// bool>> de TypeScript. Si alguien agrega una feature y olvida un país, la app
+// no arranca en vez de comportarse de forma indefinida en producción.
+for (const code of COUNTRY_CODES) {
+  const config = FEATURE_MATRIX[code];
+  if (!config) {
+    throw new Error(`FEATURE_MATRIX no declara el país ${code}.`);
+  }
+  const missing = FEATURE_KEYS.filter((key) => typeof config[key] !== "boolean");
+  if (missing.length) {
+    throw new Error(
+      `FEATURE_MATRIX[${code}] no declara: ${missing.join(", ")}.`,
+    );
+  }
+  const unknown = Object.keys(config).filter((key) => !FEATURE_KEYS.includes(key));
+  if (unknown.length) {
+    throw new Error(
+      `FEATURE_MATRIX[${code}] declara claves que no están en FEATURE_KEYS: ${unknown.join(", ")}.`,
+    );
+  }
+}
+
+function getFeatures(countryCode = getCurrentCountry()) {
+  const code = String(countryCode || "").toUpperCase();
+  const features = FEATURE_MATRIX[code];
+  if (!features) {
+    throw new Error(`País sin features declaradas: ${countryCode}`);
+  }
+  return features;
+}
+
+function isFeatureEnabled(feature, countryCode = getCurrentCountry()) {
+  if (!FEATURE_KEYS.includes(feature)) {
+    throw new Error(
+      `Feature desconocida: "${feature}". Agrégala a FEATURE_KEYS y a todos los países.`,
+    );
+  }
+  return getFeatures(countryCode)[feature];
+}
+
+/** Lanza si la capacidad no existe en esta instancia. Para backend/jobs. */
+function requireFeature(feature, countryCode = getCurrentCountry()) {
+  if (!isFeatureEnabled(feature, countryCode)) {
+    const err = new Error(
+      `La funcionalidad "${feature}" no está disponible en ${countryCode}.`,
+    );
+    err.code = "FEATURE_DISABLED";
+    err.feature = feature;
+    throw err;
+  }
+}
+
+module.exports = {
+  FEATURE_KEYS,
+  FEATURE_MATRIX,
+  getFeatures,
+  isFeatureEnabled,
+  requireFeature,
+};

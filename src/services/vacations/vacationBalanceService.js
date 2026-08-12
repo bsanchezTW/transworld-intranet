@@ -1,10 +1,11 @@
 const db = require("../../db");
-const { getStrategy } = require("./VacationEngine");
+const { getStrategy, resolveCountryForUser } = require("./VacationEngine");
 const { VACATION_CONFIG } = require("../../constants/vacationConfig");
 const {
   toDateOnly,
   addDays,
   fullYearsBetween,
+  todayInCountry,
 } = require("../../utils/vacationDateUtils");
 
 /**
@@ -56,10 +57,10 @@ async function recalculatePeriods(userId) {
   const user = await getUserVacationProfile(userId);
   if (!user || !user.hire_date || !user.employment_country) return;
 
-  const country = user.employment_country;
+  const country = resolveCountryForUser(user);
   const strategy = getStrategy(country);
   const hire = toDateOnly(user.hire_date);
-  const today = toDateOnly(new Date());
+  const today = todayInCountry();
   const yearsComplete = fullYearsBetween(hire, today);
   const priorYears = Number(user.prior_years_credited) || 0;
   const progressiveOverride =
@@ -150,7 +151,7 @@ async function listPeriods(userId) {
 
 /** Períodos vigentes (no vencidos), ordenados FIFO (más antiguo primero). */
 async function listActivePeriodsFifo(userId, client = db) {
-  const today = toDateOnly(new Date());
+  const today = todayInCountry();
   const { rows } = await client.query(
     `SELECT * FROM vacation_periods
      WHERE user_id = $1
@@ -200,9 +201,9 @@ function detectAccumulationAlert(periods, country) {
 /** Resumen de saldos para la UI. */
 async function getBalanceSummary(userId) {
   const user = await getUserVacationProfile(userId);
-  const country = user?.employment_country || "CL";
+  const country = resolveCountryForUser(user);
   const periods = await listPeriods(userId);
-  const today = toDateOnly(new Date());
+  const today = todayInCountry();
   let entitled = 0;
   let used = 0;
   let adjusted = 0;
@@ -265,7 +266,7 @@ async function consumeDaysFifo(client, userId, days, countryCode) {
   const strategy =
     countryCode === "PE" ? getStrategy("PE") : null;
 
-  const today = toDateOnly(new Date());
+  const today = todayInCountry();
   const { rows: periods } = await client.query(
     `SELECT * FROM vacation_periods
      WHERE user_id = $1

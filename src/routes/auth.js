@@ -4,9 +4,10 @@ const multer = require("multer");
 const router = express.Router();
 const pool = require("../db");
 const { sendMail } = require("../services/mailer");
+const { UPLOAD_LIMITS_BYTES } = require("../config/uploadLimits");
 const { toTitleCase } = require("../utils/formatName");
 const { isPasswordStrongEnough } = require("../utils/passwordStrength");
-const { validateChileMobilePhone } = require("../utils/phoneChile");
+const { validateMobilePhone } = require("../utils/phone");
 const userPhotoStorage = require("../services/userPhotoStorage");
 const {
   ROLES,
@@ -17,6 +18,8 @@ const {
 const linkedinService = require("../services/linkedinService");
 const { mapCompletedCourseForView } = require("../utils/schemaMappers");
 const { generateUniqueUsuarioId } = require("../utils/userId");
+const { getCountryConfig } = require("../config/country");
+const requireFeature = require("../middlewares/requireFeature");
 
 function getBaseUrl(req) {
   return process.env.APP_BASE_URL || `${req.protocol}://${req.get("host")}`;
@@ -80,19 +83,12 @@ async function issueVerificationCode(userId, firstName, email) {
   return code;
 }
 
-const ALLOWED_LOGIN_DOMAINS = new Set([
-  "transworld.cl",
-  "gmail.com",
-  "hotmail.com",
-  "hotmail.cl",
-  "yahoo.com",
-  "yahoo.cl",
-  "icloud.com",
-  "outlook.com",
-  "outlook.cl",
-]);
+// Dominios de correo aceptados por esta instancia. El corporativo cambia según
+// el país (transworld.cl en Chile, transworld.pe en Perú), así que sale de la
+// configuración en vez de estar fijo aquí.
+const ALLOWED_LOGIN_DOMAINS = new Set(getCountryConfig().allowedLoginDomains);
 
-const TRANSWORLD_EMAIL_DOMAIN = "transworld.cl";
+const TRANSWORLD_EMAIL_DOMAIN = getCountryConfig().corporateEmailDomain;
 
 const EXTERNAL_DOMAIN_PENDING_MSG =
   "Su correo pertenece a un dominio que no es de Transworld, espere para que un administrador le de acceso";
@@ -230,7 +226,7 @@ function normalizeCorporateEmail(usernameOrEmail, selectedDomain = null) {
 
 const uploadProfilePhoto = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: UPLOAD_LIMITS_BYTES.PROFILE_PHOTO },
   fileFilter: (_req, file, cb) => {
     if (!file.mimetype || !file.mimetype.startsWith("image/")) {
       return cb(new Error("Formato de imagen no permitido."));
@@ -444,7 +440,7 @@ router.post(
       const password = String(req.body.password || "");
       const password2 = String(req.body.password2 || "");
       const fechaNacimiento = String(birthDateRaw).trim() || null;
-      const telefonoCheck = validateChileMobilePhone(phoneRaw, {
+      const telefonoCheck = validateMobilePhone(phoneRaw, {
         required: true,
       });
       const telefono = telefonoCheck.storageValue;
@@ -1016,11 +1012,18 @@ router.get("/logout", (req, res) => {
 // ==========================================
 // LINKEDIN
 // ==========================================
-router.get("/auth/linkedin/login", (req, res) => {
-  res.redirect(linkedinService.getAuthorizationUrl(req));
-});
+router.get(
+  "/auth/linkedin/login",
+  requireFeature("linkedinFeed"),
+  (req, res) => {
+    res.redirect(linkedinService.getAuthorizationUrl(req));
+  },
+);
 
-router.get("/auth/linkedin/callback", async (req, res) => {
+router.get(
+  "/auth/linkedin/callback",
+  requireFeature("linkedinFeed"),
+  async (req, res) => {
   const { code } = req.query;
   if (!code) return res.send("Error: No se recibió código de LinkedIn");
 

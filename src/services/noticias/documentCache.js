@@ -1,10 +1,10 @@
 // Caché en memoria con TTL para el HTML de los documentos Word renderizados.
 //
-// El HTML se guarda como archivo en SharePoint (no en la columna JSON, que
-// engordaría cada fila). Traerlo desde Graph en cada visita sería lento, así
+// El HTML se guarda como archivo en Storage (no en la columna JSON, que
+// engordaría cada fila). Traerlo del proveedor en cada visita sería lento, así
 // que se cachea: el contenido es inmutable porque la ruta lleva timestamp.
 
-const sharepoint = require("../sharepointService");
+const storage = require("../storage/storageService");
 
 const TTL_MS = parseInt(process.env.NOTICIAS_DOC_CACHE_TTL_MS || "900000", 10); // 15 min
 const MAX_ENTRIES = parseInt(process.env.NOTICIAS_DOC_CACHE_MAX || "60", 10);
@@ -25,7 +25,7 @@ function evictIfNeeded() {
 async function getHtml(relativePath) {
   if (!relativePath) return "";
 
-  const key = sharepoint.normalizeRelativePath(relativePath);
+  const key = storage.normalizeRelativePath(relativePath);
   const hit = cache.get(key);
   if (hit && hit.expiresAt > Date.now()) {
     // Refresca la posición para que el LRU no lo expulse mientras se usa.
@@ -35,7 +35,7 @@ async function getHtml(relativePath) {
   }
 
   try {
-    const { buffer } = await sharepoint.downloadFile(key);
+    const { buffer } = await storage.downloadFile(key);
     const html = buffer.toString("utf8");
     cache.set(key, { html, expiresAt: Date.now() + TTL_MS });
     evictIfNeeded();
@@ -47,7 +47,7 @@ async function getHtml(relativePath) {
 }
 
 function set(relativePath, html) {
-  const key = sharepoint.normalizeRelativePath(relativePath);
+  const key = storage.normalizeRelativePath(relativePath);
   cache.set(key, { html, expiresAt: Date.now() + TTL_MS });
   evictIfNeeded();
 }

@@ -15,7 +15,7 @@
     } catch (_) {}
   </script>
   <link rel="stylesheet" href="/css/profile-photo-crop.css">
-  <link rel="stylesheet" href="/css/phone-chile.css">
+  <link rel="stylesheet" href="/css/phone.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 </head>
 <body class="login-split-page">
@@ -29,9 +29,9 @@
       <div class="login-split__form-inner">
 
         <nav class="login-split__nav">
-          <a href="https://www.transworld.cl/" target="_blank" rel="noopener noreferrer">
+          <a href="<%= countryConfig.corporateSite %>" target="_blank" rel="noopener noreferrer">
             <span class="login-split__nav-arrow" aria-hidden="true">&lt;</span>
-            Visita Transworld Chile
+            Visita Transworld
           </a>
         </nav>
 
@@ -45,7 +45,7 @@
           const viewCopy = {
             login: {
               heading: 'Acceso a la Intranet',
-              subheading: 'Bienvenido a tu Portal de Transworld Chile',
+              subheading: 'Bienvenido a tu Portal de Transworld ' + countryConfig.name,
             },
             register: {
               heading: 'Crear cuenta',
@@ -90,16 +90,12 @@
                 >
                 <div class="login-domain">
                   <span class="login-domain__at">@</span>
+                  <%# El primero de la lista es el dominio corporativo del país
+                      de esta instancia (transworld.cl / transworld.pe). %>
                   <select name="domain" aria-label="Dominio de correo">
-                    <option value="transworld.cl" selected>transworld.cl</option>
-                    <option value="gmail.com">gmail.com</option>
-                    <option value="icloud.com">icloud.com</option>
-                    <option value="outlook.com">outlook.com</option>
-                    <option value="outlook.cl">outlook.cl</option>
-                    <option value="hotmail.com">hotmail.com</option>
-                    <option value="hotmail.cl">hotmail.cl</option>
-                    <option value="yahoo.com">yahoo.com</option>
-                    <option value="yahoo.cl">yahoo.cl</option>
+                    <% countryConfig.allowedLoginDomains.forEach((d, i) => { %>
+                      <option value="<%= d %>"<%= i === 0 ? ' selected' : '' %>><%= d %></option>
+                    <% }) %>
                   </select>
                 </div>
               </div>
@@ -182,8 +178,8 @@
                 <div class="login-domain">
                   <span class="login-domain__at">@</span>
                   <select name="domain" aria-label="Dominio de correo" tabindex="-1">
-                    <% const regDomains = ['transworld.cl','gmail.com','icloud.com','outlook.com','outlook.cl','hotmail.com','hotmail.cl','yahoo.com','yahoo.cl']; %>
-                    <% const regSelectedDomain = regDomains.includes(fd.domain) ? fd.domain : 'transworld.cl'; %>
+                    <% const regDomains = countryConfig.allowedLoginDomains; %>
+                    <% const regSelectedDomain = regDomains.includes(fd.domain) ? fd.domain : countryConfig.corporateEmailDomain; %>
                     <% regDomains.forEach(d => { %>
                       <option value="<%= d %>"<%= d === regSelectedDomain ? ' selected' : '' %>><%= d %></option>
                     <% }) %>
@@ -232,9 +228,9 @@
             <div class="login-form-grid-2">
               <div class="login-field login-field--phone">
                 <label class="login-field__label" for="telefono_local">Teléfono</label>
-                <div class="phone-field" data-phone-chile>
-                  <span class="phone-field__prefix" aria-hidden="true">+56</span>
-                  <input type="tel" id="telefono_local" class="login-field__input phone-field__local" required placeholder="9 1234 5678" maxlength="11" inputmode="numeric" autocomplete="tel-national" aria-label="Número celular sin código de país">
+                <div class="phone-field" data-phone-field>
+                  <span class="phone-field__prefix" aria-hidden="true"><%= countryConfig.phone.callingCode ? "+" + countryConfig.phone.callingCode : "" %></span>
+                  <input type="tel" id="telefono_local" class="login-field__input phone-field__local" required placeholder="<%= countryConfig.phone.example %>" maxlength="<%= countryConfig.phone.nationalDigits + countryConfig.phone.groups.length - 1 %>" inputmode="numeric" autocomplete="tel-national" aria-label="Número celular sin código de país">
                   <input type="hidden" name="phone" id="telefono" value="<%= fd.phone || '' %>">
                 </div>
               </div>
@@ -263,7 +259,7 @@
                 name="email"
                 class="login-field__input"
                 required
-                placeholder="nombre@transworld.cl"
+                placeholder="nombre@<%= countryConfig.corporateEmailDomain %>"
                 <% if (activeView === 'forgot') { %>autofocus<% } %>
               >
             </div>
@@ -543,7 +539,7 @@
           path: '/login',
           title: 'Iniciar sesión',
           heading: 'Acceso a la Intranet',
-          subheading: 'Bienvenido a tu Portal de Transworld Chile'
+          subheading: 'Bienvenido a tu Portal de Transworld <%= countryConfig.name %>'
         },
         register: {
           path: '/register',
@@ -641,7 +637,7 @@
         const meta = VIEW_META[view] || VIEW_META.login;
         if (heading) heading.textContent = meta.heading;
         if (subheading) subheading.textContent = meta.subheading;
-        document.title = meta.title + ' | Intranet Transworld Chile';
+        document.title = meta.title + ' | <%= countryConfig.pageTitleSuffix %>';
 
         const isRegister = view === 'register';
         if (split) split.classList.toggle('login-split--register', isRegister);
@@ -931,10 +927,9 @@
     })();
 
     (function initUsernameFields() {
-      const ALLOWED_DOMAINS = new Set([
-        'transworld.cl', 'gmail.com', 'icloud.com', 'outlook.com',
-        'outlook.cl', 'hotmail.com', 'hotmail.cl', 'yahoo.com', 'yahoo.cl'
-      ]);
+      // Misma lista que valida el servidor (config/country.js), inyectada para
+      // no mantener dos copias que se desincronicen.
+      const ALLOWED_DOMAINS = new Set(<%- JSON.stringify(countryConfig.allowedLoginDomains) %>);
 
       function parseUsernameInput(value) {
         const raw = String(value || '').trim().toLowerCase();
@@ -995,12 +990,13 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="/js/profile-photo-cropper.js"></script>
   <script src="/js/password-strength.js"></script>
-  <script src="/js/phone-chile.js"></script>
+  <script>window.__PHONE_CONFIG__ = <%- JSON.stringify(phoneClientConfig()) %>;</script>
+  <script src="/js/phone.js"></script>
   <script>
     (function initRegisterForm() {
       const passwordInput = document.getElementById('reg-password');
       const password2Input = document.getElementById('reg-password2');
-      const telefonoField = document.querySelector('[data-phone-chile]');
+      const telefonoField = document.querySelector('[data-phone-field]');
       const submitBtn = document.getElementById('register-submit-btn');
       const strengthBox = document.getElementById('password-strength');
       const strengthLabel = document.getElementById('password-strength-label');
@@ -1032,7 +1028,7 @@
       });
 
       const registerForm = document.querySelector('[data-view="register"] form');
-      const phoneField = PhoneChile.initField(telefonoField, { onChange: updateSubmitState });
+      const phoneField = PhoneField.initField(telefonoField, { onChange: updateSubmitState });
 
       if (registerForm) {
         registerForm.addEventListener('submit', function () {
@@ -1099,7 +1095,7 @@
       function updateSubmitState() {
         const strongEnough = PasswordStrength.isPasswordStrongEnough(passwordInput.value);
         const passwordsMatch = passwordInput.value === password2Input.value && password2Input.value.length > 0;
-        const hasTelefono = PhoneChile.isFieldValid(telefonoField);
+        const hasTelefono = PhoneField.isFieldValid(telefonoField);
         submitBtn.disabled = !(strongEnough && passwordsMatch && hasTelefono);
       }
 

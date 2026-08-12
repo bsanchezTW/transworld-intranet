@@ -55,7 +55,7 @@
             <% } %>
             <div class="app-card__heading">
               <h3 class="app-card__name"><%= app.name %></h3>
-              <p class="app-card__meta">Última actualización · <%= app.updated_at ? new Date(app.updated_at).toLocaleDateString('es-CL') : '—' %></p>
+              <p class="app-card__meta">Última actualización · <%= app.updated_at ? new Date(app.updated_at).toLocaleDateString(countryConfig.locale) : '—' %></p>
             </div>
           </div>
 

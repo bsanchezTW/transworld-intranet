@@ -66,8 +66,8 @@
          else if (t.status === 'closed') badgeEstado = 'bg-success';
 
          const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: 'numeric', minute: 'numeric', second: 'numeric' };
-         const strCreado = t.created_at ? new Date(t.created_at).toLocaleDateString('es-CL', options) : '-';
-         const strUltima = t.fecha_ultima_respuesta ? new Date(t.fecha_ultima_respuesta).toLocaleDateString('es-CL', options) : '-';
+         const strCreado = t.created_at ? new Date(t.created_at).toLocaleDateString(countryConfig.locale, options) : '-';
+         const strUltima = t.fecha_ultima_respuesta ? new Date(t.fecha_ultima_respuesta).toLocaleDateString(countryConfig.locale, options) : '-';
          
          const tRespuesta = t.tiempo_respuesta || '-';
       %>

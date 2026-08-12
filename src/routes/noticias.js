@@ -6,6 +6,11 @@
 
 const express = require("express");
 const multer = require("multer");
+const crypto = require("node:crypto");
+const fs = require("node:fs/promises");
+const os = require("node:os");
+const path = require("node:path");
+const { UPLOAD_LIMITS_BYTES } = require("../config/uploadLimits");
 
 const router = express.Router();
 
@@ -19,6 +24,7 @@ const attachmentProcessor = require("../services/noticias/attachmentProcessor");
 const documentCache = require("../services/noticias/documentCache");
 const emailService = require("../services/noticias/noticiaEmailService");
 const presenter = require("../services/noticias/noticiaPresenter");
+const fileStorage = require("../services/fileStorage");
 
 const ROLES_ESCRITURA = ["admin"];
 
@@ -45,9 +51,18 @@ const ASSETS_DETALLE = {
 
 const RELACIONADAS_EN_DETALLE = 4;
 
+const NEWS_UPLOAD_TEMP_DIR = path.join(os.tmpdir(), "transworld-intranet-news");
 const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 200 * 1024 * 1024 },
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => {
+      fs.mkdir(NEWS_UPLOAD_TEMP_DIR, { recursive: true })
+        .then(() => cb(null, NEWS_UPLOAD_TEMP_DIR), cb);
+    },
+    filename: (_req, _file, cb) => {
+      cb(null, `${Date.now()}-${crypto.randomUUID()}.upload`);
+    },
+  }),
+  limits: { fileSize: UPLOAD_LIMITS_BYTES.NEWS_ATTACHMENT },
 });
 
 const MAX_TITULO = 200;
@@ -157,7 +172,7 @@ router.post(
     }
 
     try {
-      const adjunto = await attachmentProcessor.processUpload(req.file.buffer, req.file);
+      const adjunto = await attachmentProcessor.processUploadedFile(req.file);
       res.json({ ok: true, adjunto });
     } catch (err) {
       if (err instanceof attachmentProcessor.AttachmentError) {
@@ -165,6 +180,13 @@ router.post(
       }
       console.error("[Noticias] Error subiendo archivo:", err);
       res.status(500).json({ error: "No se pudo subir el archivo. Inténtalo nuevamente." });
+    } finally {
+      await fs.unlink(req.file.path).catch((cleanupError) => {
+        console.warn(
+          "[Noticias] No se pudo limpiar el temporal de subida:",
+          cleanupError.message || cleanupError,
+        );
+      });
     }
   },
 );
@@ -209,8 +231,36 @@ router.post("/editar/:id", requireRole(...ROLES_ESCRITURA), async (req, res) => 
         ? actual.slug
         : await repository.generateUniqueSlug(parsed.data.title, { excludeId: id });
 
+    const removedAttachments = attachmentProcessor.findRemovedAttachments(
+      actual.attachments,
+      parsed.data.attachments,
+    );
+    const previousCover = actual.image || null;
+    const nextCover = parsed.data.image || null;
+
     await repository.update(id, { ...parsed.data, slug });
     await repository.logChange(req.session.user?.id, "editó una noticia", `/noticias/${id}`);
+
+    // Limpia del bucket los adjuntos/portada que ya no referencia la noticia.
+    const cleanup = [];
+    if (removedAttachments.length) {
+      cleanup.push(attachmentProcessor.deleteAttachmentFiles(removedAttachments));
+    }
+    if (previousCover && previousCover !== nextCover) {
+      cleanup.push(fileStorage.deleteFile(previousCover));
+    }
+    if (cleanup.length) {
+      Promise.allSettled(cleanup).then((results) => {
+        results.forEach((result) => {
+          if (result.status === "rejected") {
+            console.warn(
+              "[Noticias] Limpieza de archivos incompleta:",
+              result.reason?.message || result.reason,
+            );
+          }
+        });
+      });
+    }
 
     res.redirect(`/noticias/${id}?ok=noticia_actualizada`);
   } catch (err) {
@@ -232,11 +282,23 @@ router.post("/eliminar/:id", requireRole(...ROLES_ESCRITURA), async (req, res) =
     await repository.remove(id);
     await repository.logChange(req.session.user?.id, "eliminó una noticia", "/noticias");
 
-    // Los archivos quedaban huérfanos en SharePoint al borrar la noticia.
+    // Elimina originales, portada y derivados del storage al borrar la noticia.
     // No se espera al resultado: el borrado de la noticia ya está confirmado.
-    attachmentProcessor
-      .deleteAttachmentFiles(noticia.attachments)
-      .catch((err) => console.warn("[Noticias] Limpieza de archivos incompleta:", err.message));
+    const cleanupTasks = [
+      attachmentProcessor.deleteAttachmentFiles(noticia.attachments),
+    ];
+    if (noticia.image) cleanupTasks.push(fileStorage.deleteFile(noticia.image));
+
+    Promise.allSettled(cleanupTasks).then((results) => {
+      results.forEach((result) => {
+        if (result.status === "rejected") {
+          console.warn(
+            "[Noticias] Limpieza de archivos incompleta:",
+            result.reason?.message || result.reason,
+          );
+        }
+      });
+    });
 
     res.redirect("/noticias?ok=Noticia eliminada");
   } catch (err) {

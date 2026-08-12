@@ -53,7 +53,7 @@
     const emailError = document.getElementById('email-error');
     const fechaInput = document.getElementById('fecha_nacimiento');
     const fechaLabel = document.getElementById('fecha_nacimiento_label');
-    const telefonoField = form.querySelector('[data-phone-chile]');
+    const telefonoField = form.querySelector('[data-phone-field]');
     const telefonoLocal = telefonoField?.querySelector('.phone-field__local');
     const telefonoError = document.getElementById('telefono-error');
     const FECHA_REQUERIDA_MSG =
@@ -85,7 +85,7 @@
     }
 
     global.EmailValidate.initField(emailInput);
-    global.PhoneChile.initField(telefonoField);
+    global.PhoneField.initField(telefonoField);
 
     function onEmailInput() {
       let msg = '';
@@ -101,9 +101,9 @@
 
     function onTelefonoInput() {
       const invalid =
-        !global.PhoneChile.isFieldEmpty(telefonoField) &&
-        !global.PhoneChile.isFieldValid(telefonoField);
-      toggleFieldError(telefonoError, invalid ? global.PhoneChile.ERROR_MSG : '');
+        !global.PhoneField.isFieldEmpty(telefonoField) &&
+        !global.PhoneField.isFieldValid(telefonoField);
+      toggleFieldError(telefonoError, invalid ? global.PhoneField.ERROR_MSG : '');
     }
 
     function onSubmit(event) {
@@ -121,11 +121,11 @@
       }
 
       if (
-        !global.PhoneChile.isFieldEmpty(telefonoField) &&
-        !global.PhoneChile.isFieldValid(telefonoField)
+        !global.PhoneField.isFieldEmpty(telefonoField) &&
+        !global.PhoneField.isFieldValid(telefonoField)
       ) {
         hasError = true;
-        toggleFieldError(telefonoError, global.PhoneChile.ERROR_MSG);
+        toggleFieldError(telefonoError, global.PhoneField.ERROR_MSG);
         telefonoLocal.reportValidity();
       }
 

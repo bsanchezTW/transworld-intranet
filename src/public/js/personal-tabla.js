@@ -212,13 +212,13 @@
 
     function telefonoInvalido() {
       return (
-        !window.PhoneChile.isFieldEmpty(telefonoCampo) &&
-        !window.PhoneChile.isFieldValid(telefonoCampo)
+        !window.PhoneField.isFieldEmpty(telefonoCampo) &&
+        !window.PhoneField.isFieldValid(telefonoCampo)
       );
     }
 
     window.EmailValidate.initField(email);
-    window.PhoneChile.initField(telefonoCampo);
+    window.PhoneField.initField(telefonoCampo);
 
     if (email) {
       email.addEventListener('input', function () {
@@ -232,7 +232,7 @@
 
     if (telefonoLocal) {
       telefonoLocal.addEventListener('input', function () {
-        mostrarMensaje(telefonoError, telefonoInvalido() ? window.PhoneChile.ERROR_MSG : '');
+        mostrarMensaje(telefonoError, telefonoInvalido() ? window.PhoneField.ERROR_MSG : '');
       });
     }
 
@@ -249,7 +249,7 @@
 
       if (telefonoInvalido()) {
         hayError = true;
-        mostrarMensaje(telefonoError, window.PhoneChile.ERROR_MSG);
+        mostrarMensaje(telefonoError, window.PhoneField.ERROR_MSG);
         telefonoLocal.reportValidity();
       }
 

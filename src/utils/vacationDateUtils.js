@@ -3,7 +3,7 @@
  *
  * Todas las fechas se manejan como "date-only" (sin hora). Internamente se
  * parsean a un Date anclado a mediodía UTC para evitar corrimientos por DST
- * o por la zona horaria del servidor (America/Santiago).
+ * o por la zona horaria del servidor.
  */
 
 /** Normaliza cualquier entrada a string 'YYYY-MM-DD' o null. */
@@ -123,6 +123,53 @@ function formatDisplay(value) {
   return `${d}-${m}-${y}`;
 }
 
+/**
+ * Fecha 'YYYY-MM-DD' de un instante EN una zona horaria concreta.
+ *
+ * Ojo con la diferencia respecto a toDateOnly(date): esa función lee los
+ * componentes UTC del Date, así que a las 22:00 de Santiago (UTC−3) ya devuelve
+ * el día siguiente. Para saber "qué día es" donde vive el colaborador hay que
+ * proyectar a su zona, que es lo que hace esto.
+ */
+function zonedDateOnly(date, timeZone) {
+  const value = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(value.getTime())) return null;
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(value);
+
+  const out = {};
+  for (const p of parts) {
+    if (p.type !== "literal") out[p.type] = p.value;
+  }
+  return `${out.year}-${out.month}-${out.day}`;
+}
+
+/** "Hoy" en una zona horaria dada, como 'YYYY-MM-DD'. */
+function todayInTimezone(timeZone) {
+  return zonedDateOnly(new Date(), timeZone);
+}
+
+/**
+ * "Hoy" en la zona del país de esta instancia.
+ *
+ * Es lo que deben usar las reglas de negocio para decidir si una fecha está en
+ * el pasado, cuánta anticipación hay o si un período venció. Usar
+ * toDateOnly(new Date()) en su lugar responde en UTC y adelanta el día durante
+ * las últimas horas de la tarde.
+ *
+ * El require es diferido para que este módulo siga siendo importable en tests
+ * sin COUNTRY definida: solo las funciones puras de arriba se usan allí.
+ */
+function todayInCountry() {
+  const { getTimezone } = require("../config/country");
+  return todayInTimezone(getTimezone());
+}
+
 module.exports = {
   toDateOnly,
   parseDateOnly,
@@ -135,4 +182,7 @@ module.exports = {
   fullYearsBetween,
   fullMonthsBetween,
   formatDisplay,
+  zonedDateOnly,
+  todayInTimezone,
+  todayInCountry,
 };

@@ -1,9 +1,13 @@
 const db = require("../../db");
+const { getCurrentCountry } = require("../../config/country");
 
 /**
  * Asegura el schema del módulo de vacaciones de forma idempotente al arrancar
  * la app (mismo patrón que asegurarColumnaNoticiasDestacada en app.js).
- * La fuente canónica es migrations/007_vacation_module.sql.
+ *
+ * Este archivo ES la fuente canónica del schema: no existe carpeta migrations/
+ * en el repo. Cada deployment aplica su propio DDL al arrancar contra su base.
+ * Formalizar esto en migraciones versionadas está pendiente.
  */
 
 const DDL_STATEMENTS = [
@@ -185,11 +189,15 @@ async function ensureVacationSchema() {
 }
 
 async function seedHolidays() {
-  if (!SEED_HOLIDAYS.length) return;
+  // Solo los feriados del país de esta instancia: sembrar los del otro país
+  // ensucia la base con un calendario que nadie va a usar ni mantener.
+  const instanceCountry = getCurrentCountry();
+  const rows = SEED_HOLIDAYS.filter(([country]) => country === instanceCountry);
+  if (!rows.length) return;
 
-  const countries = SEED_HOLIDAYS.map(([country]) => country);
-  const dates = SEED_HOLIDAYS.map(([, date]) => date);
-  const names = SEED_HOLIDAYS.map(([, , name]) => name);
+  const countries = rows.map(([country]) => country);
+  const dates = rows.map(([, date]) => date);
+  const names = rows.map(([, , name]) => name);
 
   await db.query(
     `INSERT INTO public_holidays (country_code, holiday_date, name)

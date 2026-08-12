@@ -2,7 +2,11 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const requireRole = require("../middlewares/requireRole");
-const { getStrategy, isSupportedCountry } = require("../services/vacations/VacationEngine");
+const {
+  getStrategy,
+  resolveCountryForUser,
+} = require("../services/vacations/VacationEngine");
+const { getCurrentCountry } = require("../config/country");
 const balanceService = require("../services/vacations/vacationBalanceService");
 const requestService = require("../services/vacations/vacationRequestService");
 const holidayService = require("../services/vacations/holidayService");
@@ -16,7 +20,11 @@ const {
   countryLabel,
   countryFlag,
 } = require("../constants/vacationStatuses");
-const { toDateOnly, addDays } = require("../utils/vacationDateUtils");
+const {
+  toDateOnly,
+  addDays,
+  todayInCountry,
+} = require("../utils/vacationDateUtils");
 
 // ---------- helpers de redirect con flash ----------
 function redirectOk(res, path, msg) {
@@ -79,8 +87,8 @@ router.get("/mis-vacaciones", requireRole.intranetActivo(), async (req, res) => 
       requestService.listForUser(userId),
     ]);
 
-    const country = profile?.employment_country || "CL";
-    const strategy = isSupportedCountry(country) ? getStrategy(country) : getStrategy("CL");
+    const country = resolveCountryForUser(profile);
+    const strategy = getStrategy(country);
 
     res.render("RRHH/vacaciones/mis_vacaciones", {
       titulo: "Mis vacaciones",
@@ -204,6 +212,8 @@ router.get("/gestion/:userId", requireRole.administrador(), async (req, res) => 
       requestService.listForUser(userId),
     ]);
 
+    const country = resolveCountryForUser(profile);
+
     res.render("RRHH/vacaciones/detalle_colaborador", {
       titulo: "Detalle de vacaciones",
       user: req.session.user,
@@ -211,8 +221,9 @@ router.get("/gestion/:userId", requireRole.administrador(), async (req, res) => 
       summary,
       periods: periods.map(mapVacationPeriodForView),
       requests: requests.map(mapVacationRequestForView),
-      countryLabel: countryLabel(profile.employment_country || "CL"),
-      countryFlag: countryFlag(profile.employment_country || "CL"),
+      employmentCountry: country,
+      countryLabel: countryLabel(country),
+      countryFlag: countryFlag(country),
       ...readFlash(req),
     });
   } catch (err) {
@@ -320,7 +331,7 @@ router.post("/gestion/solicitud/:id/rechazar", requireRole.administrador(), asyn
 router.get("/calendario", requireRole.intranetActivo(), async (req, res) => {
   try {
     const isAdmin = Boolean(res.locals.isAdministrador);
-    const today = toDateOnly(new Date());
+    const today = todayInCountry();
     const start = req.query.from ? toDateOnly(req.query.from) : addDays(today, -30);
     const end = req.query.to ? toDateOnly(req.query.to) : addDays(today, 90);
 
@@ -349,15 +360,13 @@ router.get("/calendario", requireRole.intranetActivo(), async (req, res) => {
 // ==========================================================
 router.get("/feriados", requireRole.administrador(), async (req, res) => {
   try {
-    const [cl, pe] = await Promise.all([
-      holidayService.listHolidays("CL"),
-      holidayService.listHolidays("PE"),
-    ]);
+    // Solo los feriados de esta instancia: el calendario del otro país se
+    // administra desde su propio deployment.
+    const holidays = await holidayService.listHolidays(getCurrentCountry());
     res.render("RRHH/vacaciones/feriados", {
       titulo: "Feriados",
       user: req.session.user,
-      holidaysCL: cl,
-      holidaysPE: pe,
+      holidays,
       ...readFlash(req),
     });
   } catch (err) {
@@ -368,12 +377,19 @@ router.get("/feriados", requireRole.administrador(), async (req, res) => {
 
 router.post("/feriados", requireRole.administrador(), async (req, res) => {
   const { country_code, holiday_date, name, is_recurring } = req.body;
+  const instanceCountry = getCurrentCountry();
   try {
-    if (!["CL", "PE"].includes(country_code)) {
-      return redirectErr(res, "/RRHH/vacaciones/feriados", "País inválido.");
+    // El país llega en un hidden, así que un POST manipulado es el único modo
+    // de que no coincida. No se corrige en silencio: se rechaza.
+    if (country_code && country_code !== instanceCountry) {
+      return redirectErr(
+        res,
+        "/RRHH/vacaciones/feriados",
+        `Esta instancia solo administra feriados de ${instanceCountry}.`,
+      );
     }
     await holidayService.createHoliday({
-      countryCode: country_code,
+      countryCode: instanceCountry,
       holidayDate: holiday_date,
       name,
       isRecurring: is_recurring === "on" || is_recurring === "1",
@@ -388,7 +404,17 @@ router.post("/feriados", requireRole.administrador(), async (req, res) => {
 
 router.post("/feriados/:id/eliminar", requireRole.administrador(), async (req, res) => {
   try {
-    await holidayService.deleteHoliday(req.params.id);
+    const deleted = await holidayService.deleteHoliday(
+      req.params.id,
+      getCurrentCountry(),
+    );
+    if (!deleted) {
+      return redirectErr(
+        res,
+        "/RRHH/vacaciones/feriados",
+        "Feriado no encontrado en el calendario de esta instancia.",
+      );
+    }
     await logChange(req, "eliminó un feriado", "/RRHH/vacaciones/feriados");
     return redirectOk(res, "/RRHH/vacaciones/feriados", "Feriado eliminado.");
   } catch (err) {

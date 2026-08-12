@@ -4,6 +4,13 @@
  */
 const crypto = require("crypto");
 const { supabase, isConfigured } = require("./db");
+const {
+  toTitleCaseName,
+  isValidFullName,
+  isLettersAndSpaces,
+  isValidEmail,
+  normalizePhone,
+} = require("./validation");
 
 function generarUUID() {
   if (crypto.randomUUID) return crypto.randomUUID();
@@ -76,24 +83,47 @@ async function registrar(req, res) {
 
   const body = req.body || {};
   const eventoId = String(body.evento_id || "").trim();
-  const nombre_completo = String(body.nombre_completo || "").trim();
-  const empresa = String(body.empresa || "").trim();
-  const cargo = String(body.cargo || "").trim();
-  const telefono = String(body.telefono || "").trim();
+  const nombre_completo = toTitleCaseName(body.nombre_completo);
+  const empresa = toTitleCaseName(body.empresa);
+  const cargo = toTitleCaseName(body.cargo);
   const email = String(body.email || "").trim().toLowerCase();
   const bloque_id = body.bloque_id ? String(body.bloque_id).trim() : null;
+  const phoneCountryHint = body.telefono_pais
+    ? String(body.telefono_pais).trim()
+    : null;
 
   if (!eventoId) {
     return res.status(400).json({ ok: false, error: "ID de evento requerido" });
   }
-  if (!nombre_completo || !empresa || !cargo || !telefono || !email) {
+  if (!empresa || !cargo) {
     return res
       .status(400)
       .json({ ok: false, error: "Todos los campos son obligatorios" });
   }
-  if (!email.includes("@")) {
+  if (
+    !isLettersAndSpaces(nombre_completo) ||
+    !isLettersAndSpaces(empresa) ||
+    !isLettersAndSpaces(cargo)
+  ) {
+    return res.status(400).json({
+      ok: false,
+      error: "Nombre, empresa y cargo solo pueden contener letras",
+    });
+  }
+  if (!isValidFullName(nombre_completo)) {
+    return res
+      .status(400)
+      .json({ ok: false, error: "Ingresa nombre y apellido" });
+  }
+  if (!isValidEmail(email)) {
     return res.status(400).json({ ok: false, error: "Email inválido" });
   }
+
+  const phoneResult = normalizePhone(body.telefono, phoneCountryHint);
+  if (!phoneResult.ok) {
+    return res.status(400).json({ ok: false, error: phoneResult.error });
+  }
+  const telefono = phoneResult.formatted;
 
   try {
     const { data: evento, error: eventoError } = await supabase
@@ -126,16 +156,24 @@ async function registrar(req, res) {
       });
     }
 
-    if (bloque_id) {
-      const { data: bloque, error: bloqueError } = await supabase
-        .from("evento_bloques")
-        .select("id")
-        .eq("id", bloque_id)
-        .eq("evento_id", eventoId)
-        .maybeSingle();
+    const { data: bloques, error: bloquesError } = await supabase
+      .from("evento_bloques")
+      .select("id")
+      .eq("evento_id", eventoId)
+      .or("activo.eq.true,activo.is.null");
 
-      if (bloqueError) throw bloqueError;
-      if (!bloque) {
+    if (bloquesError) throw bloquesError;
+
+    const bloquesActivos = bloques || [];
+    if (bloquesActivos.length) {
+      if (!bloque_id) {
+        return res.status(400).json({
+          ok: false,
+          error: "Debes seleccionar un bloque",
+        });
+      }
+      const bloqueValido = bloquesActivos.some((b) => b.id === bloque_id);
+      if (!bloqueValido) {
         return res.status(400).json({
           ok: false,
           error: "El bloque seleccionado no es válido para este evento",
@@ -156,6 +194,7 @@ async function registrar(req, res) {
         bloque_id: bloque_id || null,
         evento_id: eventoId,
         acreditado: false,
+        origen: "publico",
         utm_source: body.utm_source || null,
         utm_medium: body.utm_medium || null,
         utm_campaign: body.utm_campaign || null,

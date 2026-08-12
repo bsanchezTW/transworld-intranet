@@ -1,12 +1,19 @@
 // ================================
 // Zona horaria y Configuración
 // ================================
-process.env.TZ = "America/Santiago";
-require("dotenv").config();
+// config/env valida el entorno y falla el arranque si COUNTRY (u otra variable
+// obligatoria) falta o es inválida. Va primero: db.js y los servicios leen
+// process.env al ser requeridos.
+const { countryConfig } = require("./config/env");
+
+// La zona horaria sale de la instancia, no de un literal: Chile es
+// America/Santiago y Perú America/Lima.
+process.env.TZ = countryConfig.timezone;
 
 const express = require("express");
 const compression = require("compression");
 const path = require("path");
+const { pipeline } = require("stream/promises");
 const session = require("express-session");
 const expressLayouts = require("express-ejs-layouts");
 const db = require("./db");
@@ -30,8 +37,15 @@ const {
 const claudeRoutes = require("./routes/claude");
 const { ROLES, normalizeRole, isAdministrador } = require("./constants/roles");
 const { formatPageTitle } = require("./utils/pageTitle");
+const { phoneClientConfig } = require("./utils/phone");
+const requireFeature = require("./middlewares/requireFeature");
+const { getFeatures } = require("./config/features");
 const { syncUnverifiedUsersToDisabled } = require("./utils/syncDisabledUsers");
-const sharepointService = require("./services/sharepointService");
+const storageService = require("./services/storage/storageService");
+const {
+  isActiveContentType,
+  contentDispositionFor,
+} = require("./services/storage/storageHttp");
 const signedMedia = require("./services/media/signedMedia");
 const { ensureVacationSchema } = require("./services/vacations/vacationSchema");
 const vacationRequestService = require("./services/vacations/vacationRequestService");
@@ -62,6 +76,8 @@ app.set("view engine", "ejs");
 app.use(expressLayouts);
 app.set("layout", "layout");
 app.locals.formatPageTitle = formatPageTitle;
+// Formato de celular del país, para inyectarlo al script de cliente.
+app.locals.phoneClientConfig = phoneClientConfig;
 
 // ================================
 // Middlewares Básicos
@@ -74,6 +90,45 @@ const staticOptions = { maxAge: "1d", etag: true };
 app.use(express.static(path.join(__dirname, "public"), staticOptions));
 // FIX: Servir archivos estáticos desde <root>/public (donde vive public/uploads unificado)
 app.use(express.static(path.join(__dirname, "..", "public"), staticOptions));
+
+function setStorageHeaders(res, file, fallbackContentType) {
+  const contentType =
+    file.contentType || fallbackContentType || "application/octet-stream";
+  const activeContent = isActiveContentType(contentType);
+  // El objeto sigue conservando su metadata real en Storage, pero por HTTP el
+  // contenido activo se fuerza a descarga binaria para que nunca se interprete
+  // en el origen de la intranet.
+  res.set("Content-Type", activeContent ? "application/octet-stream" : contentType);
+
+  const contentLength = Number(file.contentLength ?? file.size);
+  if (Number.isFinite(contentLength) && contentLength >= 0) {
+    res.set("Content-Length", String(contentLength));
+  }
+  if (file.contentRange) res.set("Content-Range", file.contentRange);
+  if (file.etag) res.set("ETag", file.etag);
+  if (file.lastModified) {
+    const modified = new Date(file.lastModified);
+    if (!Number.isNaN(modified.getTime())) {
+      res.set("Last-Modified", modified.toUTCString());
+    }
+  }
+  res.set("Accept-Ranges", "bytes");
+  res.set("X-Content-Type-Options", "nosniff");
+  if (activeContent) {
+    res.set("Content-Disposition", contentDispositionFor(file));
+    res.set("Content-Security-Policy", "sandbox; default-src 'none'");
+  }
+}
+
+function storageRequestContext(req) {
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  req.once("aborted", abort);
+  return {
+    signal: controller.signal,
+    cleanup: () => req.removeListener("aborted", abort),
+  };
+}
 
 // ================================
 // Medios públicos firmados (/media/<firma>/<ruta>)
@@ -91,7 +146,7 @@ app.use("/media", async (req, res, next) => {
   const signature = raw.slice(0, separator);
   let relativePath;
   try {
-    relativePath = sharepointService.normalizeRelativePath(
+    relativePath = storageService.normalizeRelativePath(
       decodeURIComponent(raw.slice(separator + 1)),
     );
   } catch {
@@ -105,26 +160,53 @@ app.use("/media", async (req, res, next) => {
     return res.status(403).send("Firma inválida");
   }
 
+  let requestContext;
   try {
-    const { buffer, contentType } = await sharepointService.downloadFile(relativePath);
-    const tipo = contentType || signedMedia.contentTypeFor(relativePath);
+    if (req.method === "HEAD") {
+      const metadata = await storageService.statFile(relativePath);
+      const tipo = metadata.contentType || signedMedia.contentTypeFor(relativePath);
+      if (!signedMedia.isSafeContentType(tipo)) {
+        return res.status(404).send("No encontrado");
+      }
+      setStorageHeaders(res, metadata, tipo);
+      res.set("Cache-Control", "public, max-age=31536000, immutable, no-transform");
+      return res.end();
+    }
+
+    requestContext = storageRequestContext(req);
+    const file = await storageService.downloadStream(relativePath, {
+      range: req.get("range") || undefined,
+      signal: requestContext.signal,
+    });
+    const tipo = file.contentType || signedMedia.contentTypeFor(relativePath);
 
     // Comprobación final: por esta ruta pública solo salen imágenes. Cubre los
     // adjuntos heredados sin extensión, donde la ruta no basta para decidirlo.
-    if (!tipo.startsWith("image/")) {
+    if (!signedMedia.isSafeContentType(tipo)) {
+      file.stream.destroy();
       return res.status(404).send("No encontrado");
     }
 
     // Las rutas incluyen timestamp + aleatorio, por lo que son inmutables.
-    res.set("Content-Type", tipo);
-    res.set("Cache-Control", "public, max-age=31536000, immutable");
-    res.set("X-Content-Type-Options", "nosniff");
-    if (req.method === "HEAD") return res.end();
-    return res.send(buffer);
+    res.status(file.statusCode || 200);
+    setStorageHeaders(res, file, tipo);
+    res.set("Cache-Control", "public, max-age=31536000, immutable, no-transform");
+    await pipeline(file.stream, res);
+    return undefined;
   } catch (err) {
+    if (requestContext?.signal.aborted || err?.name === "AbortError") {
+      return undefined;
+    }
+    if (res.headersSent) {
+      res.destroy(err);
+      return undefined;
+    }
     if (err.statusCode === 404) return res.status(404).send("Archivo no encontrado");
+    if (err.statusCode === 416) return res.status(416).send("Rango no válido");
     console.error("[Media proxy] Error:", err.message || err);
     return res.status(502).send("Error al obtener el archivo");
+  } finally {
+    requestContext?.cleanup();
   }
 });
 
@@ -133,6 +215,9 @@ app.use("/media", async (req, res, next) => {
 // ================================
 app.use(
   session({
+    // El nombre lleva el país porque las cookies se comparten entre puertos del
+    // mismo host: sin esto, Chile en :3000 y Perú en :3001 se pisan la sesión.
+    name: countryConfig.sessionCookieName,
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
@@ -144,43 +229,66 @@ app.use(
 // FIX: Unificado → <root>/public/uploads sirve /uploads/*
 app.use("/uploads", express.static(path.join(__dirname, "..", "public", "uploads"), { maxAge: "7d", etag: true }));
 
-// Archivos multimedia y documentos desde SharePoint (/content/...)
+// Archivos multimedia y documentos desde Storage (/content/...)
 // Requiere sesión activa; no exponer contenido corporativo de forma pública.
 app.use("/content", async (req, res, next) => {
   if (req.method !== "GET" && req.method !== "HEAD") return next();
 
-  const relativePath = decodeURIComponent(req.path.replace(/^\//, ""));
-  if (!relativePath) return next();
-
   const hasSessionUser = Boolean(req.session && req.session.user);
-  const hasTraversal =
-    relativePath.split(/[/\\]/).includes("..") ||
-    relativePath.includes("\0");
-
   if (!hasSessionUser) {
     return res.status(401).send("No autorizado");
   }
 
-  if (hasTraversal) {
+  let relativePath;
+  try {
+    relativePath = storageService.normalizeRelativePath(
+      decodeURIComponent(req.path.replace(/^\//, "")),
+    );
+  } catch {
     return res.status(400).send("Ruta inválida");
   }
+  if (!relativePath) return next();
 
+  let requestContext;
   try {
-    const { buffer, contentType } =
-      await sharepointService.downloadFile(relativePath);
-    res.set("Content-Type", contentType);
-    res.set("Cache-Control", "private, max-age=300");
-    if (req.method === "HEAD") return res.end();
-    return res.send(buffer);
+    if (req.method === "HEAD") {
+      const metadata = await storageService.statFile(relativePath);
+      setStorageHeaders(res, metadata);
+      res.set("Cache-Control", "private, max-age=300, no-transform");
+      return res.end();
+    }
+
+    requestContext = storageRequestContext(req);
+    const file = await storageService.downloadStream(relativePath, {
+      range: req.get("range") || undefined,
+      signal: requestContext.signal,
+    });
+    res.status(file.statusCode || 200);
+    setStorageHeaders(res, file);
+    res.set("Cache-Control", "private, max-age=300, no-transform");
+    await pipeline(file.stream, res);
+    return undefined;
   } catch (err) {
+    if (requestContext?.signal.aborted || err?.name === "AbortError") {
+      return undefined;
+    }
+    if (res.headersSent) {
+      res.destroy(err);
+      return undefined;
+    }
     if (err.statusCode === 400) {
       return res.status(400).send("Ruta inválida");
     }
     if (err.statusCode === 404) {
       return res.status(404).send("Archivo no encontrado");
     }
+    if (err.statusCode === 416) {
+      return res.status(416).send("Rango no válido");
+    }
     console.error("[Content proxy] Error:", err.message || err);
     return res.status(502).send("Error al obtener el archivo");
+  } finally {
+    requestContext?.cleanup();
   }
 });
 
@@ -189,6 +297,12 @@ app.use("/content", async (req, res, next) => {
 // ================================
 app.use((req, res, next) => {
   const user = req.session.user;
+
+  // Identidad de la instancia disponible en todas las vistas.
+  res.locals.country = countryConfig.code;
+  res.locals.countryConfig = countryConfig;
+  // Capacidades de la instancia, para filtrar navegación y bloques de UI.
+  res.locals.features = getFeatures();
 
   res.locals.usuario = req.session.user || null;
 
@@ -234,18 +348,22 @@ function requireAuth(req, res, next) {
 // ================================
 app.use("/", authRoutes); // Login/Registro (Públicas)
 
-// Registro de eventos: módulo autónomo (BD propia REGISTRO_*, no la de la intranet)
-app.get("/registro-forms", (req, res) => {
+// Registro de eventos: módulo autónomo (BD propia REGISTRO_*, no la de la intranet).
+// Capacidad solo de Chile mientras el proyecto Supabase de registros sea único
+// y compartido: el guard bloquea también la API, no solo el formulario.
+const eventRegistration = requireFeature("eventRegistration");
+
+app.get("/registro-forms", eventRegistration, (req, res) => {
   res.sendFile(path.join(__dirname, "registro-forms", "registro-forms.html"));
 });
-app.get("/registro-forms/favicon.ico", (req, res) => {
+app.get("/registro-forms/favicon.ico", eventRegistration, (req, res) => {
   res.sendFile(path.join(__dirname, "registro-forms", "favicon.ico"));
 });
-app.get("/registro-forms/api/evento/:id", getRegistroEvento);
-app.post("/registro-forms/api/registrar", registrarEnEvento);
-app.post("/registro-forms/enviar-qr", enviarQrHandler);
+app.get("/registro-forms/api/evento/:id", eventRegistration, getRegistroEvento);
+app.post("/registro-forms/api/registrar", eventRegistration, registrarEnEvento);
+app.post("/registro-forms/enviar-qr", eventRegistration, enviarQrHandler);
 
-app.use("/registro", registroRoutes);
+app.use("/registro", eventRegistration, registroRoutes);
 // Rutas Protegidas
 app.use("/", requireAuth, indexRoutes);
 app.use("/procesos", requireAuth, procesosRoutes);
@@ -255,6 +373,22 @@ app.use("/marketing", requireAuth, marketingRoutes);
 app.use("/docs", requireAuth, docsRoutes);
 app.use("/noticias", requireAuth, noticiasRoutes);
 app.use("/claude", requireAuth, claudeRoutes);
+
+// Multer corta el body antes de entrar al handler cuando supera el límite.
+// Convertimos ese error en 413 para evitar que termine como un 500 genérico.
+app.use((err, req, res, next) => {
+  if (err?.code !== "LIMIT_FILE_SIZE") return next(err);
+
+  const message = "El archivo excede el límite de subida permitido.";
+  const acceptsJson =
+    req.xhr ||
+    req.get("accept")?.includes("application/json") ||
+    req.originalUrl.includes("/upload") ||
+    req.originalUrl.startsWith("/noticias");
+
+  if (acceptsJson) return res.status(413).json({ error: message });
+  return res.status(413).send(message);
+});
 
 // Manejo de 404
 app.use((req, res) => {
@@ -279,11 +413,11 @@ function iniciarTareaCierreTickets() {
 
       if (afectados > 0) {
         console.log(
-          `[CRON] Se cerraron automáticamente ${afectados} tickets en "Pendiente de cierre" hace más de 1 día.`,
+          `[CRON ${countryConfig.code}] Se cerraron automáticamente ${afectados} tickets en "Pendiente de cierre" hace más de 1 día.`,
         );
       }
     } catch (err) {
-      console.error("[CRON] Error en tarea automática de tickets:", err);
+      console.error(`[CRON ${countryConfig.code}] Error en tarea automática de tickets:`, err);
     }
   };
 
@@ -310,11 +444,11 @@ function iniciarLimpiezaHistorial() {
 
       if (borrados > 0) {
         console.log(
-          `[CRON] Limpieza ejecutada: Se eliminaron ${borrados} registros antiguos.`,
+          `[CRON ${countryConfig.code}] Limpieza ejecutada: Se eliminaron ${borrados} registros antiguos.`,
         );
       }
     } catch (err) {
-      console.error("[CRON] Error en tarea de limpieza de historial:", err);
+      console.error(`[CRON ${countryConfig.code}] Error en tarea de limpieza de historial:`, err);
     }
   };
 
@@ -335,11 +469,11 @@ function iniciarTransicionesVacaciones() {
         await vacationRequestService.runDailyStatusTransitions();
       if (inProgress > 0 || completed > 0) {
         console.log(
-          `[CRON] Vacaciones: ${inProgress} en curso, ${completed} completadas.`,
+          `[CRON ${countryConfig.code}] Vacaciones: ${inProgress} en curso, ${completed} completadas.`,
         );
       }
     } catch (err) {
-      console.error("[CRON] Error en transiciones de vacaciones:", err.message);
+      console.error(`[CRON ${countryConfig.code}] Error en transiciones de vacaciones:`, err.message);
     }
   };
 
@@ -460,6 +594,10 @@ async function asegurarSchemaVacaciones() {
 
 app.listen(PORT, () => {
   console.log(`Servidor de Intranet corriendo en puerto ${PORT}`);
+  // Contexto de instancia para diagnosticar producción. Sin secretos.
+  console.log(
+    `[Instancia] COUNTRY=${countryConfig.code} · TZ=${countryConfig.timezone} · APP_BASE_URL=${process.env.APP_BASE_URL}`,
+  );
 });
 
 // Migraciones y sincronización en background (no bloquean el arranque del servidor).

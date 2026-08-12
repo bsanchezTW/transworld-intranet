@@ -44,12 +44,12 @@
       <h3 class="ticket-detail-subtitle"><%= ticket.title %></h3>
     </div>
     <div class="ticket-detail-meta">
-      <p><strong>Creado:</strong> <%= new Date(ticket.created_at).toLocaleString('es-CL') %></p>
+      <p><strong>Creado:</strong> <%= new Date(ticket.created_at).toLocaleString(countryConfig.locale) %></p>
       <% if (ticket.fecha_resolucion) { %>
-        <p><strong>Pendiente de cierre:</strong> <%= new Date(ticket.fecha_resolucion).toLocaleString('es-CL') %></p>
+        <p><strong>Pendiente de cierre:</strong> <%= new Date(ticket.fecha_resolucion).toLocaleString(countryConfig.locale) %></p>
       <% } %>
       <% if (ticket.fecha_cierre) { %>
-        <p><strong>Cerrado:</strong> <%= new Date(ticket.fecha_cierre).toLocaleString('es-CL') %></p>
+        <p><strong>Cerrado:</strong> <%= new Date(ticket.fecha_cierre).toLocaleString(countryConfig.locale) %></p>
       <% } %>
     </div>
   </div>
@@ -117,7 +117,7 @@
         <div class="mensaje-card <%= esSoporte ? 'soporte' : 'usuario' %>">
           <div class="mensaje-header">
             <strong><%= r.remitente %></strong>
-            <span><%= new Date(r.fecha).toLocaleString('es-CL') %></span>
+            <span><%= new Date(r.fecha).toLocaleString(countryConfig.locale) %></span>
           </div>
           <p class="ticket-message-text"><%= r.mensaje %></p>
           

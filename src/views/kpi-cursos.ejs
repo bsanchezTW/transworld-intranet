@@ -461,7 +461,7 @@
 
   function formatDate(value) {
     if (!value) return '—';
-    return new Date(value).toLocaleDateString('es-CL', {
+    return new Date(value).toLocaleDateString("<%= countryConfig.locale %>", {
       year: 'numeric',
       month: 'short',
       day: 'numeric'

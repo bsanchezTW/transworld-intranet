@@ -298,7 +298,7 @@
                 <a href="<%= mat.file_url %>" target="_blank" class="material-nombre" title="Ver archivo">
                     <%= mat.name %>
                 </a>
-                <span class="material-fecha">Subido el: <%= new Date(mat.created_at).toLocaleDateString('es-CL') %></span>
+                <span class="material-fecha">Subido el: <%= new Date(mat.created_at).toLocaleDateString(countryConfig.locale) %></span>
             </div>
         </div>
 

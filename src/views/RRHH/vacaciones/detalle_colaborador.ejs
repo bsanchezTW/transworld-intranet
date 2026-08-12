@@ -2,7 +2,7 @@
 
 <%
   const nombre = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || ('#' + profile.id);
-  const isPeru = (profile.employment_country || 'CL') === 'PE';
+  const isPeru = employmentCountry === 'PE';
 %>
 
 <div class="vac-wrap">

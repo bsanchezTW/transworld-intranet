@@ -125,7 +125,7 @@
                     <div class="curso-meta">
                         <span>Completado el: 
                             <strong>
-                                <%= curso.completed_at ? new Date(curso.completed_at).toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A' %>
+                                <%= curso.completed_at ? new Date(curso.completed_at).toLocaleDateString(countryConfig.locale, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A' %>
                             </strong>
                         </span>
                     </div>

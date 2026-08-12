@@ -17,7 +17,7 @@
 require("dotenv").config();
 
 const db = require("../src/db");
-const sharepoint = require("../src/services/sharepointService");
+const storage = require("../src/services/storage/storageService");
 const fileStorage = require("../src/services/fileStorage");
 const attachmentModel = require("../src/services/noticias/attachmentModel");
 const attachmentProcessor = require("../src/services/noticias/attachmentProcessor");
@@ -62,7 +62,7 @@ function necesitaProceso(item) {
 
 async function descargar(item) {
   const ruta = item.public_id || item.url;
-  const { buffer } = await sharepoint.downloadFile(ruta);
+  const { buffer } = await storage.downloadFile(ruta);
   return buffer;
 }
 
@@ -167,12 +167,12 @@ async function procesarNoticia(fila) {
     } catch (err) {
       resumen.fallos += 1;
       // Un 404 aquí casi siempre es un adjunto heredado de Cloudinary que nunca
-      // llegó a migrarse a SharePoint: el archivo ya no existe y no hay nada
+      // llegó al storage actual: el archivo ya no existe y no hay nada
       // que generar. Se informa explícitamente para no confundirlo con un fallo
       // del propio backfill.
       const motivo =
         err.statusCode === 404
-          ? `archivo inexistente en SharePoint (${item.public_id})`
+          ? `archivo inexistente en Storage (${item.public_id})`
           : err.message || err;
       log(`      ✗ ${item.name} → ${motivo}`);
     }

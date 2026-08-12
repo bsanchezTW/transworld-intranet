@@ -11,7 +11,7 @@
 
 const crypto = require("crypto");
 const path = require("path");
-const sharepoint = require("../sharepointService");
+const storage = require("../storage/storageService");
 
 const SIGNATURE_LENGTH = 32; // 128 bits en hex: suficiente contra fuerza bruta
 
@@ -36,6 +36,11 @@ const CONTENT_TYPES = {
   ".bmp": "image/bmp",
   ".avif": "image/avif",
 };
+
+// La validación final debe basarse también en el MIME devuelto por Storage.
+// No basta con comprobar `image/*`: SVG es una imagen activa y puede ejecutar
+// contenido al servirse desde el mismo origen de la intranet.
+const PUBLIC_CONTENT_TYPES = new Set(Object.values(CONTENT_TYPES));
 
 function getSecret() {
   const secret = process.env.MEDIA_SIGNING_SECRET || process.env.SESSION_SECRET;
@@ -63,9 +68,17 @@ function contentTypeFor(relativePath) {
   return CONTENT_TYPES[ext] || "application/octet-stream";
 }
 
+function isSafeContentType(contentType) {
+  const normalized = String(contentType || "")
+    .split(";", 1)[0]
+    .trim()
+    .toLowerCase();
+  return PUBLIC_CONTENT_TYPES.has(normalized);
+}
+
 /**
  * Convierte cualquier forma de referencia (/content/x, content/x, x) en la
- * ruta relativa canónica dentro de SharePoint. Devuelve "" si no es válida.
+ * ruta relativa canónica dentro del bucket privado. Devuelve "" si no es válida.
  */
 function toRelativePath(urlOrPath) {
   if (!urlOrPath) return "";
@@ -81,14 +94,14 @@ function toRelativePath(urlOrPath) {
       const slash = rest.indexOf("/");
       value = slash === -1 ? "" : rest.slice(slash + 1);
     }
-    return sharepoint.normalizeRelativePath(decodeURIComponent(value));
+    return storage.normalizeRelativePath(decodeURIComponent(value));
   } catch {
     return "";
   }
 }
 
 function sign(relativePath) {
-  const clean = sharepoint.normalizeRelativePath(relativePath);
+  const clean = storage.normalizeRelativePath(relativePath);
   return crypto
     .createHmac("sha256", getSecret())
     .update(clean)
@@ -136,7 +149,9 @@ function absoluteUrl(url, baseUrl = process.env.APP_BASE_URL || "") {
 module.exports = {
   SIGNATURE_LENGTH,
   PUBLIC_EXTENSIONS,
+  PUBLIC_CONTENT_TYPES,
   isPubliclyServable,
+  isSafeContentType,
   contentTypeFor,
   toRelativePath,
   sign,

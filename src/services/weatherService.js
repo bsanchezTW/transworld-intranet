@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { getLocale } = require('../config/country');
 
 // Coordenadas de Huechuraba, Santiago
 const LAT = -33.3742;
@@ -49,13 +50,13 @@ function getWeatherDesc(code) {
 function formatHour(isoString) {
   if (!isoString) return null;
   const date = new Date(isoString);
-  return date.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false });
+  return date.toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 function formatDayShort(isoString) {
   if (!isoString) return '';
   const date = new Date(isoString + 'T12:00:00');
-  return date.toLocaleDateString('es-CL', { weekday: 'short' }).replace('.', '');
+  return date.toLocaleDateString(getLocale(), { weekday: 'short' }).replace('.', '');
 }
 
 async function getWeather() {

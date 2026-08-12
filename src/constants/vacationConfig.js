@@ -3,6 +3,8 @@
  * Centraliza parámetros de negocio configurables (anticipación, fraccionamiento, email RRHH).
  */
 
+const { getCountryConfig } = require("../config/country");
+
 function intEnv(name, fallback) {
   const raw = process.env[name];
   const n = raw != null ? parseInt(String(raw).trim(), 10) : NaN;
@@ -19,8 +21,11 @@ const VACATION_CONFIG = {
   /** Sugerencia interna PE — no bloquea solicitudes legales (art. 17.ii) */
   suggestedMinFractionDaysPE: intEnv("VACATION_SUGGESTED_MIN_FRACTION_DAYS_PE", 7),
 
-  // Correo de RRHH para notificaciones de nuevas solicitudes
-  rrhhEmail: (process.env.VACATION_RRHH_EMAIL || "rrhh@transworld.cl").trim(),
+  // Correo de RRHH para notificaciones de nuevas solicitudes.
+  // Sin variable, el de la instancia: una solicitud de Perú no debe avisar a RRHH Chile.
+  rrhhEmail: (
+    process.env.VACATION_RRHH_EMAIL || getCountryConfig().hrEmail
+  ).trim(),
 
   // Acumulación máxima de períodos en Chile (alerta UI)
   maxAccumulatedPeriodsCL: 2,

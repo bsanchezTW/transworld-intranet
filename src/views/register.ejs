@@ -235,15 +235,9 @@
           <div style="display:flex; align-items:center; background:#e2e8f0; color:#1a202c; padding:0 0 0 10px; border-top-right-radius:6px; border-bottom-right-radius:6px; font-weight:600; height:45px;">
             <span style="margin-right:6px;">@</span>
             <select name="domain" aria-label="Dominio de correo" style="border:none; background:transparent; color:#1a202c; font-weight:600; outline:none; padding-right:8px;">
-            <option value="transworld.cl" selected>transworld.cl</option>
-            <option value="gmail.com">gmail.com</option>
-            <option value="icloud.com">icloud.com</option>
-            <option value="outlook.com">outlook.com</option>
-            <option value="outlook.cl">outlook.cl</option>
-            <option value="hotmail.com">hotmail.com</option>
-            <option value="hotmail.cl">hotmail.cl</option>
-            <option value="yahoo.com">yahoo.com</option>
-            <option value="yahoo.cl">yahoo.cl</option>
+            <% countryConfig.allowedLoginDomains.forEach((d, i) => { %>
+              <option value="<%= d %>"<%= i === 0 ? ' selected' : '' %>><%= d %></option>
+            <% }) %>
             </select>
           </div>
         </div>

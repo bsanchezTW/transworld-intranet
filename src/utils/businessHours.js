@@ -1,11 +1,15 @@
 const { addDays, isWeekend, toDateOnly } = require("./vacationDateUtils");
+const { getCountryConfig } = require("../config/country");
 
-const TZ = "America/Santiago";
+/** Zona horaria de la instancia (Chile: America/Santiago, Perú: America/Lima). */
+function getTZ() {
+  return getCountryConfig().timezone;
+}
 
-/** Partes de fecha/hora en zona America/Santiago. */
-function getZonedParts(date) {
+/** Partes de fecha/hora en la zona de la instancia. */
+function getZonedParts(date, timeZone = getTZ()) {
   const fmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TZ,
+    timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -21,16 +25,23 @@ function getZonedParts(date) {
   return parts;
 }
 
-function getSantiagoDateOnly(date) {
-  const p = getZonedParts(date);
+/** Fecha 'YYYY-MM-DD' de un instante en la zona de la instancia. */
+function getLocalDateOnly(date, timeZone = getTZ()) {
+  const p = getZonedParts(date, timeZone);
   return `${p.year}-${p.month}-${p.day}`;
 }
 
-/** Convierte fecha/hora local Santiago a timestamp UTC (ms). */
-function santiagoLocalToUtcMs(year, month, day, hour, minute, second = 0) {
-  let ms = Date.UTC(year, month - 1, day, hour + 3, minute, second);
+/**
+ * Convierte una fecha/hora local de la instancia a timestamp UTC (ms).
+ *
+ * Parte de una estimación y corrige iterando, así que no depende de conocer el
+ * offset ni el estado del horario de verano: sirve igual para UTC−3 (Santiago)
+ * que para UTC−5 (Lima).
+ */
+function zonedLocalToUtcMs(year, month, day, hour, minute, second = 0, timeZone = getTZ()) {
+  let ms = Date.UTC(year, month - 1, day, hour, minute, second);
   for (let i = 0; i < 10; i++) {
-    const p = getZonedParts(new Date(ms));
+    const p = getZonedParts(new Date(ms), timeZone);
     const dy = year - Number(p.year);
     const dm = month - Number(p.month);
     const dd = day - Number(p.day);
@@ -38,26 +49,29 @@ function santiagoLocalToUtcMs(year, month, day, hour, minute, second = 0) {
     const dmin = minute - Number(p.minute);
     const ds = second - Number(p.second);
     if (dy === 0 && dm === 0 && dd === 0 && dh === 0 && dmin === 0 && ds === 0) break;
-    ms += ((dd * 24 + dh) * 60 + dmin) * 60 * 1000 + ds * 1000;
+    ms +=
+      ((dy * 365 + dm * 30 + dd) * 24 + dh) * 60 * 60 * 1000 +
+      dmin * 60 * 1000 +
+      ds * 1000;
   }
   return ms;
 }
 
-function santiagoLocalToDate(dateStr, hour, minute, second = 0) {
+function zonedLocalToDate(dateStr, hour, minute, second = 0, timeZone = getTZ()) {
   const [y, m, d] = dateStr.split("-").map(Number);
-  return new Date(santiagoLocalToUtcMs(y, m, d, hour, minute, second));
+  return new Date(zonedLocalToUtcMs(y, m, d, hour, minute, second, timeZone));
 }
 
 /**
  * Ventana laboral del día (dow UTC-date-only: 0=dom … 6=sáb).
- * lun–jue 9:00–18:30, vie 9:00–15:30.
+ * La jornada se declara en config/country.js por país.
  */
-function getBusinessWindowForDay(dow) {
+function getBusinessWindowForDay(dow, businessHours = getCountryConfig().businessHours) {
   if (dow >= 1 && dow <= 4) {
-    return { startHour: 9, startMinute: 0, endHour: 18, endMinute: 30 };
+    return businessHours.weekday;
   }
   if (dow === 5) {
-    return { startHour: 9, startMinute: 0, endHour: 15, endMinute: 30 };
+    return businessHours.friday;
   }
   return null;
 }
@@ -77,7 +91,7 @@ function isBusinessDay(dateStr, holidaySet) {
  * Minutos hábiles entre dos instantes (solo horario de oficina, sin noches/fines de semana/feriados).
  * @param {Date|string} startDate
  * @param {Date|string} endDate
- * @param {Set<string>} holidaySet  Fechas 'YYYY-MM-DD' (Chile)
+ * @param {Set<string>} holidaySet  Fechas 'YYYY-MM-DD' del país de la instancia
  */
 function countBusinessMinutes(startDate, endDate, holidaySet) {
   if (!startDate || !endDate) return 0;
@@ -87,23 +101,28 @@ function countBusinessMinutes(startDate, endDate, holidaySet) {
     return 0;
   }
 
+  const { timezone, businessHours } = getCountryConfig();
   let totalMinutes = 0;
-  let currentDay = getSantiagoDateOnly(start);
-  const lastDay = getSantiagoDateOnly(end);
+  let currentDay = getLocalDateOnly(start, timezone);
+  const lastDay = getLocalDateOnly(end, timezone);
 
   while (currentDay <= lastDay) {
     if (isBusinessDay(currentDay, holidaySet)) {
-      const window = getBusinessWindowForDay(getDayOfWeek(currentDay));
+      const window = getBusinessWindowForDay(getDayOfWeek(currentDay), businessHours);
       if (window) {
-        const windowStart = santiagoLocalToDate(
+        const windowStart = zonedLocalToDate(
           currentDay,
           window.startHour,
           window.startMinute,
+          0,
+          timezone,
         );
-        const windowEnd = santiagoLocalToDate(
+        const windowEnd = zonedLocalToDate(
           currentDay,
           window.endHour,
           window.endMinute,
+          0,
+          timezone,
         );
         const overlapStart = Math.max(start.getTime(), windowStart.getTime());
         const overlapEnd = Math.min(end.getTime(), windowEnd.getTime());
@@ -129,9 +148,9 @@ function formatBusinessDuration(totalMinutes) {
 }
 
 module.exports = {
-  TZ,
+  getTZ,
   countBusinessMinutes,
   formatBusinessDuration,
-  getSantiagoDateOnly,
+  getLocalDateOnly,
   isBusinessDay,
 };

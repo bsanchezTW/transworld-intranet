@@ -6,6 +6,7 @@ const multer = require('multer');
 const fileStorage = require('../services/fileStorage');
 const requireRole = require('../middlewares/requireRole');
 const { isAdministrador } = require('../constants/roles');
+const { UPLOAD_LIMITS_BYTES } = require('../config/uploadLimits');
 
 function getFileExtension(url, nombre) {
   const source = url || nombre || '';
@@ -27,7 +28,10 @@ function mapDocumentoRow(row) {
 }
 
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: UPLOAD_LIMITS_BYTES.PROCESS_DOCUMENT },
+});
 
 // === 1. DEFINICIÓN DE ÁREAS ===
 const AREAS = [
@@ -222,9 +226,9 @@ router.post('/:seccion/:area/upload', requireRole.administrador(), upload.single
       fileName: result.fileName,
     });
   } catch (err) {
-    console.error('[Procesos] Error subida SharePoint:', err);
+    console.error('[Procesos] Error de subida a Storage:', err);
     res.status(500).json({
-      error: err.message || 'Error al subir archivo a SharePoint',
+      error: err.message || 'Error al subir el archivo',
     });
   }
 });

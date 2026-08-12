@@ -3,8 +3,11 @@
  * Usa BREVO_API_KEY del .env. Remitente fijo de registro (no MAIL_FROM de tickets).
  * El QR se referencia desde api.qrserver.com en el HTML del correo.
  */
+const { getCountryConfig } = require('../config/country');
+
 const BREVO_API_KEY = (process.env.BREVO_API_KEY || process.env.SMTP_PASS || '').trim();
-const MAIL_FROM = 'contacto@transworld.cl';
+// Casilla de contacto de la instancia: un registro de Perú no debe derivar a Chile.
+const MAIL_FROM = getCountryConfig().contactEmail;
 const MAIL_SENDER_NAME = 'Equipo de Transworld';
 
 function escapeHtml(value) {
@@ -131,7 +134,7 @@ async function enviarQrHandler(req, res) {
       cuerpoRegistro,
       '',
       'Presenta tu código QR en la entrada.',
-      'Consultas: contacto@transworld.cl',
+      `Consultas: ${MAIL_FROM}`,
     ].join('\n');
 
     const { google: googleCalUrl, outlook: outlookCalUrl } = buildCalendarLinks({
@@ -184,7 +187,7 @@ async function enviarQrHandler(req, res) {
 
       <p style="margin:0 0 6px;font-size:15px;color:#333333;">
         Consultas a<br>
-        <a href="mailto:contacto@transworld.cl" style="color:#1a5fb4;text-decoration:none;font-weight:bold;">contacto@transworld.cl</a>
+        <a href="mailto:${MAIL_FROM}" style="color:#1a5fb4;text-decoration:none;font-weight:bold;">${MAIL_FROM}</a>
       </p>
 
       ${calendarButtons}
@@ -206,7 +209,7 @@ async function enviarQrHandler(req, res) {
       '',
       `Código QR: ${qrUrl}`,
       '',
-      'Consultas a contacto@transworld.cl',
+      `Consultas a ${MAIL_FROM}`,
       '',
       googleCalUrl ? `Google Calendar: ${googleCalUrl}` : '',
       outlookCalUrl ? `Outlook: ${outlookCalUrl}` : '',

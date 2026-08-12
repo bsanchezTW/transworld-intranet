@@ -7,6 +7,7 @@ const {
 const {
   formatDisplay,
   toDateOnly,
+  todayInCountry,
 } = require("./vacationDateUtils");
 
 const TICKET_STATUS_TO_DB = {
@@ -186,7 +187,7 @@ function mapVacationPeriodForView(row) {
     entitledEffective +
     Number(row.adjusted_days) -
     Number(row.used_days);
-  const today = toDateOnly(new Date());
+  const today = todayInCountry();
   const isChile = row.country_code === "CL";
   const expired =
     !isChile && row.expires_at ? toDateOnly(row.expires_at) < today : false;

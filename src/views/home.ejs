@@ -15,7 +15,7 @@
   function formatDateShort(dateString) {
     const d = new Date(dateString);
     const dia = d.getDate();
-    const mes = d.toLocaleString('es-CL', { month: 'short' });
+    const mes = d.toLocaleString(countryConfig.locale, { month: 'short' });
     return `${dia}-${mes.replace('.', '')}`;
   }
 
@@ -43,7 +43,7 @@
   }
 
   const mesCorto = new Date(2000, new Date().getMonth(), 1)
-    .toLocaleString('es-CL', { month: 'short' })
+    .toLocaleString(countryConfig.locale, { month: 'short' })
     .replace('.', '');
 
   const mesNum = new Date().getMonth() + 1;
@@ -99,11 +99,13 @@
         <span class="home-indicator__value"><%= (finanzas.euro && finanzas.euro.valor) ? finanzas.euro.valor : '---' %></span>
         <span class="home-indicator__trend" aria-hidden="true"><%= financeTrendSymbol(finanzas.euro.tendencia) %></span>
       </a>
+      <% if (features.chileUfIndicator) { %>
       <a href="<%= ufUrl %>" target="_blank" rel="noopener noreferrer" class="home-indicator <%= financeTrendClass(finanzas.uf.tendencia) %>" role="listitem">
         <span class="home-indicator__label">UF</span>
         <span class="home-indicator__value"><%= (finanzas.uf && finanzas.uf.valor) ? finanzas.uf.valor : '---' %></span>
         <span class="home-indicator__trend" aria-hidden="true"><%= financeTrendSymbol(finanzas.uf.tendencia) %></span>
       </a>
+      <% } %>
     </div>
   </div>
 
@@ -115,11 +117,11 @@
       <!-- Accesos rápidos -->
       <section class="home-section home-quick-section" aria-label="Accesos rápidos">
         <div class="home-quick">
-          <a href="https://www.transworld.cl/" target="_blank" rel="noopener noreferrer" class="home-quick__item">
+          <a href="<%= countryConfig.corporateSite %>" target="_blank" rel="noopener noreferrer" class="home-quick__item">
             <span class="home-quick__glyph home-quick__glyph--brand home-quick__glyph--logo">
               <img src="/img/favicon.png" alt="" class="home-quick__glyph-img">
             </span>
-            <span class="home-quick__label">transworld.cl</span>
+            <span class="home-quick__label"><%= new URL(countryConfig.corporateSite).hostname.replace(/^www./, "") %></span>
           </a>
           <a href="/cursos" class="home-quick__item">
             <span class="home-quick__glyph home-quick__glyph--green home-quick__glyph--logo">
@@ -402,6 +404,7 @@
       </section>
 
       <!-- Comunicaciones (LinkedIn) -->
+      <% if (features.linkedinFeed) { %>
       <section class="home-section home-comms" aria-labelledby="home-comms-title">
         <div class="home-card__head home-card__head--bare home-comms__head">
           <h2 class="home-card__title" id="home-comms-title">Comunicaciones</h2>
@@ -439,6 +442,7 @@
           <% } %>
         </div>
       </section>
+      <% } %>
 
     </div>
   </div>

@@ -5,6 +5,10 @@ node_modules/
 .env
 .env.*
 !.env.example
+# Plantillas por país: se versionan, no llevan secretos.
+!.env.cl.example
+!.env.pe.example
+# Configuración real por país: nunca se versiona.
 .env.local
 .env.*.local
 *.pem
@@ -33,6 +37,7 @@ build/
 .cache/
 tmp/
 temp/
+.migration/
 
 # Archivos del sistema / IDE
 .DS_Store

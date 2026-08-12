@@ -6,6 +6,7 @@
 // guarda igual. Publicar una noticia nunca debe romperse por una vista previa.
 
 const fileStorage = require("../fileStorage");
+const fs = require("node:fs/promises");
 const attachmentModel = require("./attachmentModel");
 const documentCache = require("./documentCache");
 const pdfRenderer = require("./pdfRenderer");
@@ -110,7 +111,7 @@ async function processWord(buffer, baseName, item) {
       `${baseName}.html`,
     );
     item.html_path = saved.public_id;
-    // Se precalienta la caché: la primera visita al detalle ya no espera a Graph.
+    // Se precalienta la caché: la primera visita no espera una lectura remota.
     documentCache.set(saved.public_id, html);
   } catch (err) {
     console.warn("[Noticias] No se pudo guardar el HTML del Word:", err.message || err);
@@ -147,7 +148,7 @@ async function processUpload(buffer, file) {
     name,
     url: saved.secure_url,
     public_id: saved.public_id,
-    mime: file.mimetype || attachmentModel.mimeFor(name),
+    mime: saved.contentType || attachmentModel.mimeFor(name),
     size: buffer.length,
     alt: "",
     caption: "",
@@ -169,14 +170,59 @@ async function processUpload(buffer, file) {
 }
 
 /**
- * Borra el original y todas sus derivadas. Se usa al eliminar una noticia,
- * donde hasta ahora los archivos quedaban huérfanos en SharePoint.
+ * Variante para Multer diskStorage. Los videos se envían desde disco por TUS
+ * sin ocupar cientos de MiB en el heap; los demás tipos se leen como Buffer
+ * porque sus renderizadores necesitan acceso aleatorio al contenido.
  */
-async function deleteAttachmentFiles(items) {
+async function processUploadedFile(file) {
+  if (!file?.path) {
+    throw new AttachmentError("No se recibió un archivo temporal válido.");
+  }
+  const name = file.originalname || "archivo";
+  const kind = attachmentModel.kindFor(name, { mime: file.mimetype });
+  if (!ACCEPTED_KINDS.has(kind)) {
+    throw new AttachmentError(
+      `Tipo de archivo no permitido: ${name}. Se aceptan imágenes, PDF, Word y video.`,
+    );
+  }
+  const maxMb = MAX_SIZE_MB[kind];
+  if (!Number.isFinite(file.size) || file.size > maxMb * 1024 * 1024) {
+    throw new AttachmentError(`"${name}" supera el máximo de ${maxMb} MB para este tipo.`, 413);
+  }
+
+  if (kind !== KIND.VIDEO) {
+    const buffer = await fs.readFile(file.path);
+    return processUpload(buffer, file);
+  }
+
+  const saved = await fileStorage.saveFileFromPath(
+    file.path,
+    UPLOAD_FOLDER,
+    name,
+  );
+  return attachmentModel.normalizeOne({
+    v: 2,
+    id: attachmentModel.generateId(),
+    kind,
+    name,
+    url: saved.secure_url,
+    public_id: saved.public_id,
+    mime: saved.contentType,
+    size: file.size,
+    alt: "",
+    caption: "",
+  });
+}
+
+/**
+ * Rutas de storage asociadas a un adjunto (original + derivadas).
+ */
+function collectAttachmentPaths(items) {
   const paths = [];
 
   attachmentModel.normalize(items).forEach((item) => {
     paths.push(item.public_id);
+    if (item.url) paths.push(item.url);
     if (item.html_path) paths.push(item.html_path);
     // La vista previa de una imagen ES la imagen: no se borra dos veces.
     if (item.preview_path && item.preview_path !== item.public_id) {
@@ -191,11 +237,67 @@ async function deleteAttachmentFiles(items) {
     }
   });
 
-  const results = await Promise.allSettled(
-    paths.filter(Boolean).map((relativePath) => fileStorage.deleteFile(relativePath)),
+  return paths.filter(Boolean);
+}
+
+/**
+ * Adjuntos presentes en `previous` cuyo public_id ya no está en `next`.
+ */
+function findRemovedAttachments(previous, next) {
+  const nextIds = new Set(
+    attachmentModel
+      .normalize(next)
+      .map((item) => item.public_id)
+      .filter(Boolean),
   );
 
-  return results.filter((result) => result.status === "fulfilled" && result.value).length;
+  return attachmentModel
+    .normalize(previous)
+    .filter((item) => item.public_id && !nextIds.has(item.public_id));
+}
+
+/**
+ * Extrae rutas de imágenes embebidas en el HTML renderizado de un Word.
+ */
+async function collectWordMediaPaths(items) {
+  const paths = [];
+  const wordItems = attachmentModel
+    .normalize(items)
+    .filter((item) => item.kind === KIND.WORD && item.html_path);
+
+  for (const item of wordItems) {
+    try {
+      const html = await documentCache.getHtml(item.html_path);
+      if (!html) continue;
+      const matches = html.matchAll(/(?:src|href)=["']([^"']+)["']/gi);
+      for (const match of matches) {
+        const ref = match[1];
+        const relative = fileStorage.resolveStoredPath(ref);
+        if (relative && relative.startsWith(`${WORD_MEDIA_FOLDER}/`)) {
+          paths.push(relative);
+        }
+      }
+    } catch (err) {
+      console.warn(
+        "[Noticias] No se pudo inspeccionar HTML de Word para limpieza:",
+        err.message || err,
+      );
+    }
+  }
+
+  return paths;
+}
+
+/**
+ * Borra el original y todas sus derivadas. Se usa al eliminar una noticia
+ * o adjuntos quitados en una edición, para no dejar huérfanos en Storage.
+ */
+async function deleteAttachmentFiles(items) {
+  const normalized = attachmentModel.normalize(items);
+  const paths = collectAttachmentPaths(normalized);
+  const wordMedia = await collectWordMediaPaths(normalized);
+  const result = await fileStorage.deleteFiles([...paths, ...wordMedia]);
+  return result.deleted;
 }
 
 module.exports = {
@@ -203,6 +305,9 @@ module.exports = {
   UPLOAD_FOLDER,
   MAX_SIZE_MB,
   processUpload,
+  processUploadedFile,
   deleteAttachmentFiles,
+  findRemovedAttachments,
+  collectAttachmentPaths,
   readImageSize,
 };

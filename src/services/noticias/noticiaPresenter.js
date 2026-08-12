@@ -9,7 +9,9 @@ const attachmentModel = require("./attachmentModel");
 const { toTitleCase } = require("../../utils/formatName");
 const { minutosDeLectura, etiquetaDeLectura } = require("../../utils/readingTime");
 
-const LOCALE = "es-CL";
+const { getLocale } = require("../../config/country");
+
+const LOCALE = getLocale();
 
 const FORMATO_LARGO = { day: "numeric", month: "long", year: "numeric" };
 const FORMATO_CORTO = { day: "2-digit", month: "short", year: "numeric" };

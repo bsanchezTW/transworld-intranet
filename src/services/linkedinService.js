@@ -65,7 +65,7 @@ function getReauthUrl(req) {
   return `${resolveBaseUrl(req)}/auth/linkedin/login`;
 }
 
-function isSharePointImageUrl(url) {
+function isStoredImageUrl(url) {
   return Boolean(url && String(url).startsWith("/content/"));
 }
 
@@ -103,7 +103,7 @@ function isUsableCachedImage(url) {
   if (!url || url === FALLBACK_IMAGE || url === LINKEDIN_PLACEHOLDER_IMAGE) {
     return false;
   }
-  return isSharePointImageUrl(url) || String(url).startsWith("/");
+  return isStoredImageUrl(url) || String(url).startsWith("/");
 }
 
 function getLinkedInHeaders(accessToken) {
@@ -254,8 +254,8 @@ function postImageKey(enlaceUrl) {
   );
 }
 
-async function persistImageToSharePoint(imageUrl, enlaceUrl) {
-  if (isSharePointImageUrl(imageUrl)) return imageUrl;
+async function persistImageToStorage(imageUrl, enlaceUrl) {
+  if (isStoredImageUrl(imageUrl)) return imageUrl;
   if (!imageUrl || imageUrl === FALLBACK_IMAGE) return FALLBACK_IMAGE;
   if (!isLegacyExternalImageUrl(imageUrl)) {
     return String(imageUrl).startsWith("/") ? imageUrl : FALLBACK_IMAGE;
@@ -278,7 +278,7 @@ async function persistImageToSharePoint(imageUrl, enlaceUrl) {
     );
     return saved.url;
   } catch (error) {
-    console.warn("[LINKEDIN] No se pudo subir imagen a SharePoint:", error.message);
+    console.warn("[LINKEDIN] No se pudo guardar la imagen:", error.message);
     return FALLBACK_IMAGE;
   }
 }
@@ -352,10 +352,10 @@ function mergeCachedWithApiText(cached, apiElements) {
   });
 }
 
-async function enrichPostsWithSharePointImages(posts) {
+async function enrichPostsWithStoredImages(posts) {
   const enriched = [];
   for (const post of posts) {
-    const image_url = await persistImageToSharePoint(
+    const image_url = await persistImageToStorage(
       post.image_url ?? post.imagen_url,
       post.link_url ?? post.enlace_url,
     );
@@ -578,7 +578,7 @@ function postFingerprint(posts) {
 
 /**
  * Si los posts de la API coinciden con el caché local y ya tienen imagen
- * usable (SharePoint), no vuelve a llamar Images API ni re-sube archivos.
+ * usable en el storage, no vuelve a llamar Images API ni re-sube archivos.
  */
 function reuseCachedPostsIfUnchanged(parsed, cached) {
   if (!parsed.length || !cached.length) return null;
@@ -633,7 +633,7 @@ async function fetchPostsFromApi(accessToken) {
     return reused;
   }
 
-  const posts = await enrichPostsWithSharePointImages(parsed);
+  const posts = await enrichPostsWithStoredImages(parsed);
   const hasUsableImages = posts.some((post) =>
     isUsableCachedImage(post.image_url),
   );

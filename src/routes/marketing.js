@@ -1,15 +1,32 @@
 const express = require('express');
 const multer = require('multer');
+const crypto = require('node:crypto');
+const fs = require('node:fs/promises');
+const os = require('node:os');
+const path = require('node:path');
 const db = require('../db');
 const fileStorage = require('../services/fileStorage');
 const requireRole = require('../middlewares/requireRole');
+const { UPLOAD_LIMITS_BYTES } = require('../config/uploadLimits');
 const { EVENTO_VIEW_COLUMNS } = require('../utils/schemaMappers');
 
 const router = express.Router();
 const WRITE_ROLES = ['admin'];
 
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const EVENT_UPLOAD_TEMP_DIR = path.join(os.tmpdir(), 'transworld-intranet-events');
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    fs.mkdir(EVENT_UPLOAD_TEMP_DIR, { recursive: true })
+      .then(() => cb(null, EVENT_UPLOAD_TEMP_DIR), cb);
+  },
+  filename: (_req, _file, cb) => {
+    cb(null, `${Date.now()}-${crypto.randomUUID()}.upload`);
+  },
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: UPLOAD_LIMITS_BYTES.EVENT_MEDIA },
+});
 
 function createSlug(text) {
   return text.toString().toLowerCase().trim()
@@ -49,7 +66,7 @@ router.get('/', (req, res) => res.redirect('/marketing/eventos'));
 router.get('/eventos', async (req, res) => {
   try {
     const { rows } = await db.query(`SELECT ${EVENTO_VIEW_COLUMNS} FROM events ORDER BY created_at DESC`);
-    res.render('marketing/eventos', { titulo: 'Galería de Eventos | Intranet Transworld Chile', eventos: rows });
+    res.render('marketing/eventos', { titulo: 'Galería de Eventos', eventos: rows });
   } catch (err) {
     console.error(err);
     res.status(500).send('Error cargando eventos');
@@ -115,16 +132,34 @@ router.get('/eventos/:slug/fotos/signature', requireRole(...WRITE_ROLES), async 
 });
 
 // ENDPOINT PARA SUBIR ARCHIVOS
-router.post('/eventos/:slug/fotos/upload', requireRole(...WRITE_ROLES), multer({ storage: multer.memoryStorage() }).single('archivo'), async (req, res) => {
+router.post('/eventos/:slug/fotos/upload', requireRole(...WRITE_ROLES), upload.single('archivo'), async (req, res) => {
   const { slug } = req.params;
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No se subió archivo' });
     }
 
+    const resourceType = fileStorage.getResourceType(req.file.originalname);
+    const isVideo =
+      resourceType === 'video' && req.file.mimetype?.startsWith('video/');
+    const isImage =
+      resourceType === 'image' && req.file.mimetype?.startsWith('image/');
+    if (!isVideo && !isImage) {
+      return res.status(400).json({ error: 'Solo se admiten imágenes o videos.' });
+    }
+    const maxBytes = isVideo
+      ? UPLOAD_LIMITS_BYTES.EVENT_VIDEO
+      : UPLOAD_LIMITS_BYTES.EVENT_IMAGE;
+    if (req.file.size > maxBytes) {
+      const maxMb = isVideo ? 100 : 10;
+      return res.status(413).json({
+        error: `El archivo supera el máximo de ${maxMb} MiB para este tipo.`,
+      });
+    }
+
     const folder = `eventos/${slug}`;
-    const result = await fileStorage.saveFile(
-      req.file.buffer,
+    const result = await fileStorage.saveFileFromPath(
+      req.file.path,
       folder,
       req.file.originalname
     );
@@ -133,6 +168,15 @@ router.post('/eventos/:slug/fotos/upload', requireRole(...WRITE_ROLES), multer({
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al subir archivo' });
+  } finally {
+    if (req.file?.path) {
+      await fs.unlink(req.file.path).catch((cleanupError) => {
+        console.warn(
+          '[Eventos] No se pudo limpiar el temporal de subida:',
+          cleanupError.message || cleanupError,
+        );
+      });
+    }
   }
 });
 

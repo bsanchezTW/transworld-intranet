@@ -367,7 +367,7 @@
             .field-input {
                 width: 100%;
                 box-sizing: border-box;
-                padding: 24px 18px 10px;
+                padding: 24px 44px 10px 18px;
                 font-size: 15.5px;
                 font-weight: 500;
                 color: #ffffff;
@@ -423,8 +423,9 @@
             .field-valid {
                 position: absolute;
                 right: 16px;
-                top: 50%;
-                transform: translateY(-50%);
+                top: 0;
+                bottom: 0;
+                margin: auto 0;
                 width: 20px;
                 height: 20px;
                 border-radius: 50%;
@@ -432,17 +433,33 @@
                 display: none;
                 align-items: center;
                 justify-content: center;
-                animation: twPop 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+                animation: twPopValid 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+                pointer-events: none;
             }
 
             .field-valid::after {
                 content: "";
-                width: 9px;
+                width: 8px;
                 height: 5px;
+                margin-top: -1px;
                 border-left: 2px solid #a3e635;
                 border-bottom: 2px solid #a3e635;
-                transform: rotate(-45deg) translate(0, -1px);
+                transform: rotate(-45deg);
                 display: block;
+            }
+
+            @keyframes twPopValid {
+                0% {
+                    opacity: 0;
+                    transform: scale(0.6);
+                }
+                70% {
+                    transform: scale(1.06);
+                }
+                100% {
+                    opacity: 1;
+                    transform: scale(1);
+                }
             }
 
             .field-input.valid ~ .field-valid {
@@ -512,6 +529,93 @@
 
             .field-error.visible {
                 display: block;
+            }
+
+            .field-static-label {
+                display: block;
+                margin: 0 0 8px 4px;
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: 0.4px;
+                color: rgba(255, 255, 255, 0.55);
+            }
+
+            .phone-row {
+                display: flex;
+                align-items: stretch;
+                gap: 0;
+                position: relative;
+            }
+
+            .phone-field__country {
+                flex: 0 0 auto;
+                width: 112px;
+                box-sizing: border-box;
+                padding: 17px 26px 17px 10px;
+                font-size: 13.5px;
+                font-weight: 600;
+                color: #ffffff;
+                background: rgba(255, 255, 255, 0.055);
+                border: 1.5px solid rgba(255, 255, 255, 0.14);
+                border-right: none;
+                border-radius: 14px 0 0 14px;
+                appearance: none;
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                cursor: pointer;
+                transition:
+                    border-color 0.25s,
+                    background 0.25s,
+                    box-shadow 0.25s;
+            }
+
+            .phone-field__country option {
+                color: #0b1530;
+                background: #ffffff;
+            }
+
+            .phone-field__local {
+                flex: 1;
+                min-width: 0;
+                border-radius: 0 14px 14px 0 !important;
+                padding: 17px 44px 17px 18px !important;
+            }
+
+            .phone-field__local::placeholder {
+                color: rgba(255, 255, 255, 0.35);
+                font-weight: 400;
+            }
+
+            .phone-row:focus-within .phone-field__country,
+            .phone-row:focus-within .phone-field__local {
+                border-color: rgba(163, 230, 53, 0.75);
+                background: rgba(255, 255, 255, 0.1);
+            }
+
+            .phone-row:focus-within .phone-field__local {
+                box-shadow: 0 0 0 4px rgba(163, 230, 53, 0.13);
+            }
+
+            .phone-row.has-error .phone-field__country,
+            .phone-row.has-error .phone-field__local {
+                border-color: rgba(255, 110, 140, 0.7);
+            }
+
+            .phone-row .field-valid {
+                right: 16px;
+            }
+
+            .phone-country-arrow {
+                position: absolute;
+                left: 92px;
+                top: 50%;
+                width: 7px;
+                height: 7px;
+                border-right: 2px solid rgba(255, 255, 255, 0.55);
+                border-bottom: 2px solid rgba(255, 255, 255, 0.55);
+                rotate: 45deg;
+                pointer-events: none;
+                margin-top: -5px;
             }
 
             .submit-wrap {
@@ -836,7 +940,7 @@
                             </p>
                         </div>
 
-                        <form id="registroForm">
+                        <form id="registroForm" novalidate>
                             <div class="fields">
                                 <div
                                     class="field-wrap"
@@ -849,6 +953,7 @@
                                             id="nombre"
                                             autocomplete="off"
                                             placeholder=" "
+                                            required
                                         />
                                         <label class="field-label" for="nombre"
                                             >Nombre y Apellido</label
@@ -875,6 +980,7 @@
                                             id="empresa"
                                             autocomplete="off"
                                             placeholder=" "
+                                            required
                                         />
                                         <label class="field-label" for="empresa"
                                             >Empresa</label
@@ -898,6 +1004,7 @@
                                             id="cargo"
                                             autocomplete="off"
                                             placeholder=" "
+                                            required
                                         />
                                         <label class="field-label" for="cargo"
                                             >Cargo</label
@@ -914,23 +1021,34 @@
                                     class="field-wrap"
                                     style="animation-delay: 0.52s"
                                 >
+                                    <label class="field-static-label" for="telefono"
+                                        >Teléfono</label
+                                    >
                                     <div
                                         class="field-inner"
                                         data-field="telefono"
                                     >
-                                        <input
-                                            class="field-input"
-                                            type="tel"
-                                            id="telefono"
-                                            autocomplete="off"
-                                            placeholder=" "
-                                        />
-                                        <label
-                                            class="field-label"
-                                            for="telefono"
-                                            >Teléfono</label
-                                        >
-                                        <span class="field-valid"></span>
+                                        <div class="phone-row" id="phoneRow">
+                                            <select
+                                                class="phone-field__country"
+                                                id="telefono_pais"
+                                                aria-label="Código de país"
+                                            ></select>
+                                            <span
+                                                class="phone-country-arrow"
+                                                aria-hidden="true"
+                                            ></span>
+                                            <input
+                                                class="field-input phone-field__local"
+                                                type="tel"
+                                                id="telefono"
+                                                autocomplete="tel-national"
+                                                inputmode="numeric"
+                                                placeholder="9 1234 5678"
+                                                required
+                                            />
+                                            <span class="field-valid"></span>
+                                        </div>
                                     </div>
                                     <div
                                         class="field-error"
@@ -949,6 +1067,7 @@
                                             id="email"
                                             autocomplete="off"
                                             placeholder=" "
+                                            required
                                         />
                                         <label class="field-label" for="email"
                                             >Correo Electrónico</label
@@ -1131,6 +1250,151 @@
             let qrBase64 = "";
             let bloquesEvento = [];
 
+            const PHONE_COUNTRIES = [
+                {
+                    code: "CL",
+                    callingCode: "56",
+                    label: "+56 CL",
+                    nationalDigits: 9,
+                    nationalDigitsMax: 9,
+                    mobileLeading: null,
+                    groups: [1, 4, 4],
+                    example: "9 1234 5678",
+                },
+                {
+                    code: "PE",
+                    callingCode: "51",
+                    label: "+51 PE",
+                    nationalDigits: 8,
+                    nationalDigitsMax: 9,
+                    mobileLeading: null,
+                    groups: [3, 3, 3],
+                    example: "987 654 321",
+                },
+                {
+                    code: "AR",
+                    callingCode: "54",
+                    label: "+54 AR",
+                    nationalDigits: 10,
+                    nationalDigitsMax: 10,
+                    mobileLeading: null,
+                    groups: [2, 4, 4],
+                    example: "11 2345 6789",
+                },
+                {
+                    code: "BO",
+                    callingCode: "591",
+                    label: "+591 BO",
+                    nationalDigits: 8,
+                    nationalDigitsMax: 8,
+                    mobileLeading: /^[67]/,
+                    groups: [4, 4],
+                    example: "7123 4567",
+                },
+                {
+                    code: "BR",
+                    callingCode: "55",
+                    label: "+55 BR",
+                    nationalDigits: 10,
+                    nationalDigitsMax: 11,
+                    mobileLeading: null,
+                    groups: [2, 5, 4],
+                    example: "11 91234 5678",
+                },
+                {
+                    code: "CO",
+                    callingCode: "57",
+                    label: "+57 CO",
+                    nationalDigits: 10,
+                    nationalDigitsMax: 10,
+                    mobileLeading: /^3/,
+                    groups: [3, 3, 4],
+                    example: "300 123 4567",
+                },
+                {
+                    code: "CR",
+                    callingCode: "506",
+                    label: "+506 CR",
+                    nationalDigits: 8,
+                    nationalDigitsMax: 8,
+                    mobileLeading: null,
+                    groups: [4, 4],
+                    example: "8888 8888",
+                },
+                {
+                    code: "EC",
+                    callingCode: "593",
+                    label: "+593 EC",
+                    nationalDigits: 9,
+                    nationalDigitsMax: 9,
+                    mobileLeading: /^9/,
+                    groups: [2, 3, 4],
+                    example: "99 123 4567",
+                },
+                {
+                    code: "GT",
+                    callingCode: "502",
+                    label: "+502 GT",
+                    nationalDigits: 8,
+                    nationalDigitsMax: 8,
+                    mobileLeading: null,
+                    groups: [4, 4],
+                    example: "5123 4567",
+                },
+                {
+                    code: "MX",
+                    callingCode: "52",
+                    label: "+52 MX",
+                    nationalDigits: 10,
+                    nationalDigitsMax: 10,
+                    mobileLeading: null,
+                    groups: [2, 4, 4],
+                    example: "55 1234 5678",
+                },
+                {
+                    code: "PA",
+                    callingCode: "507",
+                    label: "+507 PA",
+                    nationalDigits: 8,
+                    nationalDigitsMax: 8,
+                    mobileLeading: null,
+                    groups: [4, 4],
+                    example: "6123 4567",
+                },
+                {
+                    code: "PY",
+                    callingCode: "595",
+                    label: "+595 PY",
+                    nationalDigits: 9,
+                    nationalDigitsMax: 9,
+                    mobileLeading: /^9/,
+                    groups: [3, 3, 3],
+                    example: "981 123 456",
+                },
+                {
+                    code: "UY",
+                    callingCode: "598",
+                    label: "+598 UY",
+                    nationalDigits: 8,
+                    nationalDigitsMax: 8,
+                    mobileLeading: /^9/,
+                    groups: [2, 3, 3],
+                    example: "94 123 456",
+                },
+                {
+                    code: "VE",
+                    callingCode: "58",
+                    label: "+58 VE",
+                    nationalDigits: 10,
+                    nationalDigitsMax: 10,
+                    mobileLeading: /^4/,
+                    groups: [3, 3, 4],
+                    example: "412 123 4567",
+                },
+            ];
+
+            const DEFAULT_PHONE_COUNTRY = "CL";
+
             const fieldDefs = [
                 { id: "nombre", label: "Nombre y Apellido" },
                 { id: "empresa", label: "Empresa" },
@@ -1139,40 +1403,262 @@
                 { id: "email", label: "Correo Electrónico" },
             ];
 
+            function digitsOnly(value) {
+                return String(value || "").replace(/\D/g, "");
+            }
+
+            function groupDigits(digits, groups) {
+                const out = [];
+                let rest = String(digits || "");
+                for (const size of groups) {
+                    if (!rest.length) break;
+                    out.push(rest.slice(0, size));
+                    rest = rest.slice(size);
+                }
+                if (rest.length) out.push(rest);
+                return out.join(" ");
+            }
+
+            function getPhoneCountry(code) {
+                return (
+                    PHONE_COUNTRIES.find(
+                        (c) => c.code === String(code || "").toUpperCase(),
+                    ) ||
+                    PHONE_COUNTRIES.find(
+                        (c) => c.code === DEFAULT_PHONE_COUNTRY,
+                    )
+                );
+            }
+
+            function toTitleCaseName(value) {
+                return String(value || "")
+                    .trim()
+                    .replace(/\s+/g, " ")
+                    .split(" ")
+                    .filter(Boolean)
+                    .map((word) => {
+                        const lower = word.toLocaleLowerCase("es");
+                        return (
+                            lower.charAt(0).toLocaleUpperCase("es") +
+                            lower.slice(1)
+                        );
+                    })
+                    .join(" ");
+            }
+
+            function isValidFullName(value) {
+                const trimmed = String(value || "")
+                    .trim()
+                    .replace(/\s+/g, " ");
+                return /^\S+\s+\S+/.test(trimmed) && isLettersAndSpaces(trimmed);
+            }
+
+            function isLettersAndSpaces(value) {
+                const trimmed = String(value || "")
+                    .trim()
+                    .replace(/\s+/g, " ");
+                if (!trimmed) return false;
+                return /^[\p{L}]+(?:\s+[\p{L}]+)*$/u.test(trimmed);
+            }
+
+            function formatLocalPhoneInput(raw, countryCode) {
+                const cfg = getPhoneCountry(countryCode);
+                let digits = digitsOnly(raw);
+
+                if (
+                    digits.indexOf(cfg.callingCode) === 0 &&
+                    digits.length > cfg.nationalDigitsMax
+                ) {
+                    digits = digits.slice(cfg.callingCode.length);
+                }
+                if (digits.charAt(0) === "0") digits = digits.slice(1);
+
+                digits = digits.slice(0, cfg.nationalDigitsMax);
+                if (!digits.length) return "";
+
+                let groups = cfg.groups;
+                if (cfg.code === "CL") {
+                    groups =
+                        digits.charAt(0) === "2" || digits.charAt(0) === "9"
+                            ? [1, 4, 4]
+                            : [2, 3, 4];
+                } else if (cfg.code === "PE") {
+                    if (digits.length === 9) groups = [3, 3, 3];
+                    else if (digits.charAt(0) === "1") groups = [1, 3, 4];
+                    else groups = [2, 3, 3];
+                } else if (cfg.code === "BR" && digits.length <= 10) {
+                    groups = [2, 4, 4];
+                }
+
+                return groupDigits(digits, groups);
+            }
+
+            function isValidNationalPhone(localValue, countryCode) {
+                const cfg = getPhoneCountry(countryCode);
+                const digits = digitsOnly(localValue);
+                if (!digits) return false;
+
+                if (cfg.code === "CL") {
+                    return digits.length === 9 && /^[2-79]/.test(digits);
+                }
+                if (cfg.code === "PE") {
+                    if (digits.length === 9) return digits.charAt(0) === "9";
+                    if (digits.length === 8) return /^[14-8]/.test(digits);
+                    return false;
+                }
+
+                if (
+                    digits.length < cfg.nationalDigits ||
+                    digits.length > cfg.nationalDigitsMax
+                ) {
+                    return false;
+                }
+                if (cfg.mobileLeading && !cfg.mobileLeading.test(digits)) {
+                    return false;
+                }
+                return true;
+            }
+
+            function localMaxLength(countryCode) {
+                const cfg = getPhoneCountry(countryCode);
+                return cfg.nationalDigitsMax + cfg.groups.length - 1;
+            }
+
+            function fullPhoneValue() {
+                const country = getPhoneCountry(
+                    document.getElementById("telefono_pais").value,
+                );
+                const local = formatLocalPhoneInput(
+                    document.getElementById("telefono").value,
+                    country.code,
+                );
+                if (!local) return "";
+                return `+${country.callingCode} ${local}`;
+            }
+
+            function applyPhoneCountryUi() {
+                const select = document.getElementById("telefono_pais");
+                const input = document.getElementById("telefono");
+                const cfg = getPhoneCountry(select.value);
+                input.placeholder = cfg.example;
+                input.maxLength = localMaxLength(cfg.code);
+                const formatted = formatLocalPhoneInput(input.value, cfg.code);
+                if (input.value !== formatted) input.value = formatted;
+            }
+
+            function initPhoneCountries() {
+                const select = document.getElementById("telefono_pais");
+                select.innerHTML = "";
+                PHONE_COUNTRIES.forEach((country) => {
+                    const opt = document.createElement("option");
+                    opt.value = country.code;
+                    opt.textContent = country.label;
+                    if (country.code === DEFAULT_PHONE_COUNTRY) {
+                        opt.selected = true;
+                    }
+                    select.appendChild(opt);
+                });
+                applyPhoneCountryUi();
+            }
+
+            function requiredMessage(id) {
+                if (id === "nombre") return "Ingresa nombre y apellido";
+                if (id === "empresa") return "Ingresa la empresa";
+                if (id === "cargo") return "Ingresa el cargo";
+                if (id === "telefono") return "Ingresa un teléfono";
+                if (id === "email") return "Ingresa un correo electrónico";
+                if (id === "bloque")
+                    return "Selecciona el bloque al que asistirás";
+                return "Este campo es obligatorio";
+            }
+
             function validateField(id, value) {
                 const val = (value || "").trim();
                 if (id === "bloque") {
                     if (!bloquesEvento.length) return null;
-                    if (!val) return "Este campo es obligatorio";
+                    if (!val) return requiredMessage(id);
                     return null;
                 }
-                if (!val) return "Este campo es obligatorio";
+                if (id === "telefono") {
+                    const countryCode =
+                        document.getElementById("telefono_pais").value;
+                    const local = (value || "").trim();
+                    if (!local) return requiredMessage(id);
+                    if (!isValidNationalPhone(local, countryCode)) {
+                        const cfg = getPhoneCountry(countryCode);
+                        return `Ingresa un teléfono válido con formato ${cfg.example}`;
+                    }
+                    return null;
+                }
+                if (!val) return requiredMessage(id);
+                if (
+                    (id === "nombre" || id === "empresa" || id === "cargo") &&
+                    !isLettersAndSpaces(val)
+                ) {
+                    return "Usa solo letras, sin números ni símbolos";
+                }
+                if (id === "nombre" && !isValidFullName(val)) {
+                    return "Ingresa nombre y apellido";
+                }
                 if (id === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val))
                     return "Ingresa un correo válido";
-                if (id === "telefono" && !/^[+\d\s()-]{7,}$/.test(val))
-                    return "Ingresa un teléfono válido";
                 return null;
+            }
+
+            function applyErrorMessage(id, message) {
+                const errorEl = document.querySelector(
+                    `[data-error-for="${id}"]`,
+                );
+                if (!errorEl) return;
+                if (message) {
+                    errorEl.textContent = message;
+                    errorEl.classList.add("visible");
+                } else {
+                    errorEl.textContent = "";
+                    errorEl.classList.remove("visible");
+                }
             }
 
             function updateSelectState(select) {
                 const filled = select.value.trim().length > 0;
                 const err = validateField(select.id, select.value);
-                const errorEl = document.querySelector(
-                    `[data-error-for="${select.id}"]`,
-                );
                 const showError =
                     !!err &&
-                    (filled || errorEl.classList.contains("visible"));
+                    (filled || select.dataset.touched === "1");
                 select.classList.toggle("filled", filled);
                 select.classList.toggle("error", showError);
+                applyErrorMessage(select.id, showError ? err : null);
+            }
+
+            function updatePhoneFieldState() {
+                const input = document.getElementById("telefono");
+                const row = document.getElementById("phoneRow");
+                const err = validateField("telefono", input.value);
+                const filled = input.value.trim().length > 0;
+                const showError =
+                    !!err &&
+                    (filled || input.dataset.touched === "1");
+                input.classList.toggle("filled", filled);
+                input.classList.toggle("valid", filled && !err);
+                input.classList.toggle("error", showError);
+                row.classList.toggle("has-error", showError);
+                applyErrorMessage("telefono", showError ? err : null);
             }
 
             function updateFieldState(input) {
+                if (input.id === "telefono") {
+                    updatePhoneFieldState();
+                    return;
+                }
                 const err = validateField(input.id, input.value);
                 const filled = input.value.trim().length > 0;
+                const showError =
+                    !!err &&
+                    (filled || input.dataset.touched === "1");
                 input.classList.toggle("filled", filled);
                 input.classList.toggle("valid", filled && !err);
-                input.classList.toggle("error", !!err && filled);
+                input.classList.toggle("error", showError);
+                applyErrorMessage(input.id, showError ? err : null);
             }
 
             function makeParticles(count = 26) {
@@ -1209,22 +1695,24 @@
 
             function setFieldError(id, message) {
                 const input = document.getElementById(id);
-                const errorEl = document.querySelector(
-                    `[data-error-for="${id}"]`,
-                );
                 const inner = document.querySelector(
                     `[data-field="${id}"]`,
                 );
+                const phoneRow = document.getElementById("phoneRow");
 
                 if (message) {
+                    input.dataset.touched = "1";
                     input.classList.add("error");
-                    errorEl.textContent = message;
-                    errorEl.classList.add("visible");
+                    if (id === "telefono" && phoneRow) {
+                        phoneRow.classList.add("has-error");
+                    }
+                    applyErrorMessage(id, message);
                     inner.classList.add("shake");
                     setTimeout(() => inner.classList.remove("shake"), 500);
                 } else {
-                    errorEl.textContent = "";
-                    errorEl.classList.remove("visible");
+                    if (id === "telefono" && phoneRow) {
+                        phoneRow.classList.remove("has-error");
+                    }
                     if (input.tagName === "SELECT") {
                         updateSelectState(input);
                     } else {
@@ -1432,10 +1920,16 @@
                 fieldDefs.forEach((f) => {
                     const input = document.getElementById(f.id);
                     input.classList.remove("filled", "valid", "error");
+                    delete input.dataset.touched;
                 });
+                document.getElementById("telefono_pais").value =
+                    DEFAULT_PHONE_COUNTRY;
+                applyPhoneCountryUi();
+                document.getElementById("phoneRow").classList.remove("has-error");
                 const bloque = document.getElementById("bloque");
                 bloque.selectedIndex = 0;
                 bloque.classList.remove("filled", "error");
+                delete bloque.dataset.touched;
                 toggleBloqueField(bloquesEvento.length > 0);
                 if (bloquesEvento.length) {
                     bloque.disabled = false;
@@ -1455,21 +1949,87 @@
 
             fieldDefs.forEach((f) => {
                 const input = document.getElementById(f.id);
-                input.addEventListener("input", () => {
-                    setFieldError(f.id, null);
+                if (f.id === "telefono") {
+                    input.addEventListener("input", () => {
+                        const countryCode =
+                            document.getElementById("telefono_pais").value;
+                        const formatted = formatLocalPhoneInput(
+                            input.value,
+                            countryCode,
+                        );
+                        if (input.value !== formatted) input.value = formatted;
+                        updatePhoneFieldState();
+                    });
+                    input.addEventListener("blur", () => {
+                        input.dataset.touched = "1";
+                        updatePhoneFieldState();
+                    });
+                    return;
+                }
+                input.addEventListener("input", () => updateFieldState(input));
+                input.addEventListener("blur", () => {
+                    input.dataset.touched = "1";
+                    if (
+                        (f.id === "nombre" ||
+                            f.id === "cargo" ||
+                            f.id === "empresa") &&
+                        input.value.trim()
+                    ) {
+                        input.value = toTitleCaseName(input.value);
+                    }
+                    if (f.id === "email" && input.value.trim()) {
+                        input.value = input.value.trim().toLowerCase();
+                    }
                     updateFieldState(input);
                 });
-                input.addEventListener("blur", () => updateFieldState(input));
             });
+
+            document
+                .getElementById("telefono_pais")
+                .addEventListener("change", () => {
+                    applyPhoneCountryUi();
+                    updatePhoneFieldState();
+                });
 
             const bloqueSelect = document.getElementById("bloque");
             bloqueSelect.addEventListener("change", () => {
-                setFieldError("bloque", null);
+                bloqueSelect.dataset.touched = "1";
                 updateSelectState(bloqueSelect);
             });
-            bloqueSelect.addEventListener("blur", () =>
-                updateSelectState(bloqueSelect),
-            );
+            bloqueSelect.addEventListener("blur", () => {
+                bloqueSelect.dataset.touched = "1";
+                updateSelectState(bloqueSelect);
+            });
+
+            function applyAllFieldFormats() {
+                const nombreInput = document.getElementById("nombre");
+                if (nombreInput.value.trim()) {
+                    nombreInput.value = toTitleCaseName(nombreInput.value);
+                }
+
+                const empresaInput = document.getElementById("empresa");
+                if (empresaInput.value.trim()) {
+                    empresaInput.value = toTitleCaseName(empresaInput.value);
+                }
+
+                const cargoInput = document.getElementById("cargo");
+                if (cargoInput.value.trim()) {
+                    cargoInput.value = toTitleCaseName(cargoInput.value);
+                }
+
+                const emailInput = document.getElementById("email");
+                if (emailInput.value.trim()) {
+                    emailInput.value = emailInput.value.trim().toLowerCase();
+                }
+
+                const telefonoInput = document.getElementById("telefono");
+                const countryCode =
+                    document.getElementById("telefono_pais").value;
+                telefonoInput.value = formatLocalPhoneInput(
+                    telefonoInput.value,
+                    countryCode,
+                );
+            }
 
             const form = document.getElementById("registroForm");
             form.addEventListener("submit", async (e) => {
@@ -1477,10 +2037,14 @@
 
                 document.getElementById("error").classList.remove("visible");
 
+                applyAllFieldFormats();
+
                 if (!validateForm()) return;
 
                 setSubmitting(true);
 
+                const countryCode =
+                    document.getElementById("telefono_pais").value;
                 const emailIngresado = document
                     .getElementById("email")
                     .value.trim()
@@ -1492,12 +2056,17 @@
                         : "";
 
                     const formData = {
-                        nombre_completo:
-                            document.getElementById("nombre").value.trim(),
-                        empresa: document.getElementById("empresa").value.trim(),
-                        cargo: document.getElementById("cargo").value.trim(),
-                        telefono:
-                            document.getElementById("telefono").value.trim(),
+                        nombre_completo: toTitleCaseName(
+                            document.getElementById("nombre").value,
+                        ),
+                        empresa: toTitleCaseName(
+                            document.getElementById("empresa").value,
+                        ),
+                        cargo: toTitleCaseName(
+                            document.getElementById("cargo").value,
+                        ),
+                        telefono: fullPhoneValue(),
+                        telefono_pais: countryCode,
                         email: emailIngresado,
                         bloque_id: bloqueId || null,
                         evento_id: EVENTO_ID,
@@ -1772,6 +2341,7 @@
             }
 
             makeParticles(26);
+            initPhoneCountries();
             cargarEvento();
         </script>
     </body>

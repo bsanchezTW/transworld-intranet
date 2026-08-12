@@ -22,7 +22,7 @@
 %>
 
 <link rel="stylesheet" href="/css/personal.css?v=20260803b">
-<link rel="stylesheet" href="/css/phone-chile.css">
+<link rel="stylesheet" href="/css/phone.css">
 <% if (puedeEditar) { %>
 <link rel="stylesheet" href="/css/horizontal-forms.css">
 <link rel="stylesheet" href="/css/profile-photo-crop.css">
@@ -37,7 +37,7 @@
 <div class="contenedor-personal">
   <div class="page-header page-header--toolbar">
     <div class="page-header__text">
-      <h2 class="page-title">Colaboradores de Transworld Chile</h2>
+      <h2 class="page-title">Colaboradores de Transworld <%= countryConfig.name %></h2>
       <p class="page-description"><span id="contadorColaboradores"><%= listado.length %></span> colaboradores en el registro</p>
     </div>
     <div class="page-header-actions">
@@ -239,7 +239,8 @@
 }).replace(/</g, '\\u003c') %></script>
 
 <script src="/js/email-validate.js"></script>
-<script src="/js/phone-chile.js"></script>
+<script>window.__PHONE_CONFIG__ = <%- JSON.stringify(phoneClientConfig()) %>;</script>
+<script src="/js/phone.js"></script>
 <% if (puedeEditar) { %>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="/js/profile-photo-cropper.js"></script>

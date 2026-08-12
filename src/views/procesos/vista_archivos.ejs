@@ -318,7 +318,7 @@
       }
 
       try {
-        setStatus('Subiendo documento a SharePoint...', true);
+        setStatus('Subiendo documento...', true);
         
         const form = e.target;
         const formData = new FormData();
@@ -333,7 +333,7 @@
         
         const upData = await upRes.json().catch(() => ({}));
         if (!upRes.ok) {
-          throw new Error(upData.error || 'Error al subir el archivo a SharePoint.');
+          throw new Error(upData.error || 'Error al subir el archivo.');
         }
         
         setStatus('Registrando en el sistema...', true);

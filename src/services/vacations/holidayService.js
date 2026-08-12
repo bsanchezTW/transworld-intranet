@@ -56,8 +56,20 @@ async function createHoliday({ countryCode, holidayDate, name, isRecurring = fal
   );
 }
 
-async function deleteHoliday(id) {
-  await db.query("DELETE FROM public_holidays WHERE id = $1", [id]);
+/**
+ * Borra un feriado, acotado al país indicado.
+ *
+ * El país es parte de la condición y no solo una comprobación previa: así una
+ * instancia no puede borrar el calendario de la otra ni adivinando el id.
+ *
+ * @returns {boolean} true si borró algo.
+ */
+async function deleteHoliday(id, countryCode) {
+  const { rowCount } = await db.query(
+    "DELETE FROM public_holidays WHERE id = $1 AND country_code = $2",
+    [id, countryCode],
+  );
+  return rowCount > 0;
 }
 
 module.exports = {

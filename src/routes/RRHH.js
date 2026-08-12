@@ -5,6 +5,7 @@ const multer = require("multer");
 const crypto = require("crypto");
 const fileStorage = require("../services/fileStorage");
 const userPhotoStorage = require("../services/userPhotoStorage");
+const { UPLOAD_LIMITS_BYTES } = require("../config/uploadLimits");
 const { ROLES, ALL_ROLES } = require("../constants/roles");
 const {
   getWorkAreaPillClass,
@@ -19,17 +20,43 @@ const requireRole = require("../middlewares/requireRole");
 const { sendMail } = require("../services/mailer");
 const { toTitleCase } = require("../utils/formatName");
 const {
-  validateChileMobilePhone,
+  validateMobilePhone,
   formatPhoneForDisplay,
   toTelHref,
-} = require("../utils/phoneChile");
+} = require("../utils/phone");
 const { validateEmail } = require("../utils/email");
 const { mapPersonaForView } = require("../utils/schemaMappers");
 const { generateUniqueUsuarioId } = require("../utils/userId");
 const balanceService = require("../services/vacations/vacationBalanceService");
+const {
+  getCurrentCountry,
+  isValidCountryCode,
+  COUNTRY_CODES,
+} = require("../config/country");
 
+/**
+ * País de contrato del colaborador.
+ *
+ * Sin valor, se asume el país de esta instancia (un formulario de la intranet
+ * de Chile crea colaboradores de Chile). Un valor presente pero desconocido es
+ * un error del cliente y se rechaza: convertirlo a "CL" en silencio es lo que
+ * hacía que un colaborador peruano terminara con reglas chilenas.
+ *
+ * @returns {{ valid: boolean, value: string|null, error: string|null }}
+ */
 function parseEmploymentCountry(value) {
-  return String(value || "").toUpperCase() === "PE" ? "PE" : "CL";
+  const raw = String(value ?? "").trim().toUpperCase();
+  if (!raw) {
+    return { valid: true, value: getCurrentCountry(), error: null };
+  }
+  if (!isValidCountryCode(raw)) {
+    return {
+      valid: false,
+      value: null,
+      error: `País de contrato inválido: "${value}". Valores admitidos: ${COUNTRY_CODES.join(", ")}.`,
+    };
+  }
+  return { valid: true, value: raw, error: null };
 }
 
 function parsePriorYearsCredited(value) {
@@ -63,7 +90,20 @@ function redirectPersonalEditarError(res, id, message) {
 }
 
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const uploadOrganigram = multer({
+  storage,
+  limits: { fileSize: UPLOAD_LIMITS_BYTES.ORGANIGRAM },
+});
+const uploadProfilePhoto = multer({
+  storage,
+  limits: { fileSize: UPLOAD_LIMITS_BYTES.PROFILE_PHOTO },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype || !file.mimetype.startsWith("image/")) {
+      return cb(new Error("Formato de imagen no permitido."));
+    }
+    return cb(null, true);
+  },
+});
 
 // Variables globales
 let urlOrganigramaActual = null;
@@ -267,7 +307,11 @@ router.post("/crear", requireRole.administrador(), async (req, res) => {
   } = req.body;
 
   try {
-    const countryVal = parseEmploymentCountry(employment_country);
+    const countryCheck = parseEmploymentCountry(employment_country);
+    if (!countryCheck.valid) {
+      return redirectPersonalCrearError(res, countryCheck.error);
+    }
+    const countryVal = countryCheck.value;
     const hireVal = hire_date && String(hire_date).trim() ? hire_date : null;
     const priorYearsVal = parsePriorYearsCredited(prior_years_credited);
     const progressiveOverrideVal = parseProgressiveOverride(progressive_days_override);
@@ -279,7 +323,7 @@ router.post("/crear", requireRole.administrador(), async (req, res) => {
       : { valid: true, value: null };
     const emailClean = emailCheck.value;
     const areaId = (work_area_id && String(work_area_id).trim()) ? Number(work_area_id) : null;
-    const telefonoCheck = (phone && typeof phone === 'string' && phone.trim()) ? validateChileMobilePhone(phone) : { valid: true, value: null, storageValue: null };
+    const telefonoCheck = (phone && typeof phone === 'string' && phone.trim()) ? validateMobilePhone(phone) : { valid: true, value: null, storageValue: null };
     const telefonoVal = telefonoCheck.storageValue;
 
     const firstName = (first_name && typeof first_name === 'string') ? toTitleCase(first_name.trim()) : '';
@@ -443,7 +487,7 @@ router.get("/editar/:id", requireRole.administrador(), async (req, res) => {
 router.post(
   "/editar/:id",
   requireRole.administrador(),
-  upload.single("foto"),
+  uploadProfilePhoto.single("foto"),
   async (req, res) => {
     const { id } = req.params;
     const {
@@ -463,13 +507,17 @@ router.post(
     } = req.body;
 
     try {
-      const countryVal = parseEmploymentCountry(employment_country);
+      const countryCheck = parseEmploymentCountry(employment_country);
+      if (!countryCheck.valid) {
+        return redirectPersonalEditarError(res, id, countryCheck.error);
+      }
+      const countryVal = countryCheck.value;
       const hireVal = hire_date && String(hire_date).trim() ? hire_date : null;
       const priorYearsVal = parsePriorYearsCredited(prior_years_credited);
       const progressiveOverrideVal = parseProgressiveOverride(progressive_days_override);
       const workDaysVal = parseWorkDaysPerWeek(work_days_per_week);
       const areaId = (work_area_id && String(work_area_id).trim()) ? Number(work_area_id) : null;
-      const telefonoCheck = (phone && typeof phone === 'string' && phone.trim()) ? validateChileMobilePhone(phone) : { valid: true, value: null, storageValue: null };
+      const telefonoCheck = (phone && typeof phone === 'string' && phone.trim()) ? validateMobilePhone(phone) : { valid: true, value: null, storageValue: null };
       const telefonoVal = telefonoCheck.storageValue;
       const firstName = (first_name && typeof first_name === 'string') ? toTitleCase(first_name.trim()) : '';
       const lastName = (last_name && typeof last_name === 'string') ? toTitleCase(last_name.trim()) : '';
@@ -686,7 +734,7 @@ router.get("/organigrama", async (req, res) => {
 router.post(
   "/organigrama/subir",
   requireRole.administrador(),
-  upload.single("organigrama"),
+  uploadOrganigram.single("organigrama"),
   async (req, res) => {
     if (!req.file) return res.status(400).send("No se subió archivo.");
 
