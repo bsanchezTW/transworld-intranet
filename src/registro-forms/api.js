@@ -8,6 +8,8 @@ const {
   toTitleCaseName,
   isValidFullName,
   isLettersAndSpaces,
+  normalizeEmpresa,
+  isValidEmpresa,
   isValidEmail,
   normalizePhone,
 } = require("./validation");
@@ -84,7 +86,7 @@ async function registrar(req, res) {
   const body = req.body || {};
   const eventoId = String(body.evento_id || "").trim();
   const nombre_completo = toTitleCaseName(body.nombre_completo);
-  const empresa = toTitleCaseName(body.empresa);
+  const empresa = normalizeEmpresa(body.empresa);
   const cargo = toTitleCaseName(body.cargo);
   const email = String(body.email || "").trim().toLowerCase();
   const bloque_id = body.bloque_id ? String(body.bloque_id).trim() : null;
@@ -95,19 +97,15 @@ async function registrar(req, res) {
   if (!eventoId) {
     return res.status(400).json({ ok: false, error: "ID de evento requerido" });
   }
-  if (!empresa || !cargo) {
+  if (!isValidEmpresa(empresa) || !cargo) {
     return res
       .status(400)
       .json({ ok: false, error: "Todos los campos son obligatorios" });
   }
-  if (
-    !isLettersAndSpaces(nombre_completo) ||
-    !isLettersAndSpaces(empresa) ||
-    !isLettersAndSpaces(cargo)
-  ) {
+  if (!isLettersAndSpaces(nombre_completo) || !isLettersAndSpaces(cargo)) {
     return res.status(400).json({
       ok: false,
-      error: "Nombre, empresa y cargo solo pueden contener letras",
+      error: "Nombre y cargo solo pueden contener letras",
     });
   }
   if (!isValidFullName(nombre_completo)) {

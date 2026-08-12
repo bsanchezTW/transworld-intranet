@@ -4,6 +4,8 @@ const {
   toTitleCaseName,
   isValidFullName,
   isLettersAndSpaces,
+  normalizeEmpresa,
+  isValidEmpresa,
   isValidEmail,
   formatLocalPhoneInput,
   isValidNationalPhone,
@@ -22,13 +24,25 @@ test("nombre: exige al menos dos palabras y Title Case", () => {
   assert.equal(toTitleCaseName("GERENTE DE VENTAS"), "Gerente De Ventas");
 });
 
-test("nombre, cargo y empresa: solo letras y espacios", () => {
+test("nombre y cargo: solo letras y espacios", () => {
   assert.equal(isLettersAndSpaces("Transworld"), true);
   assert.equal(isLettersAndSpaces("Gerente De Ventas"), true);
   assert.equal(isLettersAndSpaces("María José"), true);
   assert.equal(isLettersAndSpaces("Empresa 3"), false);
   assert.equal(isLettersAndSpaces("S.A."), false);
   assert.equal(isLettersAndSpaces("P&G"), false);
+});
+
+test("empresa: permite símbolos y conserva mayúsculas", () => {
+  assert.equal(isValidEmpresa("P&G"), true);
+  assert.equal(isValidEmpresa("S.A."), true);
+  assert.equal(isValidEmpresa("IBM"), true);
+  assert.equal(isValidEmpresa("  McDonald's  "), true);
+  assert.equal(isValidEmpresa("3M"), true);
+  assert.equal(isValidEmpresa("   "), false);
+  assert.equal(normalizeEmpresa("  P&G  "), "P&G");
+  assert.equal(normalizeEmpresa("IBM"), "IBM");
+  assert.equal(normalizeEmpresa("McDonald's   Corp"), "McDonald's Corp");
 });
 
 test("email: regex básico", () => {

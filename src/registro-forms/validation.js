@@ -204,6 +204,15 @@ function isLettersAndSpaces(value) {
   return /^[\p{L}]+(?:\s+[\p{L}]+)*$/u.test(trimmed);
 }
 
+/** Conserva mayúsculas y símbolos; solo recorta y colapsa espacios. */
+function normalizeEmpresa(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function isValidEmpresa(value) {
+  return normalizeEmpresa(value).length > 0;
+}
+
 function isValidEmail(value) {
   return EMAIL_RE.test(String(value || "").trim());
 }
@@ -333,6 +342,8 @@ module.exports = {
   toTitleCaseName,
   isValidFullName,
   isLettersAndSpaces,
+  normalizeEmpresa,
+  isValidEmpresa,
   isValidEmail,
   localMaxLength,
   formatLocalPhoneInput,

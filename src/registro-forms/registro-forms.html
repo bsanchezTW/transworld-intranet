@@ -1461,6 +1461,12 @@
                 return /^[\p{L}]+(?:\s+[\p{L}]+)*$/u.test(trimmed);
             }
 
+            function normalizeEmpresa(value) {
+                return String(value || "")
+                    .trim()
+                    .replace(/\s+/g, " ");
+            }
+
             function formatLocalPhoneInput(raw, countryCode) {
                 const cfg = getPhoneCountry(countryCode);
                 let digits = digitsOnly(raw);
@@ -1592,7 +1598,7 @@
                 }
                 if (!val) return requiredMessage(id);
                 if (
-                    (id === "nombre" || id === "empresa" || id === "cargo") &&
+                    (id === "nombre" || id === "cargo") &&
                     !isLettersAndSpaces(val)
                 ) {
                     return "Usa solo letras, sin números ni símbolos";
@@ -1970,12 +1976,13 @@
                 input.addEventListener("blur", () => {
                     input.dataset.touched = "1";
                     if (
-                        (f.id === "nombre" ||
-                            f.id === "cargo" ||
-                            f.id === "empresa") &&
+                        (f.id === "nombre" || f.id === "cargo") &&
                         input.value.trim()
                     ) {
                         input.value = toTitleCaseName(input.value);
+                    }
+                    if (f.id === "empresa" && input.value.trim()) {
+                        input.value = normalizeEmpresa(input.value);
                     }
                     if (f.id === "email" && input.value.trim()) {
                         input.value = input.value.trim().toLowerCase();
@@ -2009,7 +2016,7 @@
 
                 const empresaInput = document.getElementById("empresa");
                 if (empresaInput.value.trim()) {
-                    empresaInput.value = toTitleCaseName(empresaInput.value);
+                    empresaInput.value = normalizeEmpresa(empresaInput.value);
                 }
 
                 const cargoInput = document.getElementById("cargo");
@@ -2059,7 +2066,7 @@
                         nombre_completo: toTitleCaseName(
                             document.getElementById("nombre").value,
                         ),
-                        empresa: toTitleCaseName(
+                        empresa: normalizeEmpresa(
                             document.getElementById("empresa").value,
                         ),
                         cargo: toTitleCaseName(
