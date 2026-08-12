@@ -7,10 +7,10 @@ Fuente: proyecto **INTRANET CHILE - TW_P&T** (`dgadjvptxhotjylwsglx`, región `u
 | Pieza | Proyecto Supabase | Uso en la app |
 | --- | --- | --- |
 | BD intranet | **INTRANET CHILE** (este esquema) | `pg` Pool vía `DATABASE_URL` / `DB_*` |
-| Registro de eventos | **NEXUS - TW_P&T** (`evjocwzmlsyjixzihxep`) | Solo Chile (`features.eventRegistration`) |
+| Registro de eventos | **NEXUS - TW_P&T** (`evjocwzmlsyjixzihxep`) | Servicio aparte (`projects/registro-forms`); en intranet solo Chile (`features.eventRegistration`) |
 | Edge Functions | Ninguna en el proyecto intranet | Auth propia en `users.password_hash` |
 
-La instancia Perú **no** necesita las Edge Functions de NEXUS para arrancar. Esas viven en el proyecto de registro/acreditación y hoy están deshabilitadas para PE (`src/config/features.js`).
+La instancia Perú **no** necesita las Edge Functions de NEXUS para arrancar. Esas viven en el proyecto de registro/acreditación (`registro-forms`) y hoy están deshabilitadas para PE (`src/config/features.js`).
 
 ## Cómo provisionar
 

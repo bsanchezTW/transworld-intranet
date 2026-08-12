@@ -77,8 +77,7 @@ Chat integrado (`/claude`) con el SDK de Anthropic:
 ### Comunicaciones y Marketing
 
 - Noticias corporativas con multimedia, destacados y alertas por correo
-- Eventos (creación, edición, detalle)
-- Formulario público de registro a eventos con envío de **QR** (`/registro-forms`)
+- Eventos (creación, edición, detalle). El formulario público de inscripción vive en el proyecto hermano `registro-forms`.
 
 ### Repositorio documental (Procesos)
 
@@ -130,8 +129,7 @@ intranet-transworld-ai/
 │   ├── services/              # Storage, mailer, Claude, vacaciones, APIs
 │   ├── utils/                 # Helpers (teléfono, fechas, schema mappers)
 │   ├── views/                 # Plantillas EJS por módulo
-│   ├── public/                # CSS, JS e imágenes estáticas
-│   └── registro-forms/        # Formulario autónomo de eventos + QR
+│   └── public/                # CSS, JS e imágenes estáticas
 ├── package.json
 └── README.md
 ```
@@ -147,7 +145,8 @@ intranet-transworld-ai/
 | `/marketing` | Eventos |
 | `/noticias` | Noticias |
 | `/claude` | Asistente de IA |
-| `/registro` · `/registro-forms` | Registro de eventos |
+| `/registro` | API legacy de registro (BD intranet) |
+| `/registro-forms` | Redirect opcional al servicio `registro-forms` |
 
 ---
 
@@ -268,15 +267,14 @@ DB_NAME=
 DB_SSL=false
 ```
 
-### Registro público de eventos (proyecto Supabase aparte)
+### Registro público de eventos
 
-El formulario `/registro-forms` usa **otro** proyecto Supabase (API + anon/publishable key),
-no la BD Postgres de la intranet. Las credenciales viven solo en el servidor; nunca en el HTML.
+El formulario público ya no corre en esta app: vive en el proyecto hermano
+`projects/registro-forms`. Para no romper enlaces antiguos, la intranet puede
+redirigir `/registro-forms?id=...` al nuevo origen:
 
 ```env
-REGISTRO_SUPABASE_URL=https://xxxxxxxx.supabase.co
-REGISTRO_SUPABASE_PB_KEY=
-# o: REGISTRO_SUPABASE_PUBLISHABLE_KEY=
+REGISTRO_FORMS_URL=http://localhost:3010
 ```
 
 ### Correo (Brevo)

@@ -21,7 +21,7 @@ const FEATURE_KEYS = ["eventRegistration", "linkedinFeed", "chileUfIndicator"];
 
 const FEATURE_MATRIX = {
   CL: {
-    // Formulario público de registro a eventos (/registro-forms) + envío de QR.
+    // API legacy /registro y redirect opcional a registro-forms.
     eventRegistration: true,
     // Feed de comunicaciones LinkedIn (tabla linkedin_posts + OAuth).
     linkedinFeed: true,
@@ -29,9 +29,8 @@ const FEATURE_MATRIX = {
     chileUfIndicator: true,
   },
   PE: {
-    // Apagado: el registro de eventos usa un proyecto Supabase propio que hoy
-    // es único y compartido. Hasta que Perú tenga el suyo, el servicio es solo
-    // de Chile para no mezclar inscritos de los dos países.
+    // Apagado: el registro de eventos (NEXUS / registro-forms) es único y
+    // compartido. Hasta que Perú tenga el suyo, el servicio es solo de Chile.
     eventRegistration: false,
     // Sin tabla linkedin_posts ni tokens; no se sincroniza el feed.
     linkedinFeed: false,

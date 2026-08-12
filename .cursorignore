@@ -7,9 +7,9 @@
 node_modules/
 
 # --- Secretos y entorno ---
-#.env
-#.env.*
-#!.env.example
+.env
+.env.*
+!.env.example
 
 # --- Control de versiones e IDE ---
 .git/

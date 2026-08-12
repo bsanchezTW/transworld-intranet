@@ -29,11 +29,6 @@ const marketingRoutes = require("./routes/marketing");
 const docsRoutes = require("./routes/docs");
 const noticiasRoutes = require("./routes/noticias");
 const registroRoutes = require("./routes/registro");
-const { enviarQrHandler } = require("./registro-forms/enviar-qr");
-const {
-  getEvento: getRegistroEvento,
-  registrar: registrarEnEvento,
-} = require("./registro-forms/api");
 const claudeRoutes = require("./routes/claude");
 const { ROLES, normalizeRole, isAdministrador } = require("./constants/roles");
 const { formatPageTitle } = require("./utils/pageTitle");
@@ -348,20 +343,22 @@ function requireAuth(req, res, next) {
 // ================================
 app.use("/", authRoutes); // Login/Registro (Públicas)
 
-// Registro de eventos: módulo autónomo (BD propia REGISTRO_*, no la de la intranet).
-// Capacidad solo de Chile mientras el proyecto Supabase de registros sea único
-// y compartido: el guard bloquea también la API, no solo el formulario.
+// Registro de eventos: el formulario público vive en el proyecto hermano
+// `registro-forms`. Aquí solo queda la API legacy `/registro` (BD intranet) y,
+// si hay REGISTRO_FORMS_URL, un redirect de los enlaces antiguos.
+// Capacidad solo de Chile mientras el proyecto Supabase de registros sea único.
 const eventRegistration = requireFeature("eventRegistration");
+const registroFormsUrl = (process.env.REGISTRO_FORMS_URL || "").trim();
 
-app.get("/registro-forms", eventRegistration, (req, res) => {
-  res.sendFile(path.join(__dirname, "registro-forms", "registro-forms.html"));
-});
-app.get("/registro-forms/favicon.ico", eventRegistration, (req, res) => {
-  res.sendFile(path.join(__dirname, "registro-forms", "favicon.ico"));
-});
-app.get("/registro-forms/api/evento/:id", eventRegistration, getRegistroEvento);
-app.post("/registro-forms/api/registrar", eventRegistration, registrarEnEvento);
-app.post("/registro-forms/enviar-qr", eventRegistration, enviarQrHandler);
+if (registroFormsUrl) {
+  app.get("/registro-forms", eventRegistration, (req, res) => {
+    const dest = new URL(registroFormsUrl);
+    for (const [key, value] of Object.entries(req.query || {})) {
+      dest.searchParams.set(key, String(value));
+    }
+    return res.redirect(302, dest.toString());
+  });
+}
 
 app.use("/registro", eventRegistration, registroRoutes);
 // Rutas Protegidas
