@@ -18,7 +18,10 @@ const {
 const linkedinService = require("../services/linkedinService");
 const { mapCompletedCourseForView } = require("../utils/schemaMappers");
 const { generateUniqueUsuarioId } = require("../utils/userId");
-const { getCountryConfig } = require("../config/country");
+const {
+  getCountryConfig,
+  isForeignCountryEmailDomain,
+} = require("../config/country");
 const requireFeature = require("../middlewares/requireFeature");
 
 function getBaseUrl(req) {
@@ -204,6 +207,36 @@ function stripEmailLocalPart(usernameOrEmail) {
   return atIdx === -1 ? raw : raw.slice(0, atIdx);
 }
 
+function selectedEmailDomain(usernameOrEmail, selectedDomain = null) {
+  const raw = String(usernameOrEmail || "")
+    .trim()
+    .toLowerCase();
+  if (raw.includes("@")) {
+    const parts = raw.split("@");
+    return String(parts[1] || "").trim().toLowerCase();
+  }
+  return String(selectedDomain || "")
+    .trim()
+    .toLowerCase();
+}
+
+function foreignDomainError(domain) {
+  const config = getCountryConfig();
+  if (!isForeignCountryEmailDomain(domain, config.code)) return null;
+  return `El dominio .${config.forbiddenEmailTld} no está disponible en ${config.name}.`;
+}
+
+function isAllowedLoginDomain(domain) {
+  const normalized = String(domain || "")
+    .trim()
+    .toLowerCase();
+  if (!normalized) return false;
+  if (isForeignCountryEmailDomain(normalized, getCountryConfig().code)) {
+    return false;
+  }
+  return ALLOWED_LOGIN_DOMAINS.has(normalized);
+}
+
 function normalizeCorporateEmail(usernameOrEmail, selectedDomain = null) {
   const raw = String(usernameOrEmail || "")
     .trim()
@@ -212,7 +245,7 @@ function normalizeCorporateEmail(usernameOrEmail, selectedDomain = null) {
   if (raw.includes("@")) {
     const parts = raw.split("@");
     if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
-    if (!ALLOWED_LOGIN_DOMAINS.has(parts[1])) return null;
+    if (!isAllowedLoginDomain(parts[1])) return null;
     return `${parts[0]}@${parts[1]}`;
   }
   const localPart = stripEmailLocalPart(raw);
@@ -220,7 +253,7 @@ function normalizeCorporateEmail(usernameOrEmail, selectedDomain = null) {
   const domain = String(selectedDomain || "")
     .trim()
     .toLowerCase();
-  if (!ALLOWED_LOGIN_DOMAINS.has(domain)) return null;
+  if (!isAllowedLoginDomain(domain)) return null;
   return `${localPart}@${domain}`;
 }
 
@@ -299,6 +332,9 @@ router.post("/login", async (req, res) => {
   }
 
   try {
+    const tldError = foreignDomainError(selectedEmailDomain(username, domain));
+    if (tldError) return fail(400, tldError);
+
     const email = normalizeCorporateEmail(username, domain);
     if (!email) {
       return fail(400, "Debes ingresar un usuario corporativo válido.");
@@ -436,6 +472,16 @@ router.post(
       const selectedDomain = String(req.body.domain || "")
         .trim()
         .toLowerCase();
+      const tldError = foreignDomainError(
+        selectedEmailDomain(usernameInput, selectedDomain),
+      );
+      if (tldError) {
+        return renderAuthPage(res, "register", {
+          status: 400,
+          error: tldError,
+          formData,
+        });
+      }
       const email = normalizeCorporateEmail(usernameInput, selectedDomain);
       const password = String(req.body.password || "");
       const password2 = String(req.body.password2 || "");
@@ -446,10 +492,18 @@ router.post(
       const telefono = telefonoCheck.storageValue;
       const hasPhotoFile = Boolean(req.file && req.file.buffer);
 
+      if (!email) {
+        return renderAuthPage(res, "register", {
+          status: 400,
+          error:
+            "Dominio no permitido. Usa uno de los dominios permitidos.",
+          formData,
+        });
+      }
+
       if (
         !firstName ||
         !lastName ||
-        !email ||
         !password ||
         !password2 ||
         !fechaNacimiento ||
@@ -466,15 +520,6 @@ router.post(
         return renderAuthPage(res, "register", {
           status: 400,
           error: telefonoCheck.error,
-          formData,
-        });
-      }
-
-      if (!email) {
-        return renderAuthPage(res, "register", {
-          status: 400,
-          error:
-            "Dominio no permitido. Usa uno de los dominios permitidos.",
           formData,
         });
       }

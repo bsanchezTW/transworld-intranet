@@ -49,11 +49,6 @@ const COUNTRY_LABELS = {
   PE: "Perú",
 };
 
-const COUNTRY_FLAGS = {
-  CL: "",
-  PE: "",
-};
-
 function vacationStatusLabel(status) {
   return VACATION_STATUS_LABELS[status] || status;
 }
@@ -66,10 +61,6 @@ function countryLabel(code) {
   return COUNTRY_LABELS[code] || code;
 }
 
-function countryFlag(code) {
-  return COUNTRY_FLAGS[code] || "";
-}
-
 module.exports = {
   VACATION_STATUS,
   ALL_VACATION_STATUSES,
@@ -78,9 +69,7 @@ module.exports = {
   VACATION_ACTIVE_STATUSES,
   COUNTRY,
   COUNTRY_LABELS,
-  COUNTRY_FLAGS,
   vacationStatusLabel,
   vacationStatusBadge,
   countryLabel,
-  countryFlag,
 };

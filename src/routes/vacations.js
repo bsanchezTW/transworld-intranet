@@ -15,11 +15,7 @@ const {
   mapVacationRequestForView,
   mapVacationPeriodForView,
 } = require("../utils/schemaMappers");
-const {
-  COUNTRY_LABELS,
-  countryLabel,
-  countryFlag,
-} = require("../constants/vacationStatuses");
+const { countryLabel } = require("../constants/vacationStatuses");
 const {
   toDateOnly,
   addDays,
@@ -99,7 +95,6 @@ router.get("/mis-vacaciones", requireRole.intranetActivo(), async (req, res) => 
       requests: requests.map(mapVacationRequestForView),
       country,
       countryLabel: countryLabel(country),
-      countryFlag: countryFlag(country),
       dayUnit: strategy.getDayUnit(),
       dayUnitLabel: strategy.getDayUnit() === "business" ? "días hábiles" : "días calendario",
       hasHireDate: Boolean(profile?.hire_date),
@@ -174,10 +169,9 @@ router.post("/mis-vacaciones/cancelar/:id", requireRole.intranetActivo(), async 
 // ==========================================================
 router.get("/gestion", requireRole.administrador(), async (req, res) => {
   try {
-    const { country, area, status } = req.query;
+    const { area, status } = req.query;
     const [requests, areas] = await Promise.all([
       requestService.listForAdmin({
-        country: country || null,
         workAreaId: area || null,
         status: status || null,
       }),
@@ -189,8 +183,7 @@ router.get("/gestion", requireRole.administrador(), async (req, res) => {
       user: req.session.user,
       requests: requests.map(mapVacationRequestForView),
       areas,
-      filtros: { country: country || "", area: area || "", status: status || "" },
-      countryLabels: COUNTRY_LABELS,
+      filtros: { area: area || "", status: status || "" },
       ...readFlash(req),
     });
   } catch (err) {
@@ -204,6 +197,12 @@ router.get("/gestion/:userId", requireRole.administrador(), async (req, res) => 
   try {
     const profile = await balanceService.getUserVacationProfile(userId);
     if (!profile) return res.status(404).send("Colaborador no encontrado");
+    if (
+      profile.employment_country &&
+      profile.employment_country !== getCurrentCountry()
+    ) {
+      return res.status(404).send("Colaborador no encontrado");
+    }
     if (profile.hire_date) await balanceService.recalculatePeriods(userId);
 
     const [summary, periods, requests] = await Promise.all([
@@ -223,7 +222,6 @@ router.get("/gestion/:userId", requireRole.administrador(), async (req, res) => 
       requests: requests.map(mapVacationRequestForView),
       employmentCountry: country,
       countryLabel: countryLabel(country),
-      countryFlag: countryFlag(country),
       ...readFlash(req),
     });
   } catch (err) {
@@ -237,6 +235,14 @@ router.post("/gestion/:userId/ajustar", requireRole.administrador(), async (req,
   const { period_id, days_delta, reason } = req.body;
   const backTo = `/RRHH/vacaciones/gestion/${encodeURIComponent(userId)}`;
   try {
+    const profile = await balanceService.getUserVacationProfile(userId);
+    if (
+      !profile ||
+      (profile.employment_country &&
+        profile.employment_country !== getCurrentCountry())
+    ) {
+      return redirectErr(res, "/RRHH/vacaciones/gestion", "Colaborador no encontrado.");
+    }
     const delta = Number(days_delta);
     if (!period_id || !Number.isFinite(delta) || delta === 0) {
       return redirectErr(res, backTo, "Indica un período y una cantidad de días distinta de cero.");
@@ -265,6 +271,14 @@ router.post("/gestion/:userId/periodo/:periodId/record", requireRole.administrad
   const { record_met, record_notes } = req.body;
   const backTo = `/RRHH/vacaciones/gestion/${encodeURIComponent(userId)}`;
   try {
+    const profile = await balanceService.getUserVacationProfile(userId);
+    if (
+      !profile ||
+      (profile.employment_country &&
+        profile.employment_country !== getCurrentCountry())
+    ) {
+      return redirectErr(res, "/RRHH/vacaciones/gestion", "Colaborador no encontrado.");
+    }
     const met = record_met === "on" || record_met === "1" || record_met === "true";
     if (!met && (!record_notes || !String(record_notes).trim())) {
       return redirectErr(res, backTo, "Indica el motivo cuando el récord no se cumple.");

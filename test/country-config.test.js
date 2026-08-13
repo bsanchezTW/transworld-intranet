@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const {
   COUNTRY_CODES,
   isValidCountryCode,
+  isForeignCountryEmailDomain,
   getCurrentCountry,
   getCountryConfig,
 } = require("../src/config/country");
@@ -60,6 +61,9 @@ describe("config/country — COUNTRY sin fallback", () => {
     assert.equal(pe.locale, "es-PE");
     assert.equal(cl.corporateEmailDomain, "transworld.cl");
     assert.equal(pe.corporateEmailDomain, "transworld.pe");
+    assert.equal(cl.weather.locationName, "Huechuraba");
+    assert.equal(pe.weather.locationName, "Lima");
+    assert.match(pe.weather.detailUrl, /meteored\.pe/);
   });
 
   it("CFG-06: el dominio corporativo encabeza los dominios de login", () => {
@@ -68,6 +72,24 @@ describe("config/country — COUNTRY sin fallback", () => {
     // Ningún país debe aceptar el dominio corporativo del otro.
     assert.ok(!getCountryConfig("PE").allowedLoginDomains.includes("transworld.cl"));
     assert.ok(!getCountryConfig("CL").allowedLoginDomains.includes("transworld.pe"));
+  });
+
+  it("CFG-08: Chile no acepta .pe y Perú no acepta .cl", () => {
+    const cl = getCountryConfig("CL");
+    const pe = getCountryConfig("PE");
+
+    assert.equal(cl.forbiddenEmailTld, "pe");
+    assert.equal(pe.forbiddenEmailTld, "cl");
+    assert.ok(cl.allowedLoginDomains.every((d) => !d.endsWith(".pe")));
+    assert.ok(pe.allowedLoginDomains.every((d) => !d.endsWith(".cl")));
+    assert.ok(cl.allowedLoginDomains.includes("hotmail.cl"));
+    assert.ok(!pe.allowedLoginDomains.includes("hotmail.cl"));
+    assert.ok(!pe.allowedLoginDomains.includes("outlook.cl"));
+    assert.ok(!pe.allowedLoginDomains.includes("yahoo.cl"));
+    assert.equal(isForeignCountryEmailDomain("transworld.pe", "CL"), true);
+    assert.equal(isForeignCountryEmailDomain("gmail.com", "CL"), false);
+    assert.equal(isForeignCountryEmailDomain("hotmail.cl", "PE"), true);
+    assert.equal(isForeignCountryEmailDomain("transworld.pe", "PE"), false);
   });
 
   it("CFG-07: la cookie de sesión difiere por país (evita cruce en localhost)", () => {

@@ -55,7 +55,7 @@ async function getUserVacationProfile(userId) {
  */
 async function recalculatePeriods(userId) {
   const user = await getUserVacationProfile(userId);
-  if (!user || !user.hire_date || !user.employment_country) return;
+  if (!user || !user.hire_date) return;
 
   const country = resolveCountryForUser(user);
   const strategy = getStrategy(country);

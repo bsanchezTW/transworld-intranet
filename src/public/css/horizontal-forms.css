@@ -25,63 +25,6 @@
   box-sizing: border-box;
 }
 
-/* Auth (login / register) */
-.card-login.layout-horizontal-auth {
-  max-width: 920px;
-  padding: 0;
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  overflow: hidden;
-}
-
-.card-login.layout-horizontal-auth .auth-aside {
-  flex: 0 0 42%;
-  min-width: 280px;
-  background: rgba(0, 0, 0, 0.18);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  text-align: center;
-  padding: 28px 32px;
-  box-sizing: border-box;
-}
-
-.card-login.layout-horizontal-auth .auth-aside h2 {
-  margin-bottom: 12px;
-}
-
-.card-login.layout-horizontal-auth .auth-aside p {
-  margin-bottom: 0;
-  font-size: 0.9rem;
-  opacity: 0.85;
-}
-
-.card-login.layout-horizontal-auth .auth-aside .auth-logo {
-  max-width: 160px;
-  height: auto;
-  margin-bottom: 24px;
-}
-
-.card-login.layout-horizontal-auth .auth-main {
-  flex: 1;
-  min-width: 0;
-  padding: 28px 36px;
-  box-sizing: border-box;
-}
-
-.card-login.layout-horizontal-auth .auth-aside .profile-photo-upload {
-  margin-top: 20px;
-  margin-bottom: 0;
-  width: 100%;
-}
-
-.card-login.layout-horizontal-auth .auth-aside .profile-photo-upload > label {
-  color: #ffffff;
-}
-
 /* Perfil */
 .card-perfil.layout-horizontal-perfil {
   max-width: 860px;
@@ -344,7 +287,6 @@ html[data-theme="dark"] .modal-h-main {
 /* Responsive: volver a vertical en móvil */
 @media (max-width: 768px) {
   .layout-horizontal,
-  .card-login.layout-horizontal-auth,
   .card-perfil.layout-horizontal-perfil,
   .form-card.layout-horizontal-form,
   .modal-h-layout,
@@ -354,8 +296,6 @@ html[data-theme="dark"] .modal-h-main {
 
   .layout-horizontal-aside,
   .layout-horizontal-main,
-  .card-login.layout-horizontal-auth .auth-aside,
-  .card-login.layout-horizontal-auth .auth-main,
   .card-perfil.layout-horizontal-perfil .perfil-aside,
   .card-perfil.layout-horizontal-perfil .perfil-main,
   .form-card.layout-horizontal-form .form-aside,
@@ -370,15 +310,6 @@ html[data-theme="dark"] .modal-h-main {
     border-right: none;
     border-bottom: 1px solid var(--color-border, #e2e8f0);
     padding: 24px 20px;
-  }
-
-  .card-login.layout-horizontal-auth {
-    max-width: 500px;
-    margin: 16px;
-  }
-
-  .card-login.layout-horizontal-auth .auth-aside {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .card-perfil.layout-horizontal-perfil {

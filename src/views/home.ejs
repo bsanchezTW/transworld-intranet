@@ -85,7 +85,7 @@
   <div class="home-hero">
     <div class="home-hero__intro">
       <h1 class="home-hero__greeting"><%= saludoTexto %><%= nombreSaludo ? ', ' + nombreSaludo : '' %></h1>
-      <span class="home-hero__meta"><%= fechaEncabezado ? fechaEncabezado + ' · ' : '' %>Huechuraba, Santiago</span>
+      <span class="home-hero__meta"><%= fechaEncabezado ? fechaEncabezado + ' · ' : '' %><%= countryConfig.weather.cityLabel %></span>
     </div>
 
     <div class="home-hero__indicators" role="list" aria-label="Indicadores financieros">
@@ -279,6 +279,7 @@
     <div class="home-dash__side">
 
       <!-- Menú semanal (protagonista) -->
+      <% if (features.lunchMenu) { %>
       <section class="home-section">
         <div class="home-card home-menu">
           <div class="home-menu__head">
@@ -304,17 +305,18 @@
           </ul>
         </div>
       </section>
+      <% } %>
 
       <!-- Clima -->
       <section class="home-section">
-        <article class="home-card home-weather home-card--clickable" onclick="window.open('https://www.meteored.cl/tiempo-en_Santiago+de+Chile-America+Sur-Chile-Region+Metropolitana+de+Santiago-SCEL-1-18578.html', '_blank')" title="Ver clima detallado">
+        <article class="home-card home-weather home-card--clickable" onclick="window.open('<%= (typeof clima !== 'undefined' && clima && clima.detailUrl) ? clima.detailUrl : countryConfig.weather.detailUrl %>', '_blank')" title="Ver clima detallado">
           <div class="home-weather__top">
             <div class="home-weather__lead">
-              <span class="home-weather__label">Clima · <%= (typeof clima !== 'undefined' && clima && clima.ubicacion) ? clima.ubicacion : 'Huechuraba' %></span>
+              <span class="home-weather__label">Clima · <%= (typeof clima !== 'undefined' && clima && clima.ubicacion) ? clima.ubicacion : countryConfig.weather.locationName %></span>
               <div class="home-weather__headline">
                 <span class="home-weather__temp"><%= (typeof clima !== 'undefined' && clima) ? clima.temp : '--' %>°</span>
                 <span class="home-weather__desc">
-                  <%= (typeof clima !== 'undefined' && clima && clima.desc) ? clima.desc : 'Santiago' %><% if (typeof clima !== 'undefined' && clima && clima.tempMin != null && clima.tempMax != null) { %> · <%= clima.tempMin %>° / <%= clima.tempMax %>°<% } %>
+                  <%= (typeof clima !== 'undefined' && clima && clima.desc) ? clima.desc : countryConfig.name %><% if (typeof clima !== 'undefined' && clima && clima.tempMin != null && clima.tempMax != null) { %> · <%= clima.tempMin %>° / <%= clima.tempMax %>°<% } %>
                 </span>
               </div>
             </div>
@@ -465,7 +467,7 @@
         <span class="home-tutorial__icon" aria-hidden="true"><%- include('partials/icon', { name: 'home' }) %></span>
         <div>
           <strong>Tu panel de inicio</strong>
-          <p>Indicadores financieros, clima, menú del casino y accesos rápidos a cursos y el sitio web.</p>
+          <p>Indicadores financieros, clima<% if (features.lunchMenu) { %>, menú del casino<% } %> y accesos rápidos a cursos y el sitio web.</p>
         </div>
       </li>
       <li class="home-tutorial__step">
@@ -489,6 +491,7 @@
           <p>Haz clic en tu foto para actualizar tus datos, teléfono y foto de perfil.</p>
         </div>
       </li>
+      <% if (features.claudeAssistant) { %>
       <li class="home-tutorial__step">
         <span class="home-tutorial__icon" aria-hidden="true"><%- include('partials/icon', { name: 'sparkles' }) %></span>
         <div>
@@ -496,6 +499,7 @@
           <p>El botón flotante en la esquina inferior te ayuda con consultas sobre la intranet.</p>
         </div>
       </li>
+      <% } %>
     </ol>
 
     <div class="home-tutorial__actions">
@@ -505,7 +509,7 @@
 </div>
 <% } %>
 
-<% if (typeof isAdministrador !== 'undefined' && isAdministrador) { %>
+<% if (features.lunchMenu && typeof isAdministrador !== 'undefined' && isAdministrador) { %>
 <div id="modalPlatos" class="modal-overlay modal-editar-menu" role="dialog" aria-modal="true" aria-labelledby="modalPlatosTitle" aria-hidden="true">
   <div class="modal-content2 modal-content2-large">
     <button type="button" class="modal-content2-close" data-modal-close aria-label="Cerrar">&times;</button>
@@ -529,6 +533,7 @@
 </div>
 <% } %>
 
+<% if (features.lunchMenu) { %>
 <div id="modalVerMenu" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalVerMenuTitle" aria-hidden="true">
   <div class="modal-content2">
     <button type="button" class="modal-content2-close" data-modal-close aria-label="Cerrar">&times;</button>
@@ -547,6 +552,7 @@
     </div>
   </div>
 </div>
+<% } %>
 
 <script>
   function toggleCumpleanios() {

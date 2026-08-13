@@ -53,6 +53,7 @@ desktop.ini
 .idea/
 .cursor/*
 !.cursor/rules/
+.claude/
 
 # Opcional: descomenta si migras imágenes pesadas a SharePoint
 # src/public/img/

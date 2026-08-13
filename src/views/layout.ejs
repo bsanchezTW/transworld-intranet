@@ -14,7 +14,7 @@
       <% }) %>
     <% } %>
     <link rel="stylesheet" href="/css/home.css">
-    <% if (typeof usuario !== 'undefined' && usuario) { %>
+    <% if (typeof usuario !== 'undefined' && usuario && features.claudeAssistant) { %>
     <link rel="stylesheet" href="/css/claude-fab.css">
     <link rel="stylesheet" href="/css/claude-chat.css">
     <% } %>
@@ -140,12 +140,14 @@
       <a href="/sistemas/tickets/nuevo" class="btn-ticket-nav js-open-ticket-modal" title="Abrir nuevo ticket de soporte">Abrir Ticket</a>
 
       <div class="social-nav">
+        <% if (features.linkedinFeed) { %>
         <a href="https://www.linkedin.com/company/transworldpowerandtelecom" target="_blank" title="LinkedIn">
            <svg class="social-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect width="40" height="40" rx="4" fill="#0077B5"/>
             <path d="M12.5 30H8.5V16H12.5V30ZM10.5 14.4C9.2 14.4 8.2 13.4 8.2 12.2C8.2 11 9.2 10 10.5 10C11.8 10 12.8 11 12.8 12.2C12.8 13.4 11.8 14.4 10.5 14.4ZM31.5 30H27.5V22.8C27.5 21 26.8 19.8 25.2 19.8C24 19.8 23.3 20.6 23 21.4C22.9 21.7 22.9 22.1 22.9 22.5V30H18.9C18.9 30 19 17.1 18.9 16H22.9V18.2C23.4 17.3 24.6 16 26.8 16C29.6 16 31.5 17.9 31.5 22.1V30Z" fill="white"/>
            </svg>
         </a>
+        <% } %>
         <a href="https://www.youtube.com/@transworld-tv" target="_blank" title="YouTube">
           <svg class="social-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect width="40" height="40" rx="4" fill="#FF0000"/>
@@ -234,7 +236,7 @@
   </div>
 </footer>
 
-<% if (currentUser && typeof titulo === 'string' && titulo.toLowerCase().includes('home')) { %>
+<% if (currentUser && features.claudeAssistant && typeof titulo === 'string' && titulo.toLowerCase().includes('home')) { %>
   <%- include('partials/claude-fab') %>
   <%- include('partials/claude-modal') %>
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>

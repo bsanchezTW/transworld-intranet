@@ -1,9 +1,5 @@
 const axios = require('axios');
-const { getLocale } = require('../config/country');
-
-// Coordenadas de Huechuraba, Santiago
-const LAT = -33.3742;
-const LON = -70.6725;
+const { getLocale, getCountryConfig } = require('../config/country');
 
 // Claves de icono SVG (ver views/partials/icon.ejs)
 const WMO_CODES = {
@@ -61,7 +57,8 @@ function formatDayShort(isoString) {
 
 async function getWeather() {
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}` +
+    const { weather } = getCountryConfig();
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${weather.latitude}&longitude=${weather.longitude}` +
       `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m` +
       `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunset,sunrise,precipitation_probability_max` +
       `&timezone=auto&forecast_days=7`;
@@ -87,7 +84,8 @@ async function getWeather() {
       feelsLike: Math.round(current.apparent_temperature),
       icon: getWeatherIcon(current.weather_code),
       desc: getWeatherDesc(current.weather_code),
-      ubicacion: 'Huechuraba',
+      ubicacion: weather.locationName,
+      detailUrl: weather.detailUrl,
       humidity: current.relative_humidity_2m,
       wind: Math.round(current.wind_speed_10m),
       tempMin: Math.round(daily.temperature_2m_min[hoyIdx]),

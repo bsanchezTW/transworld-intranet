@@ -2,7 +2,6 @@ const {
   vacationStatusLabel,
   vacationStatusBadge,
   countryLabel,
-  countryFlag,
 } = require("../constants/vacationStatuses");
 const {
   formatDisplay,
@@ -173,7 +172,6 @@ function mapVacationRequestForView(row) {
     statusLabel: vacationStatusLabel(row.status),
     statusBadge: vacationStatusBadge(row.status),
     countryLabel: countryLabel(row.country_code),
-    countryFlag: countryFlag(row.country_code),
     reviewerName,
     reviewedAtFmt: row.reviewed_at ? formatDisplay(row.reviewed_at) : null,
   };

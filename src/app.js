@@ -343,22 +343,29 @@ function requireAuth(req, res, next) {
 // ================================
 app.use("/", authRoutes); // Login/Registro (Públicas)
 
-// Registro de eventos: el formulario público vive en el proyecto hermano
-// `registro-forms`. Aquí solo queda la API legacy `/registro` (BD intranet) y,
-// si hay REGISTRO_FORMS_URL, un redirect de los enlaces antiguos.
-// Capacidad solo de Chile mientras el proyecto Supabase de registros sea único.
+// Registro de eventos: el formulario público vive en eventos.transworld.cl.
+// Aquí solo queda la API legacy `/registro` (BD intranet) y un redirect de los
+// enlaces antiguos, conservando path y query:
+//   intranet.transworld.cl/registro-forms?id=...
+//     → eventos.transworld.cl/registro-forms?id=...
+// Capacidad solo de Chile mientras el proyecto de registros sea único.
 const eventRegistration = requireFeature("eventRegistration");
-const registroFormsUrl = (process.env.REGISTRO_FORMS_URL || "").trim();
+const DEFAULT_EVENTOS_ORIGIN = "https://eventos.transworld.cl";
 
-if (registroFormsUrl) {
-  app.get("/registro-forms", eventRegistration, (req, res) => {
-    const dest = new URL(registroFormsUrl);
-    for (const [key, value] of Object.entries(req.query || {})) {
-      dest.searchParams.set(key, String(value));
-    }
-    return res.redirect(302, dest.toString());
-  });
+function resolveEventosOrigin(raw) {
+  const value = String(raw || "").trim() || DEFAULT_EVENTOS_ORIGIN;
+  try {
+    return new URL(value).origin;
+  } catch {
+    return DEFAULT_EVENTOS_ORIGIN;
+  }
 }
+
+const eventosOrigin = resolveEventosOrigin(process.env.REGISTRO_FORMS_URL);
+
+app.use("/registro-forms", eventRegistration, (req, res) => {
+  return res.redirect(302, `${eventosOrigin}${req.originalUrl}`);
+});
 
 app.use("/registro", eventRegistration, registroRoutes);
 // Rutas Protegidas
@@ -369,7 +376,7 @@ app.use("/sistemas", requireAuth, ticketsRoutes);
 app.use("/marketing", requireAuth, marketingRoutes);
 app.use("/docs", requireAuth, docsRoutes);
 app.use("/noticias", requireAuth, noticiasRoutes);
-app.use("/claude", requireAuth, claudeRoutes);
+app.use("/claude", requireAuth, requireFeature("claudeAssistant"), claudeRoutes);
 
 // Multer corta el body antes de entrar al handler cuando supera el límite.
 // Convertimos ese error en 413 para evitar que termine como un 500 genérico.

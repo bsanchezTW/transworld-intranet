@@ -1,10 +1,15 @@
 const db = require("../../db");
 const { getStrategy, resolveCountryForUser } = require("./VacationEngine");
+const { getCurrentCountry } = require("../../config/country");
 const balanceService = require("./vacationBalanceService");
 const holidayService = require("./holidayService");
 const { VACATION_STATUS, VACATION_ACTIVE_STATUSES } = require("../../constants/vacationStatuses");
 const { VACATION_CONFIG } = require("../../constants/vacationConfig");
 const { toDateOnly, todayInCountry } = require("../../utils/vacationDateUtils");
+
+function requestBelongsToInstance(request) {
+  return !request?.country_code || request.country_code === getCurrentCountry();
+}
 
 /**
  * Lógica de solicitudes de vacaciones: creación con validación por país,
@@ -199,6 +204,10 @@ async function approveRequest({ requestId, reviewerId, notes }) {
       await client.query("ROLLBACK");
       return { ok: false, error: "Solo se pueden aprobar solicitudes pendientes." };
     }
+    if (!requestBelongsToInstance(request)) {
+      await client.query("ROLLBACK");
+      return { ok: false, error: "Solicitud no encontrada." };
+    }
 
     const days = requestDays(request);
     const { firstPeriodId, allocations } = await balanceService.consumeDaysFifo(
@@ -242,6 +251,9 @@ async function approveRequest({ requestId, reviewerId, notes }) {
 async function rejectRequest({ requestId, reviewerId, reason }) {
   const request = await getRequestById(requestId);
   if (!request) return { ok: false, error: "Solicitud no encontrada." };
+  if (!requestBelongsToInstance(request)) {
+    return { ok: false, error: "Solicitud no encontrada." };
+  }
   if (request.status !== VACATION_STATUS.PENDING) {
     return { ok: false, error: "Solo se pueden rechazar solicitudes pendientes." };
   }
@@ -395,14 +407,10 @@ async function listForUser(userId) {
   return rows;
 }
 
-async function listForAdmin({ country, workAreaId, status } = {}) {
-  const conditions = [];
-  const params = [];
+async function listForAdmin({ workAreaId, status } = {}) {
+  const conditions = ["r.country_code = $1"];
+  const params = [getCurrentCountry()];
 
-  if (country) {
-    params.push(country);
-    conditions.push(`r.country_code = $${params.length}`);
-  }
   if (workAreaId) {
     params.push(workAreaId);
     conditions.push(`u.work_area_id = $${params.length}`);
@@ -412,7 +420,7 @@ async function listForAdmin({ country, workAreaId, status } = {}) {
     conditions.push(`r.status = $${params.length}`);
   }
 
-  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const where = `WHERE ${conditions.join(" AND ")}`;
   const { rows } = await db.query(
     `SELECT r.*, u.first_name, u.last_name, u.email, u.work_area_id,
             wa.area_name AS area
@@ -433,15 +441,17 @@ async function listApprovedInRange({ startDate, endDate, userId } = {}) {
     toDateOnly(startDate),
     toDateOnly(endDate),
     [VACATION_STATUS.APPROVED, VACATION_STATUS.IN_PROGRESS, VACATION_STATUS.COMPLETED],
+    getCurrentCountry(),
   ];
   let sql = `SELECT r.*, u.first_name, u.last_name
              FROM vacation_requests r
              JOIN users u ON u.id = r.user_id
              WHERE r.status = ANY($3)
-               AND r.start_date <= $2 AND r.end_date >= $1`;
+               AND r.start_date <= $2 AND r.end_date >= $1
+               AND r.country_code = $4`;
   if (userId) {
     params.push(userId);
-    sql += ` AND r.user_id = $4`;
+    sql += ` AND r.user_id = $5`;
   }
   sql += ` ORDER BY r.start_date ASC`;
   const { rows } = await db.query(sql, params);
@@ -450,15 +460,18 @@ async function listApprovedInRange({ startDate, endDate, userId } = {}) {
 
 async function runDailyStatusTransitions() {
   const today = todayInCountry();
+  const country = getCurrentCountry();
   const toProgress = await db.query(
     `UPDATE vacation_requests SET status = 'in_progress', updated_at = NOW()
-     WHERE status = 'approved' AND start_date <= $1 AND end_date >= $1`,
-    [today],
+     WHERE status = 'approved' AND start_date <= $1 AND end_date >= $1
+       AND country_code = $2`,
+    [today, country],
   );
   const toCompleted = await db.query(
     `UPDATE vacation_requests SET status = 'completed', updated_at = NOW()
-     WHERE status IN ('approved','in_progress') AND end_date < $1`,
-    [today],
+     WHERE status IN ('approved','in_progress') AND end_date < $1
+       AND country_code = $2`,
+    [today, country],
   );
   return {
     inProgress: toProgress.rowCount || 0,

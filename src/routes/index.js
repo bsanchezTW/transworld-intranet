@@ -381,27 +381,34 @@ router.get("/", async (req, res) => {
     // ==========================================
     // LÓGICA DEL PLATO DEL DÍA
     // ==========================================
-    const d = new Date();
-    let diaActual = d.getDay();
-    if (diaActual === 0 || diaActual === 6) diaActual = 1;
+    let platoDelDia = "No definido";
+    let platoManana = null;
+    let platosRows = [];
 
-    // FIX: .catch para que si la tabla platos no existe no rompa el home
-    const { rows: platosRows } = await db
-      .query(
-        "SELECT day_number, dish_name FROM lunch_menu ORDER BY day_number ASC",
-      )
-      .catch(() => ({ rows: [] }));
+    if (isFeatureEnabled("lunchMenu")) {
+      const d = new Date();
+      let diaActual = d.getDay();
+      if (diaActual === 0 || diaActual === 6) diaActual = 1;
 
-    const platoHoy = platosRows.find((p) => p.day_number === diaActual);
-    const platoDelDia = platoHoy ? platoHoy.dish_name : "No definido";
+      // FIX: .catch para que si la tabla platos no existe no rompa el home
+      const menuResult = await db
+        .query(
+          "SELECT day_number, dish_name FROM lunch_menu ORDER BY day_number ASC",
+        )
+        .catch(() => ({ rows: [] }));
+      platosRows = menuResult.rows;
 
-    const diaManana = diaActual < 5 ? diaActual + 1 : null;
-    const platoMananaRow = diaManana
-      ? platosRows.find((p) => p.day_number === diaManana)
-      : null;
-    const platoManana = diaManana
-      ? (platoMananaRow ? platoMananaRow.dish_name : "No definido")
-      : null;
+      const platoHoy = platosRows.find((p) => p.day_number === diaActual);
+      platoDelDia = platoHoy ? platoHoy.dish_name : "No definido";
+
+      const diaManana = diaActual < 5 ? diaActual + 1 : null;
+      const platoMananaRow = diaManana
+        ? platosRows.find((p) => p.day_number === diaManana)
+        : null;
+      platoManana = diaManana
+        ? (platoMananaRow ? platoMananaRow.dish_name : "No definido")
+        : null;
+    }
 
     res.render("home", {
       // El sufijo por país lo añade formatPageTitle en la vista.
@@ -483,7 +490,7 @@ router.post("/home/tutorial-visto", async (req, res) => {
 // ==========================================
 // GUARDAR MENÚ SEMANAL
 // ==========================================
-router.post("/platos/editar", async (req, res) => {
+router.post("/platos/editar", requireFeature("lunchMenu"), async (req, res) => {
   if (!req.session.user || !isAdministrador(req.session.user.role))
     return res.status(403).send("No autorizado");
 

@@ -93,31 +93,21 @@
         </select>
       </div>
 
-      <div class="form-grid-2">
-        <div class="campo">
-          <label for="employment_country">País de contrato *</label>
-          <% const pais = (persona.employment_country || country); %>
-          <select id="employment_country" name="employment_country" required>
-            <option value="CL" <%= pais === 'CL' ? 'selected' : '' %>>Chile</option>
-            <option value="PE" <%= pais === 'PE' ? 'selected' : '' %>>Perú</option>
-          </select>
-          <span class="hint">Determina las reglas de vacaciones.</span>
-        </div>
-        <div class="campo">
-          <label for="hire_date">Fecha de ingreso</label>
-          <input
-            type="date"
-            id="hire_date"
-            name="hire_date"
-            value="<%= persona.hire_date ? new Date(persona.hire_date).toISOString().split('T')[0] : '' %>"
-          >
-          <span class="hint">Necesaria para calcular vacaciones.</span>
-        </div>
+      <div class="campo">
+        <label for="hire_date">Fecha de ingreso</label>
+        <input
+          type="date"
+          id="hire_date"
+          name="hire_date"
+          value="<%= persona.hire_date ? new Date(persona.hire_date).toISOString().split('T')[0] : '' %>"
+        >
+        <span class="hint">Necesaria para calcular vacaciones.</span>
       </div>
 
+      <% if (country === 'CL') { %>
       <div class="form-grid-2">
         <div class="campo">
-          <label for="prior_years_credited">Años previos acreditados (CL)</label>
+          <label for="prior_years_credited">Años previos acreditados</label>
           <input
             type="number"
             id="prior_years_credited"
@@ -130,7 +120,7 @@
           <span class="hint">Antigüedad en otros empleadores (máx. 10).</span>
         </div>
         <div class="campo">
-          <label for="progressive_days_override">Progresivo negociado (CL)</label>
+          <label for="progressive_days_override">Progresivo negociado</label>
           <input
             type="number"
             id="progressive_days_override"
@@ -142,7 +132,9 @@
           >
         </div>
       </div>
+      <% } %>
 
+      <% if (country === 'PE') { %>
       <div class="form-grid-2">
         <div class="campo">
           <label for="work_days_per_week">Jornada (días/semana)</label>
@@ -153,9 +145,10 @@
             <option value="4" <%= jornada === 4 ? 'selected' : '' %>>4 días</option>
             <option value="3" <%= jornada === 3 ? 'selected' : '' %>>3 días</option>
           </select>
-          <span class="hint">Récord vacacional Perú.</span>
+          <span class="hint">Récord vacacional (art. 10 D.L. 713).</span>
         </div>
       </div>
+      <% } %>
 
       <div class="form-grid-2">
         <div class="campo">

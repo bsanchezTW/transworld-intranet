@@ -18,11 +18,6 @@
 
   <div class="vac-panel">
     <form class="vac-filters" method="GET" action="/RRHH/vacaciones/gestion">
-      <select name="country">
-        <option value="">Todos los países</option>
-        <option value="CL" <%= filtros.country === 'CL' ? 'selected' : '' %>>Chile</option>
-        <option value="PE" <%= filtros.country === 'PE' ? 'selected' : '' %>>Perú</option>
-      </select>
       <select name="area">
         <option value="">Todas las áreas</option>
         <% (areas || []).forEach(a => { %>
@@ -47,7 +42,7 @@
       <table class="vac-table">
         <thead>
           <tr>
-            <th>Colaborador</th><th>País</th><th>Período</th><th>Días</th>
+            <th>Colaborador</th><th>Período</th><th>Días</th>
             <th>Estado</th><th>Comentario</th><th>Acciones</th>
           </tr>
         </thead>
@@ -57,7 +52,6 @@
               <td>
                 <a class="vac-link-volver" style="color:#003a70;font-weight:600;" href="/RRHH/vacaciones/gestion/<%= r.user_id %>"><%= r.collaboratorName || ('#' + r.user_id) %></a>
               </td>
-              <td><span class="vac-country"><%= r.countryLabel %></span></td>
               <td><%= r.startDateFmt %> → <%= r.endDateFmt %></td>
               <td><%= r.days %> <%= r.dayUnit %></td>
               <td><span class="<%= r.statusBadge %>"><%= r.statusLabel %></span></td>

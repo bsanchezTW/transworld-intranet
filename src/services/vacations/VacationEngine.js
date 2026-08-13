@@ -29,37 +29,21 @@ function isSupportedCountry(countryCode) {
 /**
  * País de vacaciones de un colaborador. Punto único de resolución.
  *
- * No admite fallback: un colaborador sin país de contrato es un dato
- * incompleto, y calcularle vacaciones con reglas supuestas produce un saldo
- * legalmente incorrecto. Es preferible fallar y que RR.HH. complete el dato.
- *
- * Mientras Chile y Perú compartan base de datos, la fuente es el propio
- * colaborador. Cuando cada instancia tenga su base, esto pasará a ser
- * getCurrentCountry() y el parámetro desaparecerá.
+ * Lo define la instancia (`COUNTRY`), no un campo del formulario. Si el
+ * colaborador tiene employment_country de otro país, se rechaza: aplicar las
+ * reglas legales ajenas produce un saldo incorrecto.
  */
 function resolveCountryForUser(user) {
+  const instanceCountry = getCurrentCountry();
   const code = String(user?.employment_country || "").toUpperCase();
 
-  if (!isSupportedCountry(code)) {
+  if (code && code !== instanceCountry) {
     throw new Error(
-      `El colaborador ${user?.id ?? "(sin id)"} no tiene un país de contrato válido ` +
-        `(employment_country=${JSON.stringify(user?.employment_country)}). ` +
-        "RR.HH. debe corregirlo antes de calcular sus vacaciones.",
+      `El colaborador ${user?.id ?? "(sin id)"} pertenece a ${code}, no a esta instancia (${instanceCountry}).`,
     );
   }
 
-  // Señal de datos mezclados: hasta que las bases estén separadas, una
-  // instancia puede ver colaboradores del otro país. Se respeta su regla legal,
-  // pero queda registrado para la migración.
-  const instanceCountry = getCurrentCountry();
-  if (code !== instanceCountry) {
-    console.warn(
-      `[Vacaciones] Colaborador ${user?.id} es de ${code} en una instancia ${instanceCountry}. ` +
-        "Se aplican las reglas de su país de contrato. Revisar al separar las bases de datos.",
-    );
-  }
-
-  return code;
+  return instanceCountry;
 }
 
 /** Estrategia que corresponde a un colaborador. */

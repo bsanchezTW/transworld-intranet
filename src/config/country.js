@@ -48,6 +48,14 @@ const COUNTRY_CONFIGS = {
       example: "9 1234 5678",
     },
     corporateSite: "https://www.transworld.cl/",
+    weather: {
+      latitude: -33.3742,
+      longitude: -70.6725,
+      locationName: "Huechuraba",
+      cityLabel: "Huechuraba, Santiago",
+      detailUrl:
+        "https://www.meteored.cl/tiempo-en_Santiago+de+Chile-America+Sur-Chile-Region+Metropolitana+de+Santiago-SCEL-1-18578.html",
+    },
     supportEmail: "soporte@transworld.cl",
     hrEmail: "rrhh@transworld.cl",
     noReplyEmail: "noreply@transworld.cl",
@@ -72,6 +80,14 @@ const COUNTRY_CONFIGS = {
       example: "987 654 321",
     },
     corporateSite: "https://www.transworld.cl/",
+    weather: {
+      latitude: -12.0464,
+      longitude: -77.0428,
+      locationName: "Lima",
+      cityLabel: "Lima",
+      detailUrl:
+        "https://www.meteored.pe/tiempo-en_Lima-America+Sur-Peru-Provincia+de+Lima-SPIM-1-16982.html",
+    },
     // TODO(TI Perú): confirmar las casillas locales antes de salir a producción.
     supportEmail: "soporte@transworld.pe",
     hrEmail: "rrhh@transworld.pe",
@@ -80,12 +96,33 @@ const COUNTRY_CONFIGS = {
   },
 };
 
+/** TLD del otro país: Chile no acepta .pe y Perú no acepta .cl. */
+const FOREIGN_EMAIL_TLD = {
+  CL: "pe",
+  PE: "cl",
+};
+
+function isForeignCountryEmailDomain(domain, countryCode) {
+  const tld = FOREIGN_EMAIL_TLD[String(countryCode || "").trim().toUpperCase()];
+  if (!tld) return false;
+  const normalized = String(domain || "").trim().toLowerCase();
+  return normalized === tld || normalized.endsWith(`.${tld}`);
+}
+
+function publicDomainsForCountry(countryCode) {
+  return PUBLIC_EMAIL_DOMAINS.filter(
+    (domain) => !isForeignCountryEmailDomain(domain, countryCode),
+  );
+}
+
 // El dominio corporativo siempre encabeza la lista: es el que el formulario de
-// login preselecciona.
+// login preselecciona. Los públicos del otro país (p. ej. hotmail.cl en Perú)
+// quedan fuera.
 for (const config of Object.values(COUNTRY_CONFIGS)) {
+  config.forbiddenEmailTld = FOREIGN_EMAIL_TLD[config.code];
   config.allowedLoginDomains = [
     config.corporateEmailDomain,
-    ...PUBLIC_EMAIL_DOMAINS,
+    ...publicDomainsForCountry(config.code),
   ];
 }
 
@@ -131,7 +168,9 @@ function getLocale() {
 module.exports = {
   COUNTRY_CODES,
   PUBLIC_EMAIL_DOMAINS,
+  FOREIGN_EMAIL_TLD,
   isValidCountryCode,
+  isForeignCountryEmailDomain,
   getCurrentCountry,
   getCountryConfig,
   getTimezone,

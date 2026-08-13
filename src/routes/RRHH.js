@@ -28,35 +28,11 @@ const { validateEmail } = require("../utils/email");
 const { mapPersonaForView } = require("../utils/schemaMappers");
 const { generateUniqueUsuarioId } = require("../utils/userId");
 const balanceService = require("../services/vacations/vacationBalanceService");
-const {
-  getCurrentCountry,
-  isValidCountryCode,
-  COUNTRY_CODES,
-} = require("../config/country");
+const { getCurrentCountry } = require("../config/country");
 
-/**
- * País de contrato del colaborador.
- *
- * Sin valor, se asume el país de esta instancia (un formulario de la intranet
- * de Chile crea colaboradores de Chile). Un valor presente pero desconocido es
- * un error del cliente y se rechaza: convertirlo a "CL" en silencio es lo que
- * hacía que un colaborador peruano terminara con reglas chilenas.
- *
- * @returns {{ valid: boolean, value: string|null, error: string|null }}
- */
-function parseEmploymentCountry(value) {
-  const raw = String(value ?? "").trim().toUpperCase();
-  if (!raw) {
-    return { valid: true, value: getCurrentCountry(), error: null };
-  }
-  if (!isValidCountryCode(raw)) {
-    return {
-      valid: false,
-      value: null,
-      error: `País de contrato inválido: "${value}". Valores admitidos: ${COUNTRY_CODES.join(", ")}.`,
-    };
-  }
-  return { valid: true, value: raw, error: null };
+function belongsToThisInstance(employmentCountry) {
+  const code = String(employmentCountry || "").trim().toUpperCase();
+  return !code || code === getCurrentCountry();
 }
 
 function parsePriorYearsCredited(value) {
@@ -214,11 +190,12 @@ router.get("/personal", async (req, res) => {
       at.area_name AS area
     FROM users u
     LEFT JOIN work_areas at ON at.id = u.work_area_id
+    WHERE u.employment_country = $1
     ORDER BY u.last_name ASC NULLS LAST, u.first_name ASC
   `;
 
   try {
-    const { rows: results } = await db.query(sql);
+    const { rows: results } = await db.query(sql, [getCurrentCountry()]);
     const mostrarColumnaRol = Boolean(res.locals.isAdministrador);
 
     const personasFormateadas = results.map((p) => {
@@ -299,7 +276,6 @@ router.post("/crear", requireRole.administrador(), async (req, res) => {
     work_area_id,
     birth_date,
     phone,
-    employment_country,
     hire_date,
     prior_years_credited,
     progressive_days_override,
@@ -307,11 +283,7 @@ router.post("/crear", requireRole.administrador(), async (req, res) => {
   } = req.body;
 
   try {
-    const countryCheck = parseEmploymentCountry(employment_country);
-    if (!countryCheck.valid) {
-      return redirectPersonalCrearError(res, countryCheck.error);
-    }
-    const countryVal = countryCheck.value;
+    const countryVal = getCurrentCountry();
     const hireVal = hire_date && String(hire_date).trim() ? hire_date : null;
     const priorYearsVal = parsePriorYearsCredited(prior_years_credited);
     const progressiveOverrideVal = parseProgressiveOverride(progressive_days_override);
@@ -458,6 +430,9 @@ router.get("/editar/:id", requireRole.administrador(), async (req, res) => {
     const { rows } = userResult;
 
     if (rows.length === 0) return res.status(404).send("Usuario no encontrado");
+    if (!belongsToThisInstance(rows[0].employment_country)) {
+      return res.status(404).send("Usuario no encontrado");
+    }
 
     const phoneRaw = rows[0].phone ?? rows[0].telefono;
     const phoneDisplay =
@@ -499,7 +474,6 @@ router.post(
       phone,
       email,
       eliminar_foto,
-      employment_country,
       hire_date,
       prior_years_credited,
       progressive_days_override,
@@ -507,11 +481,7 @@ router.post(
     } = req.body;
 
     try {
-      const countryCheck = parseEmploymentCountry(employment_country);
-      if (!countryCheck.valid) {
-        return redirectPersonalEditarError(res, id, countryCheck.error);
-      }
-      const countryVal = countryCheck.value;
+      const countryVal = getCurrentCountry();
       const hireVal = hire_date && String(hire_date).trim() ? hire_date : null;
       const priorYearsVal = parsePriorYearsCredited(prior_years_credited);
       const progressiveOverrideVal = parseProgressiveOverride(progressive_days_override);
@@ -571,10 +541,16 @@ router.post(
       }
 
       const { rows: prev } = await db.query(
-        "SELECT photo AS foto, password_hash, email_confirmed, role, email FROM users WHERE id = $1",
+        "SELECT photo AS foto, password_hash, email_confirmed, role, email, employment_country FROM users WHERE id = $1",
         [id],
       );
-      const prevUser = prev[0] || {};
+      if (!prev.length) {
+        return redirectPersonalEditarError(res, id, "Usuario no encontrado.");
+      }
+      const prevUser = prev[0];
+      if (!belongsToThisInstance(prevUser.employment_country)) {
+        return redirectPersonalEditarError(res, id, "Usuario no encontrado.");
+      }
       const prevEmail = prevUser.email ? String(prevUser.email).trim() : "";
       if (prevEmail && !emailClean) {
         return redirectPersonalEditarError(
@@ -703,12 +679,14 @@ router.post(
 router.post("/eliminar/:id", requireRole.administrador(), async (req, res) => {
   const { id } = req.params;
   try {
-    const { rows } = await db.query("SELECT photo AS foto FROM users WHERE id = $1", [
-      id,
-    ]);
-    if (rows.length > 0) {
-      await userPhotoStorage.removeUserPhoto(id, rows[0].foto);
+    const { rows } = await db.query(
+      "SELECT photo AS foto, employment_country FROM users WHERE id = $1",
+      [id],
+    );
+    if (!rows.length || !belongsToThisInstance(rows[0].employment_country)) {
+      return res.status(404).send("Usuario no encontrado");
     }
+    await userPhotoStorage.removeUserPhoto(id, rows[0].foto);
 
     await db.query("DELETE FROM users WHERE id = $1", [id]);
     res.redirect("/RRHH/personal?ok=1&msg=Usuario+eliminado+correctamente");

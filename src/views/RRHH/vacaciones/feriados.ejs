@@ -13,7 +13,13 @@
   <div class="vac-header">
     <div>
       <h2 class="vac-title">Feriados</h2>
-      <p class="vac-subtitle">Feriados legales de Chile y Perú. Afectan el cálculo de días hábiles (Chile).</p>
+      <p class="vac-subtitle">
+        <% if (country === 'CL') { %>
+          Feriados legales de <%= countryConfig.name %>. Afectan el cálculo de días hábiles.
+        <% } else { %>
+          Feriados legales de <%= countryConfig.name %>. El cómputo de vacaciones es en días calendario.
+        <% } %>
+      </p>
     </div>
     <a href="/RRHH/vacaciones" class="vac-link-volver">← Volver</a>
   </div>

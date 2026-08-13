@@ -28,13 +28,6 @@
     <section class="login-split__form-panel<%= activeView === 'register' ? ' login-split__form-panel--register' : '' %>" aria-label="Acceso a la intranet">
       <div class="login-split__form-inner">
 
-        <nav class="login-split__nav">
-          <a href="<%= countryConfig.corporateSite %>" target="_blank" rel="noopener noreferrer">
-            <span class="login-split__nav-arrow" aria-hidden="true">&lt;</span>
-            Visita Transworld
-          </a>
-        </nav>
-
         <div class="login-auth-stage login-auth-stage--enter" id="loginAuthStage">
 
         <div class="login-split__brand" id="loginAuthBrand"<% if (activeView === 'register') { %> hidden<% } %>>
@@ -88,15 +81,24 @@
                   required
                   <% if (activeView === 'login') { %>autofocus<% } %>
                 >
-                <div class="login-domain">
+                <div class="login-domain" data-login-domain>
                   <span class="login-domain__at">@</span>
-                  <%# El primero de la lista es el dominio corporativo del país
-                      de esta instancia (transworld.cl / transworld.pe). %>
-                  <select name="domain" aria-label="Dominio de correo">
-                    <% countryConfig.allowedLoginDomains.forEach((d, i) => { %>
-                      <option value="<%= d %>"<%= i === 0 ? ' selected' : '' %>><%= d %></option>
-                    <% }) %>
-                  </select>
+                  <input
+                    type="text"
+                    name="domain"
+                    class="login-domain__input"
+                    value="<%= countryConfig.corporateEmailDomain %>"
+                    readonly
+                    tabindex="-1"
+                    spellcheck="false"
+                    autocomplete="off"
+                    autocapitalize="none"
+                    inputmode="url"
+                    aria-label="Dominio de correo"
+                  >
+                  <button type="button" class="login-domain__edit" title="Editar dominio" aria-label="Editar dominio" aria-pressed="false">
+                    <%- include('partials/icon', { name: 'edit' }) %>
+                  </button>
                 </div>
               </div>
             </div>
@@ -175,15 +177,26 @@
                   value="<%= fd.username || '' %>"
                   required
                 >
-                <div class="login-domain">
+                <div class="login-domain" data-login-domain>
                   <span class="login-domain__at">@</span>
-                  <select name="domain" aria-label="Dominio de correo" tabindex="-1">
-                    <% const regDomains = countryConfig.allowedLoginDomains; %>
-                    <% const regSelectedDomain = regDomains.includes(fd.domain) ? fd.domain : countryConfig.corporateEmailDomain; %>
-                    <% regDomains.forEach(d => { %>
-                      <option value="<%= d %>"<%= d === regSelectedDomain ? ' selected' : '' %>><%= d %></option>
-                    <% }) %>
-                  </select>
+                  <% const regDomains = countryConfig.allowedLoginDomains; %>
+                  <% const regSelectedDomain = regDomains.includes(fd.domain) ? fd.domain : countryConfig.corporateEmailDomain; %>
+                  <input
+                    type="text"
+                    name="domain"
+                    class="login-domain__input"
+                    value="<%= regSelectedDomain %>"
+                    readonly
+                    tabindex="-1"
+                    spellcheck="false"
+                    autocomplete="off"
+                    autocapitalize="none"
+                    inputmode="url"
+                    aria-label="Dominio de correo"
+                  >
+                  <button type="button" class="login-domain__edit" title="Editar dominio" aria-label="Editar dominio" aria-pressed="false">
+                    <%- include('partials/icon', { name: 'edit' }) %>
+                  </button>
                 </div>
               </div>
             </div>
@@ -930,6 +943,24 @@
       // Misma lista que valida el servidor (config/country.js), inyectada para
       // no mantener dos copias que se desincronicen.
       const ALLOWED_DOMAINS = new Set(<%- JSON.stringify(countryConfig.allowedLoginDomains) %>);
+      const FORBIDDEN_TLD = <%- JSON.stringify(countryConfig.forbiddenEmailTld) %>;
+      const DEFAULT_DOMAIN = <%- JSON.stringify(countryConfig.corporateEmailDomain) %>;
+      const COUNTRY_NAME = <%- JSON.stringify(countryConfig.name) %>;
+      const FOREIGN_DOMAIN_MSG = 'El dominio .' + FORBIDDEN_TLD + ' no está disponible en ' + COUNTRY_NAME + '.';
+
+      function isForbiddenDomain(domain) {
+        const d = String(domain || '').trim().toLowerCase();
+        if (!d || !FORBIDDEN_TLD) return false;
+        return d === FORBIDDEN_TLD || d.endsWith('.' + FORBIDDEN_TLD);
+      }
+
+      function normalizeDomainValue(value) {
+        return String(value || '')
+          .trim()
+          .toLowerCase()
+          .replace(/^@+/, '')
+          .replace(/[^a-z0-9.-]/g, '');
+      }
 
       function parseUsernameInput(value) {
         const raw = String(value || '').trim().toLowerCase();
@@ -937,23 +968,152 @@
         if (at === -1) return { username: raw, domain: null };
         const username = raw.slice(0, at);
         const domain = raw.slice(at + 1);
+        if (!domain || isForbiddenDomain(domain) || !ALLOWED_DOMAINS.has(domain)) {
+          return { username: username, domain: null };
+        }
+        return { username: username, domain: domain };
+      }
+
+      function resizeDomainInput(input) {
+        const len = Math.max(String(input.value || '').length, 8);
+        input.style.width = len + 'ch';
+      }
+
+      function bindDomainEditor(row) {
+        const wrap = row.querySelector('[data-login-domain]');
+        const input = wrap ? wrap.querySelector('.login-domain__input') : null;
+        const button = wrap ? wrap.querySelector('.login-domain__edit') : null;
+        if (!wrap || !input || !button) return null;
+
+        let previousValue = input.value || DEFAULT_DOMAIN;
+        resizeDomainInput(input);
+
+        function setEditing(editing) {
+          input.readOnly = !editing;
+          input.tabIndex = editing ? 0 : -1;
+          wrap.classList.toggle('login-domain--editing', editing);
+          button.setAttribute('aria-pressed', editing ? 'true' : 'false');
+          button.title = editing ? 'Confirmar dominio' : 'Editar dominio';
+          button.setAttribute('aria-label', button.title);
+        }
+
+        function commitDomain() {
+          let value = normalizeDomainValue(input.value);
+          if (!value) value = previousValue || DEFAULT_DOMAIN;
+          if (isForbiddenDomain(value)) {
+            wrap.classList.add('login-domain--invalid');
+            return { ok: false, message: FOREIGN_DOMAIN_MSG };
+          }
+          input.value = value;
+          previousValue = value;
+          wrap.classList.remove('login-domain--invalid');
+          setEditing(false);
+          resizeDomainInput(input);
+          return { ok: true, value: value };
+        }
+
+        function unlock() {
+          const current = normalizeDomainValue(input.value);
+          if (current && !isForbiddenDomain(current)) {
+            previousValue = current;
+          }
+          setEditing(true);
+          input.focus();
+          input.select();
+        }
+
+        button.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          if (input.readOnly) unlock();
+          else commitDomain();
+        });
+
+        input.addEventListener('input', function () {
+          input.value = normalizeDomainValue(input.value);
+          wrap.classList.toggle('login-domain--invalid', isForbiddenDomain(input.value));
+          resizeDomainInput(input);
+        });
+
+        input.addEventListener('blur', function () {
+          if (input.readOnly || wrap.dataset.blockBlur === '1') {
+            delete wrap.dataset.blockBlur;
+            return;
+          }
+          if (isForbiddenDomain(normalizeDomainValue(input.value))) {
+            input.value = previousValue || DEFAULT_DOMAIN;
+            wrap.classList.remove('login-domain--invalid');
+          }
+          commitDomain();
+        });
+
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const result = commitDomain();
+            if (result.ok) {
+              const form = input.closest('form');
+              const password = form ? form.querySelector('input[type="password"]') : null;
+              if (password) password.focus();
+            }
+          }
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            input.value = previousValue || DEFAULT_DOMAIN;
+            wrap.classList.remove('login-domain--invalid');
+            setEditing(false);
+            resizeDomainInput(input);
+          }
+        });
+
+        const form = input.closest('form');
+        if (form && !form.dataset.domainGuard) {
+          form.dataset.domainGuard = '1';
+          const submitBtn = form.querySelector('[type="submit"]');
+          if (submitBtn) {
+            submitBtn.addEventListener('mousedown', function () {
+              if (!input.readOnly && isForbiddenDomain(normalizeDomainValue(input.value))) {
+                wrap.dataset.blockBlur = '1';
+              }
+            });
+          }
+          form.addEventListener('submit', function (e) {
+            const value = normalizeDomainValue(input.value);
+            if (isForbiddenDomain(value)) {
+              e.preventDefault();
+              const errorEl = document.getElementById('loginAuthError');
+              if (errorEl) {
+                errorEl.textContent = FOREIGN_DOMAIN_MSG;
+                errorEl.hidden = false;
+              }
+              wrap.classList.add('login-domain--invalid');
+              unlock();
+              return;
+            }
+            commitDomain();
+          });
+        }
+
         return {
-          username,
-          domain: ALLOWED_DOMAINS.has(domain) ? domain : null
+          setDomain: function (domain) {
+            if (!domain || isForbiddenDomain(domain)) return;
+            input.value = domain;
+            previousValue = domain;
+            resizeDomainInput(input);
+          }
         };
       }
 
       function sanitizeUsernameField(input) {
         const row = input.closest('.login-username-row');
-        const domainSelect = row ? row.querySelector('select[name="domain"]') : null;
+        const domainEditor = row ? bindDomainEditor(row) : null;
 
         function apply() {
           const parsed = parseUsernameInput(input.value);
           if (input.value !== parsed.username) {
             input.value = parsed.username;
           }
-          if (parsed.domain && domainSelect) {
-            domainSelect.value = parsed.domain;
+          if (parsed.domain && domainEditor) {
+            domainEditor.setDomain(parsed.domain);
           }
         }
 
@@ -965,8 +1125,8 @@
           const text = (e.clipboardData || window.clipboardData).getData('text');
           const parsed = parseUsernameInput(text);
           input.value = parsed.username;
-          if (parsed.domain && domainSelect) {
-            domainSelect.value = parsed.domain;
+          if (parsed.domain && domainEditor) {
+            domainEditor.setDomain(parsed.domain);
           }
         });
 

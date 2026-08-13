@@ -17,7 +17,13 @@
 const { COUNTRY_CODES, getCurrentCountry } = require("./country");
 
 /** Claves de capacidad. Toda clave debe declararse para TODOS los países. */
-const FEATURE_KEYS = ["eventRegistration", "linkedinFeed", "chileUfIndicator"];
+const FEATURE_KEYS = [
+  "eventRegistration",
+  "linkedinFeed",
+  "chileUfIndicator",
+  "lunchMenu",
+  "claudeAssistant",
+];
 
 const FEATURE_MATRIX = {
   CL: {
@@ -27,6 +33,10 @@ const FEATURE_MATRIX = {
     linkedinFeed: true,
     // Contador UF en home (mindicador.cl; indicador chileno).
     chileUfIndicator: true,
+    // Menú semanal del casino en el home.
+    lunchMenu: true,
+    // Asistente Claude (FAB + /claude).
+    claudeAssistant: true,
   },
   PE: {
     // Apagado: el registro de eventos (NEXUS / registro-forms) es único y
@@ -36,6 +46,10 @@ const FEATURE_MATRIX = {
     linkedinFeed: false,
     // UF es un indicador chileno; no aplica en la home de Perú.
     chileUfIndicator: false,
+    // El casino / menú de almuerzo es de la oficina de Chile.
+    lunchMenu: false,
+    // El asistente Claude no se ofrece en la intranet de Perú.
+    claudeAssistant: false,
   },
 };
 
