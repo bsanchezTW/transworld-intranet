@@ -253,7 +253,10 @@
               </div>
             </div>
 
-            <button type="submit" class="login-split__submit" id="register-submit-btn" disabled>Registrarse</button>
+            <p class="login-register-submit-hint" id="register-submit-hint" role="status">
+              Completa los datos requeridos para activar el registro.
+            </p>
+            <button type="submit" class="login-split__submit" id="register-submit-btn" disabled aria-describedby="register-submit-hint">Registrarse</button>
           </form>
 
           <div class="login-split__links">
@@ -1163,6 +1166,11 @@
       const strengthSegments = document.querySelectorAll('.login-password-strength-segment');
       const ruleItems = document.querySelectorAll('#password-rules li');
       const matchMsg = document.getElementById('password-match-msg');
+      const submitHint = document.getElementById('register-submit-hint');
+      const firstNameInput = document.getElementById('first_name');
+      const lastNameInput = document.getElementById('last_name');
+      const usernameInput = document.getElementById('reg-username');
+      const birthDateInput = document.getElementById('fecha_nacimiento');
 
       if (!passwordInput || !password2Input || !submitBtn || !strengthBox || !matchMsg) return;
 
@@ -1256,7 +1264,47 @@
         const strongEnough = PasswordStrength.isPasswordStrongEnough(passwordInput.value);
         const passwordsMatch = passwordInput.value === password2Input.value && password2Input.value.length > 0;
         const hasTelefono = PhoneField.isFieldValid(telefonoField);
-        submitBtn.disabled = !(strongEnough && passwordsMatch && hasTelefono);
+        const hasName = Boolean(firstNameInput?.value.trim() && lastNameInput?.value.trim());
+        const hasUsername = Boolean(usernameInput?.value.trim());
+        const hasBirthDate = Boolean(birthDateInput?.value);
+        const canSubmit = strongEnough && passwordsMatch && hasTelefono && hasName && hasUsername && hasBirthDate;
+
+        submitBtn.disabled = !canSubmit;
+        submitBtn.setAttribute('aria-disabled', canSubmit ? 'false' : 'true');
+
+        if (!submitHint) return;
+        if (canSubmit) {
+          submitHint.hidden = true;
+          submitHint.textContent = '';
+          return;
+        }
+
+        const missing = [];
+        if (!hasName) missing.push('Nombre y apellido');
+        if (!hasUsername) missing.push('Usuario de correo');
+        if (!strongEnough) {
+          missing.push('Contraseña con mayúscula, minúscula, número y símbolo (mínimo 8 caracteres)');
+        }
+        if (password2Input.value.length > 0 && !passwordsMatch) {
+          missing.push('Que ambas contraseñas coincidan');
+        } else if (!password2Input.value.length) {
+          missing.push('Repetir la contraseña');
+        }
+        if (!hasTelefono) {
+          const phoneExample = (window.__PHONE_CONFIG__ && window.__PHONE_CONFIG__.example) || '';
+          missing.push(
+            phoneExample
+              ? 'Celular válido, por ejemplo ' + phoneExample
+              : 'Celular válido'
+          );
+        }
+        if (!hasBirthDate) missing.push('Fecha de nacimiento');
+
+        submitHint.hidden = false;
+        submitHint.innerHTML =
+          'El botón se activa cuando completes:<ul>' +
+          missing.map((item) => '<li>' + item + '</li>').join('') +
+          '</ul>';
       }
 
       function onPasswordChange() {
@@ -1267,6 +1315,12 @@
 
       passwordInput.addEventListener('input', onPasswordChange);
       password2Input.addEventListener('input', onPasswordChange);
+      [firstNameInput, lastNameInput, usernameInput, birthDateInput].forEach(function (el) {
+        if (!el) return;
+        el.addEventListener('input', updateSubmitState);
+        el.addEventListener('change', updateSubmitState);
+      });
+      updateSubmitState();
     })();
   </script>
 

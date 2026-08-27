@@ -18,7 +18,6 @@ const { COUNTRY_CODES, getCurrentCountry } = require("./country");
 
 /** Claves de capacidad. Toda clave debe declararse para TODOS los países. */
 const FEATURE_KEYS = [
-  "eventRegistration",
   "linkedinFeed",
   "chileUfIndicator",
   "lunchMenu",
@@ -27,8 +26,6 @@ const FEATURE_KEYS = [
 
 const FEATURE_MATRIX = {
   CL: {
-    // API legacy /registro y redirect opcional a registro-forms.
-    eventRegistration: true,
     // Feed de comunicaciones LinkedIn (tabla linkedin_posts + OAuth).
     linkedinFeed: true,
     // Contador UF en home (mindicador.cl; indicador chileno).
@@ -39,9 +36,6 @@ const FEATURE_MATRIX = {
     claudeAssistant: true,
   },
   PE: {
-    // Apagado: el registro de eventos (NEXUS / registro-forms) es único y
-    // compartido. Hasta que Perú tenga el suyo, el servicio es solo de Chile.
-    eventRegistration: false,
     // Sin tabla linkedin_posts ni tokens; no se sincroniza el feed.
     linkedinFeed: false,
     // UF es un indicador chileno; no aplica en la home de Perú.

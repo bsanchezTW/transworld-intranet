@@ -1,6 +1,11 @@
 const { Pool } = require("pg");
 require("dotenv").config();
 
+const {
+  getCountryDbBinding,
+  searchPathStatement,
+} = require("./config/supabaseProjects");
+
 function resolveSsl() {
   const flag = String(process.env.DB_SSL || "").trim().toLowerCase();
   if (flag === "true" || flag === "1") {
@@ -21,13 +26,23 @@ function resolveSsl() {
   return looksLikeSupabase ? { rejectUnauthorized: false } : false;
 }
 
+function postgresOptionsForCountry(country = process.env.COUNTRY) {
+  const raw = String(country || "").trim();
+  if (!raw) return undefined;
+  const { schema } = getCountryDbBinding(raw);
+  return `-c search_path=${schema}`;
+}
+
 function createPool() {
   const ssl = resolveSsl();
+  const options = postgresOptionsForCountry();
+  const extra = options ? { options } : {};
 
   if (process.env.DATABASE_URL?.trim()) {
     return new Pool({
       connectionString: process.env.DATABASE_URL.trim(),
       ssl,
+      ...extra,
     });
   }
 
@@ -38,18 +53,54 @@ function createPool() {
     password: process.env.DB_PASSWORD || process.env.DB_PASS,
     database: process.env.DB_NAME,
     ssl,
+    ...extra,
   });
+}
+
+async function applySearchPath(client, country = process.env.COUNTRY) {
+  await client.query(searchPathStatement(country));
 }
 
 const pool = createPool();
 
-pool.on("connect", () => {
-  console.log("Conectado a la base de datos exitosamente");
+pool.on("connect", (client) => {
+  if (!String(process.env.COUNTRY || "").trim()) return;
+  applySearchPath(client)
+    .then(() => {
+      console.log("Conectado a la base de datos exitosamente");
+    })
+    .catch((error) => {
+      console.error(
+        "[db] No se pudo fijar search_path del país:",
+        error.message,
+      );
+    });
 });
 
+async function getClient() {
+  const client = await pool.connect();
+  try {
+    await applySearchPath(client);
+    return client;
+  } catch (error) {
+    client.release();
+    throw error;
+  }
+}
+
+async function query(text, params) {
+  const client = await getClient();
+  try {
+    return await client.query(text, params);
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
-  query: (text, params) => pool.query(text, params),
-  // Necesario para transacciones (ej. aprobación de vacaciones con FOR UPDATE)
-  getClient: () => pool.connect(),
+  query,
+  getClient,
   pool,
+  applySearchPath,
+  searchPathStatement,
 };

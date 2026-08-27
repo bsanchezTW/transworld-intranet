@@ -28,7 +28,6 @@ const ticketsRoutes = require("./routes/tickets");
 const marketingRoutes = require("./routes/marketing");
 const docsRoutes = require("./routes/docs");
 const noticiasRoutes = require("./routes/noticias");
-const registroRoutes = require("./routes/registro");
 const claudeRoutes = require("./routes/claude");
 const { ROLES, normalizeRole, isAdministrador } = require("./constants/roles");
 const { formatPageTitle } = require("./utils/pageTitle");
@@ -342,32 +341,6 @@ function requireAuth(req, res, next) {
 // Montaje de Rutas
 // ================================
 app.use("/", authRoutes); // Login/Registro (Públicas)
-
-// Registro de eventos: el formulario público vive en eventos.transworld.cl.
-// Aquí solo queda la API legacy `/registro` (BD intranet) y un redirect de los
-// enlaces antiguos, conservando path y query:
-//   intranet.transworld.cl/registro-forms?id=...
-//     → eventos.transworld.cl/registro-forms?id=...
-// Capacidad solo de Chile mientras el proyecto de registros sea único.
-const eventRegistration = requireFeature("eventRegistration");
-const DEFAULT_EVENTOS_ORIGIN = "https://eventos.transworld.cl";
-
-function resolveEventosOrigin(raw) {
-  const value = String(raw || "").trim() || DEFAULT_EVENTOS_ORIGIN;
-  try {
-    return new URL(value).origin;
-  } catch {
-    return DEFAULT_EVENTOS_ORIGIN;
-  }
-}
-
-const eventosOrigin = resolveEventosOrigin(process.env.REGISTRO_FORMS_URL);
-
-app.use("/registro-forms", eventRegistration, (req, res) => {
-  return res.redirect(302, `${eventosOrigin}${req.originalUrl}`);
-});
-
-app.use("/registro", eventRegistration, registroRoutes);
 // Rutas Protegidas
 app.use("/", requireAuth, indexRoutes);
 app.use("/procesos", requireAuth, procesosRoutes);

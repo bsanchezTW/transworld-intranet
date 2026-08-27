@@ -78,31 +78,14 @@ describe("config/storage", () => {
     );
   });
 
-  it("permite el mismo esquema genérico de env para proyectos CL y PE separados", () => {
-    const chile = getStorageConfig({
-      SUPABASE_URL: "https://proyectochile.supabase.co",
-      SUPABASE_SECRET_KEY: "sb_secret_cl",
-      DB_USER: "postgres.proyectochile",
-    });
-    const peru = getStorageConfig({
-      SUPABASE_URL: "https://proyectoperu.supabase.co",
-      SUPABASE_SECRET_KEY: "sb_secret_pe",
-      DB_USER: "postgres.proyectoperu",
-    });
-
-    assert.notEqual(chile.url, peru.url);
-    assert.notEqual(chile.key, peru.key);
-    assert.equal(chile.bucket, peru.bucket);
-  });
-
-  it("vincula COUNTRY al project ref esperado y bloquea Chile bajo lógica PE", () => {
+  it("vincula COUNTRY al proyecto compartido y bloquea buckets cruzados", () => {
     assert.throws(
       () =>
         getStorageConfig({
           COUNTRY: "CL",
           SUPABASE_URL: "https://proyectochile.supabase.co",
           SUPABASE_SECRET_KEY: "sb_secret_cl",
-          DB_USER: "postgres.proyectochile",
+          DB_USER: "intranet_chile.proyectochile",
         }),
       /exige Supabase/,
     );
@@ -112,19 +95,19 @@ describe("config/storage", () => {
           COUNTRY: "PE",
           SUPABASE_URL: "https://dgadjvptxhotjylwsglx.supabase.co",
           SUPABASE_SECRET_KEY: "sb_secret_cl",
-          DB_USER: "postgres.dgadjvptxhotjylwsglx",
-          SUPABASE_PROJECT_REF_PE: "dgadjvptxhotjylwsglx",
+          DB_USER: "intranet_peru.dgadjvptxhotjylwsglx",
+          SUPABASE_STORAGE_BUCKET: "intranet-content",
         }),
       /reservado para CL/,
     );
     const peru = getStorageConfig({
       COUNTRY: "PE",
-      SUPABASE_URL: "https://proyectoperu.supabase.co",
+      SUPABASE_URL: "https://dgadjvptxhotjylwsglx.supabase.co",
       SUPABASE_SECRET_KEY: "sb_secret_pe",
-      DB_USER: "postgres.proyectoperu",
-      SUPABASE_PROJECT_REF_PE: "proyectoperu",
+      DB_USER: "intranet_peru.dgadjvptxhotjylwsglx",
     });
-    assert.equal(peru.url, "https://proyectoperu.supabase.co");
+    assert.equal(peru.url, "https://dgadjvptxhotjylwsglx.supabase.co");
+    assert.equal(peru.bucket, "intranet-content-pe");
   });
 
   it("solo permite HTTP para Supabase local", () => {

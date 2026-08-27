@@ -23,7 +23,7 @@ const DDL_STATEMENTS = [
 
   // vacation_periods
   `CREATE TABLE IF NOT EXISTS vacation_periods (
-    id              SERIAL PRIMARY KEY,
+    id              INTEGER PRIMARY KEY,
     user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     country_code    VARCHAR(2) NOT NULL CHECK (country_code IN ('CL', 'PE')),
     period_start    DATE NOT NULL,
@@ -51,17 +51,23 @@ const DDL_STATEMENTS = [
   `ALTER TABLE vacation_periods ADD COLUMN IF NOT EXISTS record_validated_by INTEGER REFERENCES users(id) ON DELETE SET NULL`,
   `ALTER TABLE vacation_periods ADD COLUMN IF NOT EXISTS record_notes TEXT`,
 
-  // enum vacation_request_status
+  // enum vacation_request_status (por schema: chile y peru pueden coexistir)
   `DO $$
    BEGIN
-     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'vacation_request_status') THEN
+     IF NOT EXISTS (
+       SELECT 1
+       FROM pg_type t
+       JOIN pg_namespace n ON n.oid = t.typnamespace
+       WHERE t.typname = 'vacation_request_status'
+         AND n.nspname = current_schema()
+     ) THEN
        CREATE TYPE vacation_request_status AS ENUM ('pending','approved','rejected','cancelled','in_progress','completed');
      END IF;
    END$$`,
 
   // vacation_requests
   `CREATE TABLE IF NOT EXISTS vacation_requests (
-    id                 SERIAL PRIMARY KEY,
+    id                 INTEGER PRIMARY KEY,
     user_id            INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     country_code       VARCHAR(2) NOT NULL CHECK (country_code IN ('CL', 'PE')),
     vacation_period_id INTEGER REFERENCES vacation_periods(id) ON DELETE SET NULL,
@@ -91,7 +97,7 @@ const DDL_STATEMENTS = [
 
   // vacation_balance_adjustments
   `CREATE TABLE IF NOT EXISTS vacation_balance_adjustments (
-    id                 SERIAL PRIMARY KEY,
+    id                 INTEGER PRIMARY KEY,
     vacation_period_id INTEGER NOT NULL REFERENCES vacation_periods(id) ON DELETE CASCADE,
     adjusted_by        INTEGER NOT NULL REFERENCES users(id),
     days_delta         NUMERIC(5,2) NOT NULL,
@@ -102,7 +108,7 @@ const DDL_STATEMENTS = [
 
   // public_holidays
   `CREATE TABLE IF NOT EXISTS public_holidays (
-    id            SERIAL PRIMARY KEY,
+    id            INTEGER PRIMARY KEY,
     country_code  VARCHAR(2) NOT NULL CHECK (country_code IN ('CL', 'PE')),
     holiday_date  DATE NOT NULL,
     name          VARCHAR(200) NOT NULL,

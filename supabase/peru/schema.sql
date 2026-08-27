@@ -1,0 +1,714 @@
+-- Schema Perú. Mismo núcleo que Chile, sin LinkedIn ni inscripciones a eventos.
+
+CREATE SCHEMA IF NOT EXISTS peru;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'intranet_peru') THEN
+    CREATE ROLE intranet_peru LOGIN NOINHERIT;
+  END IF;
+END$$;
+
+ALTER ROLE intranet_peru BYPASSRLS;
+ALTER ROLE intranet_peru SET search_path = peru;
+
+REVOKE ALL ON SCHEMA peru FROM PUBLIC;
+GRANT USAGE, CREATE ON SCHEMA peru TO intranet_peru;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    REVOKE ALL ON SCHEMA peru FROM anon;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    REVOKE ALL ON SCHEMA peru FROM authenticated;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'intranet_chile') THEN
+    REVOKE ALL ON SCHEMA peru FROM intranet_chile;
+  END IF;
+END$$;
+
+-- Enum vacaciones (por schema: el mismo typname en chile y peru no choca)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_type t
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE t.typname = 'vacation_request_status'
+      AND n.nspname = 'peru'
+  ) THEN
+    CREATE TYPE peru.vacation_request_status AS ENUM (
+      'pending', 'approved', 'rejected', 'cancelled', 'in_progress', 'completed'
+    );
+  END IF;
+END$$;
+
+CREATE TABLE IF NOT EXISTS peru.work_areas (
+  id integer PRIMARY KEY,
+  area_name character varying(150) NOT NULL,
+  CONSTRAINT work_areas_area_name_key UNIQUE (area_name)
+);
+
+CREATE TABLE IF NOT EXISTS peru.users (
+  id integer PRIMARY KEY,
+  first_name character varying(100),
+  last_name character varying(100),
+  email character varying(150),
+  password_hash character varying(255),
+  password_salt character varying(255),
+  role character varying(50),
+  email_confirmed boolean DEFAULT false,
+  confirm_token character varying(255),
+  confirm_expires timestamp without time zone,
+  photo text,
+  created_at timestamp without time zone DEFAULT now(),
+  must_change_password boolean DEFAULT false,
+  work_area_id integer REFERENCES peru.work_areas(id),
+  birth_date date,
+  is_intranet_user boolean NOT NULL DEFAULT true,
+  phone numeric,
+  home_tutorial_seen boolean NOT NULL DEFAULT true,
+  last_login_at timestamp with time zone,
+  employment_country character varying(2) NOT NULL DEFAULT 'PE'
+    CHECK (employment_country IN ('CL', 'PE')),
+  hire_date date,
+  manager_user_id integer REFERENCES peru.users(id) ON DELETE SET NULL,
+  prior_years_credited numeric(4,1) NOT NULL DEFAULT 0,
+  progressive_days_override numeric(4,1),
+  work_days_per_week smallint NOT NULL DEFAULT 5
+    CHECK (work_days_per_week BETWEEN 3 AND 6),
+  CONSTRAINT users_email_key UNIQUE (email)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique_idx
+  ON peru.users (LOWER(TRIM(email)))
+  WHERE email IS NOT NULL AND TRIM(email) <> '';
+
+CREATE INDEX IF NOT EXISTS idx_users_employment_country ON peru.users (employment_country);
+CREATE INDEX IF NOT EXISTS idx_users_hire_date ON peru.users (hire_date) WHERE hire_date IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS peru.applications (
+  id integer PRIMARY KEY,
+  name character varying(255) NOT NULL,
+  description text,
+  url_pc text,
+  url_apk text,
+  qr_ios text,
+  qr_apk text,
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  changelog text,
+  notified boolean DEFAULT true,
+  icon_url text,
+  url_ios text,
+  url_web text
+);
+
+CREATE TABLE IF NOT EXISTS peru.change_log (
+  id integer PRIMARY KEY,
+  user_id integer REFERENCES peru.users(id) ON DELETE SET NULL,
+  action character varying(255),
+  section character varying(100),
+  link_path text,
+  created_at timestamp without time zone DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS peru.claude_conversations (
+  id integer PRIMARY KEY,
+  user_id integer NOT NULL REFERENCES peru.users(id) ON DELETE CASCADE,
+  title character varying(255) NOT NULL,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_claude_conversations_user_id ON peru.claude_conversations (user_id);
+CREATE INDEX IF NOT EXISTS idx_claude_conversations_updated_at ON peru.claude_conversations (updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS peru.claude_daily_usage (
+  user_id integer NOT NULL REFERENCES peru.users(id) ON DELETE CASCADE,
+  usage_date date NOT NULL DEFAULT CURRENT_DATE,
+  message_count integer NOT NULL DEFAULT 0 CHECK (message_count >= 0),
+  file_count integer NOT NULL DEFAULT 0 CHECK (file_count >= 0),
+  PRIMARY KEY (user_id, usage_date)
+);
+
+CREATE TABLE IF NOT EXISTS peru.claude_messages (
+  id integer PRIMARY KEY,
+  conversation_id integer NOT NULL REFERENCES peru.claude_conversations(id) ON DELETE CASCADE,
+  role character varying(20) NOT NULL
+    CHECK (role IN ('user', 'assistant')),
+  content text NOT NULL,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_claude_messages_conversation_id ON peru.claude_messages (conversation_id);
+
+CREATE TABLE IF NOT EXISTS peru.claude_user_settings (
+  user_id integer NOT NULL PRIMARY KEY REFERENCES peru.users(id) ON DELETE CASCADE,
+  limits_notice_seen_at timestamp with time zone
+);
+
+CREATE TABLE IF NOT EXISTS peru.courses (
+  id integer PRIMARY KEY,
+  title character varying(255) NOT NULL,
+  description text,
+  material_url text,
+  video_url text NOT NULL,
+  required_watch_seconds integer NOT NULL,
+  is_active boolean DEFAULT true,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  commercial_tips text,
+  section character varying(255),
+  subsection character varying(255)
+);
+
+CREATE TABLE IF NOT EXISTS peru.documents (
+  id integer PRIMARY KEY,
+  name character varying(200) NOT NULL,
+  type character varying(50) NOT NULL,
+  url text NOT NULL,
+  public_id character varying(100),
+  user_id integer REFERENCES peru.users(id) ON DELETE SET NULL,
+  created_at timestamp without time zone DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS peru.events (
+  id integer PRIMARY KEY,
+  name character varying(200) NOT NULL,
+  slug character varying(200) NOT NULL UNIQUE,
+  description text,
+  image text,
+  created_at timestamp without time zone DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS peru.event_photos (
+  id integer PRIMARY KEY,
+  event_id integer REFERENCES peru.events(id) ON DELETE CASCADE,
+  url text NOT NULL,
+  public_id character varying(100)
+);
+
+
+CREATE TABLE IF NOT EXISTS peru.lunch_menu (
+  id integer PRIMARY KEY,
+  day_number integer NOT NULL UNIQUE,
+  dish_name text NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS peru.news_articles (
+  id integer PRIMARY KEY,
+  title character varying(255) NOT NULL,
+  subtitle character varying(255),
+  content text NOT NULL,
+  image text,
+  public_id character varying(100),
+  attachments jsonb DEFAULT '[]'::jsonb,
+  created_at timestamp without time zone DEFAULT now(),
+  slug character varying(100),
+  author character varying(100),
+  featured boolean NOT NULL DEFAULT false
+);
+CREATE INDEX IF NOT EXISTS idx_news_articles_featured
+  ON peru.news_articles (featured) WHERE featured = true;
+
+CREATE TABLE IF NOT EXISTS peru.other_documents (
+  id integer PRIMARY KEY,
+  name text NOT NULL,
+  url text NOT NULL,
+  public_id text,
+  created_at timestamp without time zone DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS peru.public_holidays (
+  id integer PRIMARY KEY,
+  country_code character varying(2) NOT NULL CHECK (country_code IN ('CL', 'PE')),
+  holiday_date date NOT NULL,
+  name character varying(200) NOT NULL,
+  is_recurring boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  UNIQUE (country_code, holiday_date)
+);
+CREATE INDEX IF NOT EXISTS idx_public_holidays_country_date
+  ON peru.public_holidays (country_code, holiday_date);
+
+CREATE TABLE IF NOT EXISTS peru.questions (
+  id integer PRIMARY KEY,
+  course_id integer REFERENCES peru.courses(id) ON DELETE CASCADE,
+  question_text text NOT NULL,
+  sort_order integer DEFAULT 1,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  feedback text
+);
+
+CREATE TABLE IF NOT EXISTS peru.question_options (
+  id integer PRIMARY KEY,
+  question_id integer REFERENCES peru.questions(id) ON DELETE CASCADE,
+  text text NOT NULL,
+  is_correct boolean NOT NULL DEFAULT false,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS peru.study_materials (
+  id integer PRIMARY KEY,
+  section character varying(255) NOT NULL,
+  name character varying(255) NOT NULL,
+  file_url text NOT NULL,
+  public_id character varying(255) NOT NULL,
+  resource_type character varying(50) NOT NULL,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS peru.subsection_details (
+  name character varying(255) PRIMARY KEY,
+  image_url text
+);
+
+CREATE TABLE IF NOT EXISTS peru.support_tickets (
+  id integer PRIMARY KEY,
+  title character varying(200) NOT NULL,
+  description text NOT NULL,
+  category character varying(100),
+  priority character varying(50),
+  status character varying(50) DEFAULT 'Abierto',
+  requester_name character varying(150),
+  requester_email character varying(150),
+  created_at timestamp without time zone DEFAULT now(),
+  resolved_at timestamp without time zone,
+  closed_at timestamp without time zone,
+  auto_closed boolean DEFAULT false,
+  attachments text DEFAULT '[]',
+  read_by_user boolean DEFAULT true,
+  read_by_admin boolean DEFAULT true,
+  assigned_to character varying(255)
+);
+
+CREATE TABLE IF NOT EXISTS peru.system_config (
+  key text PRIMARY KEY,
+  value text,
+  updated_at timestamp without time zone DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS peru.ticket_replies (
+  id integer PRIMARY KEY,
+  ticket_id integer REFERENCES peru.support_tickets(id) ON DELETE CASCADE,
+  message text NOT NULL,
+  sender character varying(150),
+  file_url text,
+  file_name text,
+  file_type text,
+  attachments jsonb DEFAULT '[]'::jsonb,
+  created_at timestamp without time zone DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS peru.user_course_progress (
+  id integer PRIMARY KEY,
+  user_id integer REFERENCES peru.users(id) ON DELETE CASCADE,
+  course_id integer REFERENCES peru.courses(id) ON DELETE CASCADE,
+  seconds_watched integer DEFAULT 0,
+  status character varying(50) DEFAULT 'en_progreso',
+  score numeric(5,2),
+  started_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  completed_at timestamp without time zone,
+  attempts integer DEFAULT 0,
+  UNIQUE (user_id, course_id)
+);
+
+CREATE TABLE IF NOT EXISTS peru.vacation_periods (
+  id integer PRIMARY KEY,
+  user_id integer NOT NULL REFERENCES peru.users(id) ON DELETE CASCADE,
+  country_code character varying(2) NOT NULL CHECK (country_code IN ('CL', 'PE')),
+  period_start date NOT NULL,
+  period_end date NOT NULL,
+  entitled_days numeric(5,2) NOT NULL,
+  used_days numeric(5,2) NOT NULL DEFAULT 0,
+  adjusted_days numeric(5,2) NOT NULL DEFAULT 0,
+  expires_at date,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  protected_block_days_used numeric(5,2) NOT NULL DEFAULT 0,
+  flexible_block_days_used numeric(5,2) NOT NULL DEFAULT 0,
+  record_met boolean NOT NULL DEFAULT true,
+  record_validated_by integer REFERENCES peru.users(id) ON DELETE SET NULL,
+  record_notes text,
+  UNIQUE (user_id, period_start)
+);
+CREATE INDEX IF NOT EXISTS idx_vacation_periods_user ON peru.vacation_periods (user_id);
+
+CREATE TABLE IF NOT EXISTS peru.vacation_requests (
+  id integer PRIMARY KEY,
+  user_id integer NOT NULL REFERENCES peru.users(id) ON DELETE CASCADE,
+  country_code character varying(2) NOT NULL CHECK (country_code IN ('CL', 'PE')),
+  vacation_period_id integer REFERENCES peru.vacation_periods(id) ON DELETE SET NULL,
+  start_date date NOT NULL,
+  end_date date NOT NULL,
+  business_days numeric(5,2),
+  calendar_days integer,
+  status peru.vacation_request_status NOT NULL DEFAULT 'pending',
+  requester_notes text,
+  reviewer_notes text,
+  reviewed_by integer REFERENCES peru.users(id) ON DELETE SET NULL,
+  reviewed_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  fraction_ack_at timestamp with time zone,
+  policy_warning_ack boolean NOT NULL DEFAULT false,
+  period_allocations jsonb,
+  CHECK (end_date >= start_date)
+);
+CREATE INDEX IF NOT EXISTS idx_vacation_requests_user ON peru.vacation_requests (user_id);
+CREATE INDEX IF NOT EXISTS idx_vacation_requests_status ON peru.vacation_requests (status);
+CREATE INDEX IF NOT EXISTS idx_vacation_requests_dates ON peru.vacation_requests (start_date, end_date);
+
+CREATE TABLE IF NOT EXISTS peru.vacation_balance_adjustments (
+  id integer PRIMARY KEY,
+  vacation_period_id integer NOT NULL REFERENCES peru.vacation_periods(id) ON DELETE CASCADE,
+  adjusted_by integer NOT NULL REFERENCES peru.users(id),
+  days_delta numeric(5,2) NOT NULL,
+  reason text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_vacation_balance_adjustments_period
+  ON peru.vacation_balance_adjustments (vacation_period_id);
+
+CREATE OR REPLACE FUNCTION peru.marcar_recuperacion_pass(
+  email_input text,
+  nuevo_password_hash text
+)
+RETURNS void
+LANGUAGE plpgsql
+SET search_path = peru
+AS $function$
+BEGIN
+  UPDATE peru.users
+  SET password_hash = nuevo_password_hash,
+      must_change_password = TRUE
+  WHERE LOWER(email) = LOWER(email_input);
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Usuario con email % no encontrado', email_input;
+  END IF;
+END;
+$function$;
+
+-- RLS activo. intranet_peru tiene BYPASSRLS. Policies: dashboard vs PostgREST.
+ALTER TABLE peru.applications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.change_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.claude_conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.claude_daily_usage ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.claude_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.claude_user_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.courses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.event_photos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.lunch_menu ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.news_articles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.other_documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.public_holidays ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.question_options ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.study_materials ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.subsection_details ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.support_tickets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.system_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.ticket_replies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.user_course_progress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.vacation_balance_adjustments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.vacation_periods ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.vacation_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peru.work_areas ENABLE ROW LEVEL SECURITY;
+
+GRANT USAGE, CREATE ON SCHEMA peru TO intranet_peru;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA peru TO intranet_peru;
+GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA peru TO intranet_peru;
+GRANT EXECUTE ON FUNCTION peru.marcar_recuperacion_pass(text, text) TO intranet_peru;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    GRANT USAGE ON SCHEMA peru TO service_role;
+    GRANT ALL ON ALL TABLES IN SCHEMA peru TO service_role;
+    GRANT ALL ON ALL SEQUENCES IN SCHEMA peru TO service_role;
+    GRANT EXECUTE ON FUNCTION peru.marcar_recuperacion_pass(text, text) TO service_role;
+  END IF;
+END$$;
+
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT c.relname
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'peru' AND c.relkind = 'r'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS dashboard_all ON peru.%I', r.relname);
+    EXECUTE format(
+      'CREATE POLICY dashboard_all ON peru.%I FOR ALL TO postgres USING (true) WITH CHECK (true)',
+      r.relname
+    );
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
+       AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+      EXECUTE format('DROP POLICY IF EXISTS deny_postgrest ON peru.%I', r.relname);
+      EXECUTE format(
+        'CREATE POLICY deny_postgrest ON peru.%I FOR ALL TO anon, authenticated USING (false) WITH CHECK (false)',
+        r.relname
+      );
+    END IF;
+  END LOOP;
+END$$;
+
+-- IDs de 6 dígitos aleatorios (100000-999999). El trigger cubre INSERT sin id
+-- o con id serial; ensure_six_digit_ids remapea filas viejas (< 100000).
+
+CREATE OR REPLACE FUNCTION peru.next_six_digit_id(p_table text)
+RETURNS integer
+LANGUAGE plpgsql
+AS $fn$
+DECLARE
+  candidate integer;
+  found_id integer;
+  i integer;
+BEGIN
+  IF p_table IS NULL OR p_table !~ '^[a-z0-9_]+$' THEN
+    RAISE EXCEPTION 'tabla inválida para ID de 6 dígitos';
+  END IF;
+  FOR i IN 1..80 LOOP
+    candidate := 100000 + floor(random() * 900000)::integer;
+    found_id := NULL;
+    EXECUTE format('SELECT 1 FROM peru.%I WHERE id = $1', p_table)
+      INTO found_id
+      USING candidate;
+    IF found_id IS NULL THEN
+      RETURN candidate;
+    END IF;
+  END LOOP;
+  RAISE EXCEPTION 'No fue posible generar un ID de 6 dígitos para peru.%', p_table;
+END;
+$fn$;
+
+CREATE OR REPLACE FUNCTION peru.assign_six_digit_id()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $fn$
+BEGIN
+  IF NEW.id IS NULL OR NEW.id < 100000 THEN
+    NEW.id := peru.next_six_digit_id(TG_TABLE_NAME);
+  END IF;
+  RETURN NEW;
+END;
+$fn$;
+
+CREATE OR REPLACE FUNCTION peru.ensure_six_digit_ids()
+RETURNS void
+LANGUAGE plpgsql
+AS $fn$
+DECLARE
+  p_schema constant text := 'peru';
+  t record;
+  r record;
+  rec record;
+  fk record;
+  candidate integer;
+  found_id integer;
+  i integer;
+  seq_name text;
+BEGIN
+  FOR t IN
+    SELECT c.relname
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = p_schema AND c.relkind = 'r'
+  LOOP
+    EXECUTE format('LOCK TABLE %I.%I IN ACCESS EXCLUSIVE MODE', p_schema, t.relname);
+  END LOOP;
+
+  DROP TABLE IF EXISTS _six_digit_id_map;
+  DROP TABLE IF EXISTS _six_digit_fk_backup;
+  CREATE TEMP TABLE _six_digit_id_map (
+    table_name text NOT NULL,
+    old_id integer NOT NULL,
+    new_id integer NOT NULL,
+    PRIMARY KEY (table_name, old_id),
+    UNIQUE (table_name, new_id)
+  ) ON COMMIT DROP;
+  CREATE TEMP TABLE _six_digit_fk_backup (
+    table_name text NOT NULL,
+    conname text NOT NULL,
+    def text NOT NULL
+  ) ON COMMIT DROP;
+
+  INSERT INTO _six_digit_fk_backup (table_name, conname, def)
+  SELECT c.relname, con.conname, pg_get_constraintdef(con.oid)
+  FROM pg_constraint con
+  JOIN pg_class c ON c.oid = con.conrelid
+  JOIN pg_namespace n ON n.oid = con.connamespace
+  WHERE con.contype = 'f' AND n.nspname = p_schema;
+
+  FOR fk IN SELECT * FROM _six_digit_fk_backup LOOP
+    EXECUTE format('ALTER TABLE %I.%I DROP CONSTRAINT %I', p_schema, fk.table_name, fk.conname);
+  END LOOP;
+
+  FOR t IN
+    SELECT c.relname
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_index i ON i.indrelid = c.oid AND i.indisprimary
+    JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY (i.indkey)
+    WHERE n.nspname = p_schema AND c.relkind = 'r'
+    GROUP BY c.relname
+    HAVING count(*) = 1
+       AND min(a.attname) = 'id'
+       AND min(a.atttypid) = 'integer'::regtype
+  LOOP
+    FOR rec IN EXECUTE format(
+      'SELECT id FROM %I.%I WHERE id < 100000 ORDER BY id',
+      p_schema, t.relname
+    ) LOOP
+      FOR i IN 1..80 LOOP
+        candidate := 100000 + floor(random() * 900000)::integer;
+        found_id := NULL;
+        EXECUTE format('SELECT 1 FROM %I.%I WHERE id = $1', p_schema, t.relname)
+          INTO found_id
+          USING candidate;
+        EXIT WHEN found_id IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM _six_digit_id_map m
+            WHERE m.table_name = t.relname AND m.new_id = candidate
+          );
+        IF i = 80 THEN
+          RAISE EXCEPTION 'No fue posible generar un ID de 6 dígitos para %.%', p_schema, t.relname;
+        END IF;
+      END LOOP;
+      INSERT INTO _six_digit_id_map (table_name, old_id, new_id)
+      VALUES (t.relname, rec.id, candidate);
+    END LOOP;
+  END LOOP;
+
+  FOR r IN
+    SELECT
+      b.table_name AS child_table,
+      (regexp_match(b.def, 'FOREIGN KEY \(([a-z0-9_]+)\)'))[1] AS fk_col,
+      (regexp_match(b.def, 'REFERENCES (?:[a-z_]+\.)?([a-z0-9_]+)\(id\)'))[1] AS parent_table
+    FROM _six_digit_fk_backup b
+  LOOP
+    IF r.fk_col IS NULL OR r.parent_table IS NULL THEN
+      CONTINUE;
+    END IF;
+    IF NOT EXISTS (
+      SELECT 1 FROM _six_digit_id_map m WHERE m.table_name = r.parent_table
+    ) THEN
+      CONTINUE;
+    END IF;
+    EXECUTE format(
+      'UPDATE %I.%I t SET %I = m.new_id FROM _six_digit_id_map m WHERE m.table_name = %L AND t.%I = m.old_id',
+      p_schema, r.child_table, r.fk_col, r.parent_table, r.fk_col
+    );
+  END LOOP;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = p_schema
+      AND table_name = 'vacation_requests'
+      AND column_name = 'period_allocations'
+  ) THEN
+    EXECUTE format(
+      $q$
+      UPDATE %I.vacation_requests vr
+      SET period_allocations = sub.new_alloc
+      FROM (
+        SELECT vr2.id,
+          jsonb_agg(
+            CASE
+              WHEN m.new_id IS NULL THEN elem
+              ELSE jsonb_set(elem, '{periodId}', to_jsonb(m.new_id))
+            END
+            ORDER BY ordinality
+          ) AS new_alloc
+        FROM %I.vacation_requests vr2
+        CROSS JOIN LATERAL jsonb_array_elements(vr2.period_allocations)
+          WITH ORDINALITY AS x(elem, ordinality)
+        LEFT JOIN _six_digit_id_map m
+          ON m.table_name = 'vacation_periods'
+         AND m.old_id = NULLIF(elem->>'periodId', '')::integer
+        WHERE vr2.period_allocations IS NOT NULL
+          AND jsonb_typeof(vr2.period_allocations) = 'array'
+          AND jsonb_array_length(vr2.period_allocations) > 0
+        GROUP BY vr2.id
+      ) sub
+      WHERE vr.id = sub.id
+      $q$,
+      p_schema, p_schema
+    );
+  END IF;
+
+  FOR t IN SELECT DISTINCT table_name FROM _six_digit_id_map LOOP
+    EXECUTE format(
+      'UPDATE %I.%I t SET id = m.new_id FROM _six_digit_id_map m WHERE m.table_name = %L AND t.id = m.old_id',
+      p_schema, t.table_name, t.table_name
+    );
+  END LOOP;
+
+  FOR fk IN SELECT * FROM _six_digit_fk_backup LOOP
+    EXECUTE format(
+      'ALTER TABLE %I.%I ADD CONSTRAINT %I %s',
+      p_schema, fk.table_name, fk.conname, fk.def
+    );
+  END LOOP;
+
+  FOR t IN
+    SELECT c.relname
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_index i ON i.indrelid = c.oid AND i.indisprimary
+    JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY (i.indkey)
+    WHERE n.nspname = p_schema AND c.relkind = 'r'
+    GROUP BY c.relname
+    HAVING count(*) = 1
+       AND min(a.attname) = 'id'
+       AND min(a.atttypid) = 'integer'::regtype
+  LOOP
+    seq_name := pg_get_serial_sequence(format('%I.%I', p_schema, t.relname), 'id');
+    EXECUTE format('ALTER TABLE %I.%I ALTER COLUMN id DROP DEFAULT', p_schema, t.relname);
+    BEGIN
+      EXECUTE format('ALTER TABLE %I.%I ALTER COLUMN id DROP IDENTITY IF EXISTS', p_schema, t.relname);
+    EXCEPTION
+      WHEN undefined_object THEN
+        NULL;
+    END;
+    IF seq_name IS NOT NULL THEN
+      EXECUTE format('DROP SEQUENCE IF EXISTS %s', seq_name);
+    END IF;
+
+    EXECUTE format('DROP TRIGGER IF EXISTS trg_six_digit_id ON %I.%I', p_schema, t.relname);
+    EXECUTE format(
+      'CREATE TRIGGER trg_six_digit_id BEFORE INSERT ON %I.%I FOR EACH ROW EXECUTE FUNCTION peru.assign_six_digit_id()',
+      p_schema, t.relname
+    );
+  END LOOP;
+END;
+$fn$;
+
+ALTER FUNCTION peru.next_six_digit_id(text) SET search_path = peru, pg_temp;
+ALTER FUNCTION peru.assign_six_digit_id() SET search_path = peru, pg_temp;
+ALTER FUNCTION peru.ensure_six_digit_ids() SET search_path = peru, pg_temp;
+
+REVOKE ALL ON FUNCTION peru.next_six_digit_id(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION peru.assign_six_digit_id() FROM PUBLIC;
+REVOKE ALL ON FUNCTION peru.ensure_six_digit_ids() FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION peru.next_six_digit_id(text) TO intranet_peru;
+GRANT EXECUTE ON FUNCTION peru.assign_six_digit_id() TO intranet_peru;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    GRANT EXECUTE ON FUNCTION peru.next_six_digit_id(text) TO service_role;
+    GRANT EXECUTE ON FUNCTION peru.assign_six_digit_id() TO service_role;
+  END IF;
+END$$;
+
+SELECT peru.ensure_six_digit_ids();

@@ -1,5 +1,21 @@
+const SHARED_INTRANET_PROJECT_REF = "dgadjvptxhotjylwsglx";
+
 const KNOWN_COUNTRY_PROJECT_REFS = Object.freeze({
-  CL: "dgadjvptxhotjylwsglx",
+  CL: SHARED_INTRANET_PROJECT_REF,
+  PE: SHARED_INTRANET_PROJECT_REF,
+});
+
+const COUNTRY_BINDINGS = Object.freeze({
+  CL: Object.freeze({
+    schema: "chile",
+    role: "intranet_chile",
+    bucket: "intranet-content",
+  }),
+  PE: Object.freeze({
+    schema: "peru",
+    role: "intranet_peru",
+    bucket: "intranet-content-pe",
+  }),
 });
 
 class SupabaseProjectBindingError extends Error {
@@ -18,14 +34,32 @@ function extractProjectRefFromSupabaseUrl(url) {
   return match?.[1] || null;
 }
 
+function isLoopbackHostname(hostname) {
+  return ["localhost", "127.0.0.1", "::1", "[::1]"].includes(
+    String(hostname || "").toLowerCase(),
+  );
+}
+
 function expectedProjectVariable(country) {
   return `SUPABASE_PROJECT_REF_${country}`;
+}
+
+function getCountryDbBinding(countryValue) {
+  const country = String(countryValue || "").trim().toUpperCase();
+  const binding = COUNTRY_BINDINGS[country];
+  if (!binding) {
+    throw new SupabaseProjectBindingError(
+      `País no soportado para el aislamiento de schema: ${countryValue || "(vacío)"}.`,
+      { country },
+    );
+  }
+  return { country, ...binding };
 }
 
 function resolveExpectedProjectRef(countryValue, env = process.env) {
   const country = String(countryValue || "").trim().toUpperCase();
   if (!country) return null;
-  if (!["CL", "PE"].includes(country)) {
+  if (!COUNTRY_BINDINGS[country]) {
     throw new SupabaseProjectBindingError(`País no soportado para Supabase: ${country}.`);
   }
 
@@ -53,20 +87,23 @@ function resolveExpectedProjectRef(countryValue, env = process.env) {
     });
   }
 
-  for (const [otherCountry, otherRef] of Object.entries(KNOWN_COUNTRY_PROJECT_REFS)) {
-    if (otherCountry !== country && otherRef === expected) {
-      throw new SupabaseProjectBindingError(
-        `${variable} apunta al proyecto reservado para ${otherCountry}; se rechaza el cruce de países.`,
-        { country, variable, expectedRef: expected, otherCountry },
-      );
-    }
-  }
   return expected;
 }
 
 function assertCountrySupabaseProject(url, country, env = process.env) {
   const expectedRef = resolveExpectedProjectRef(country, env);
   if (!expectedRef) return null;
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new SupabaseProjectBindingError(
+      `La instancia ${String(country).toUpperCase()} exige Supabase "${expectedRef}", ` +
+        'pero SUPABASE_URL apunta a "un host no identificable".',
+      { country: String(country).toUpperCase(), expectedRef, actualRef: null },
+    );
+  }
+  if (isLoopbackHostname(parsed.hostname)) return expectedRef;
   const actualRef = extractProjectRefFromSupabaseUrl(url);
   if (!actualRef || actualRef !== expectedRef) {
     throw new SupabaseProjectBindingError(
@@ -78,11 +115,90 @@ function assertCountrySupabaseProject(url, country, env = process.env) {
   return expectedRef;
 }
 
+function extractDatabaseRole(env = process.env) {
+  let user = null;
+  if (env.DATABASE_URL?.trim()) {
+    try {
+      user = decodeURIComponent(new URL(env.DATABASE_URL).username).trim();
+    } catch {
+      return null;
+    }
+  } else if (env.DB_USER) {
+    user = String(env.DB_USER).trim();
+  }
+  if (!user) return null;
+  const lower = user.toLowerCase();
+  const pooler = lower.match(/^([a-z0-9_]+)\.([a-z0-9-]{8,})$/);
+  return pooler ? pooler[1] : lower;
+}
+
+function assertCountryDatabaseRole(env = process.env) {
+  const country = String(env.COUNTRY || "").trim().toUpperCase();
+  if (!country) return null;
+  const binding = getCountryDbBinding(country);
+  const actualRole = extractDatabaseRole(env);
+  if (!actualRole) {
+    throw new SupabaseProjectBindingError(
+      `La instancia ${country} exige el rol Postgres "${binding.role}".`,
+      { country, expectedRole: binding.role, actualRole: null },
+    );
+  }
+  if (actualRole !== binding.role) {
+    throw new SupabaseProjectBindingError(
+      `La instancia ${country} exige el rol Postgres "${binding.role}", ` +
+        `pero la base de datos usa "${actualRole}". Se rechaza el cruce de países.`,
+      { country, expectedRole: binding.role, actualRole },
+    );
+  }
+  return actualRole;
+}
+
+function assertCountryStorageBucket(bucket, countryValue) {
+  const country = String(countryValue || "").trim().toUpperCase();
+  if (!country) return null;
+  const binding = getCountryDbBinding(country);
+  const name = String(bucket || "").trim();
+  for (const [otherCountry, otherBinding] of Object.entries(COUNTRY_BINDINGS)) {
+    if (otherCountry !== country && otherBinding.bucket === name) {
+      throw new SupabaseProjectBindingError(
+        `La instancia ${country} no puede usar el bucket "${name}" (reservado para ${otherCountry}).`,
+        { country, bucket: name, otherCountry },
+      );
+    }
+  }
+  if (name !== binding.bucket) {
+    throw new SupabaseProjectBindingError(
+      `La instancia ${country} exige el bucket "${binding.bucket}", se recibió "${name || "(vacío)"}".`,
+      { country, expectedBucket: binding.bucket, actualBucket: name },
+    );
+  }
+  return name;
+}
+
+function defaultStorageBucketForCountry(countryValue) {
+  const country = String(countryValue || "").trim().toUpperCase();
+  if (!country || !COUNTRY_BINDINGS[country]) return null;
+  return COUNTRY_BINDINGS[country].bucket;
+}
+
+function searchPathStatement(countryValue) {
+  const { schema } = getCountryDbBinding(countryValue);
+  return `SET search_path TO ${schema}`;
+}
+
 module.exports = {
+  SHARED_INTRANET_PROJECT_REF,
   KNOWN_COUNTRY_PROJECT_REFS,
+  COUNTRY_BINDINGS,
   SupabaseProjectBindingError,
   extractProjectRefFromSupabaseUrl,
   expectedProjectVariable,
+  getCountryDbBinding,
   resolveExpectedProjectRef,
   assertCountrySupabaseProject,
+  extractDatabaseRole,
+  assertCountryDatabaseRole,
+  assertCountryStorageBucket,
+  defaultStorageBucketForCountry,
+  searchPathStatement,
 };

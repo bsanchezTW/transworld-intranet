@@ -272,6 +272,41 @@ body.login-split-page {
   transform: none;
 }
 
+.login-register-submit-hint {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(226, 84, 64, 0.28);
+  color: #9b2c2c;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.login-register-submit-hint[hidden] {
+  display: none;
+}
+
+.login-register-submit-hint ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.login-register-submit-hint li {
+  font-weight: 500;
+  padding-left: 14px;
+  position: relative;
+}
+
+.login-register-submit-hint li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #c53030;
+}
+
 .login-split__inline-form {
   display: inline;
 }

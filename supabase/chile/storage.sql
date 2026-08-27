@@ -1,9 +1,8 @@
 -- Storage privado de la intranet Chile.
 --
--- La aplicación es el único cliente: usa una secret key desde Node y sirve
--- los objetos mediante /content y /media. No se crean policies para anon ni
--- authenticated. El límite deja margen sobre el máximo funcional actual
--- (videos de noticias: 200 MiB).
+-- Idempotente: no borra objetos. El bucket histórico se conserva.
+-- La aplicación es el único cliente (secret key). Sin policies para anon
+-- ni authenticated.
 
 insert into storage.buckets (
   id,
@@ -25,4 +24,3 @@ set
   public = false,
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
-

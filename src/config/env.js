@@ -10,6 +10,7 @@
 require("dotenv").config();
 
 const { COUNTRY_CODES, isValidCountryCode } = require("./country");
+const { assertCountryDatabaseRole } = require("./supabaseProjects");
 
 const errors = [];
 
@@ -67,6 +68,14 @@ try {
   getStorageConfig(process.env);
 } catch (error) {
   errors.push(error.message || "Configuración de Supabase Storage inválida.");
+}
+
+if (isValidCountryCode(process.env.COUNTRY)) {
+  try {
+    assertCountryDatabaseRole(process.env);
+  } catch (error) {
+    errors.push(error.message || "Rol de base de datos inválido para el país.");
+  }
 }
 
 if (errors.length > 0) {

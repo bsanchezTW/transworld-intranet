@@ -24,7 +24,8 @@ const VACATION_CONFIG = {
   // Correo de RRHH para notificaciones de nuevas solicitudes.
   // Sin variable, el de la instancia: una solicitud de Perú no debe avisar a RRHH Chile.
   rrhhEmail: (
-    process.env.VACATION_RRHH_EMAIL || getCountryConfig().hrEmail
+    process.env.VACATION_RRHH_EMAIL ||
+    (process.env.COUNTRY ? getCountryConfig().hrEmail : "")
   ).trim(),
 
   // Acumulación máxima de períodos en Chile (alerta UI)

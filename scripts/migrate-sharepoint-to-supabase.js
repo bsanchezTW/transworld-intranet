@@ -30,6 +30,8 @@ const { Readable, Transform } = require("node:stream");
 const { pipeline } = require("node:stream/promises");
 const {
   assertCountrySupabaseProject,
+  assertCountryStorageBucket,
+  defaultStorageBucketForCountry,
 } = require("../src/config/supabaseProjects");
 
 const CONTENT_ROOT = "Content-Intranet-Transworld/public/content";
@@ -1224,6 +1226,11 @@ function resolveConfig(options) {
     }
     assertCountrySupabaseProject(supabaseUrl, country, process.env);
   }
+  const bucket = firstEnvironmentValue(country, ["SUPABASE_STORAGE_BUCKET"], {
+    required: false,
+    fallback: defaultStorageBucketForCountry(country) || DEFAULT_BUCKET,
+  });
+  assertCountryStorageBucket(bucket, country);
   return {
     ...options,
     contentRoot: CONTENT_ROOT,
@@ -1238,7 +1245,7 @@ function resolveConfig(options) {
           "SUPABASE_SECRET_KEY",
           "SUPABASE_SERVICE_ROLE_KEY",
         ]),
-    bucket: firstEnvironmentValue(country, ["SUPABASE_STORAGE_BUCKET"], { required: false, fallback: DEFAULT_BUCKET }),
+    bucket,
   };
 }
 

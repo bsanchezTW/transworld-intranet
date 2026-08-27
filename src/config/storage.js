@@ -7,6 +7,8 @@ const DEFAULT_DELETE_BATCH_SIZE = 1000;
 const {
   extractProjectRefFromSupabaseUrl,
   assertCountrySupabaseProject,
+  assertCountryStorageBucket,
+  defaultStorageBucketForCountry,
 } = require("./supabaseProjects");
 
 class StorageConfigurationError extends Error {
@@ -145,9 +147,8 @@ function assertSameSupabaseProject(url, env = process.env) {
 /**
  * Obtiene la configuración del proyecto Supabase de esta instancia.
  *
- * Chile y Perú usan exactamente los mismos nombres de variables, pero cada
- * deployment carga su propio entorno. Esto impide que un proceso pueda mezclar
- * proyectos o buckets de ambos países.
+ * Chile y Perú pueden compartir el mismo proyecto Supabase; el aislamiento
+ * es schema + rol Postgres + bucket. Un .env cruzado no debe arrancar.
  */
 function getStorageConfig(env = process.env) {
   const url = normalizeSupabaseUrl(env.SUPABASE_URL);
@@ -155,8 +156,11 @@ function getStorageConfig(env = process.env) {
   assertCountrySupabaseProject(url, env.COUNTRY, env);
   const secret = resolveStorageSecret(env);
   const bucket = String(
-    env.SUPABASE_STORAGE_BUCKET || DEFAULT_STORAGE_BUCKET,
+    env.SUPABASE_STORAGE_BUCKET ||
+      defaultStorageBucketForCountry(env.COUNTRY) ||
+      DEFAULT_STORAGE_BUCKET,
   ).trim();
+  assertCountryStorageBucket(bucket, env.COUNTRY);
 
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(bucket)) {
     throw new StorageConfigurationError(
