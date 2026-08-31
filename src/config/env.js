@@ -16,21 +16,10 @@ const dotenv = require("dotenv");
 const PROJECT_ROOT = path.join(__dirname, "..", "..");
 
 function loadEnvFiles() {
-  // process.env (panel de cPanel / systemd) nunca se pisa: dotenv no overridea.
-  // Si COUNTRY ya viene del panel, el archivo del país llena el resto primero.
-  const countryHint = String(process.env.COUNTRY || "").trim().toLowerCase();
-  if (countryHint) {
-    dotenv.config({ path: path.join(PROJECT_ROOT, `.env.${countryHint}.local`) });
-    dotenv.config({ path: path.join(PROJECT_ROOT, `.env.${countryHint}`) });
-  }
+  // process.env (panel de cPanel / el lanzador dev:cl|dev:pe) nunca se pisa.
   dotenv.config({ path: path.join(PROJECT_ROOT, ".env") });
+  dotenv.config({ path: path.join(PROJECT_ROOT, ".env.local") });
   dotenv.config();
-
-  const country = String(process.env.COUNTRY || "").trim().toLowerCase();
-  if (country && country !== countryHint) {
-    dotenv.config({ path: path.join(PROJECT_ROOT, `.env.${country}.local`) });
-    dotenv.config({ path: path.join(PROJECT_ROOT, `.env.${country}`) });
-  }
 }
 
 loadEnvFiles();
@@ -86,9 +75,9 @@ if (!hasDatabaseUrl && !hasDiscreteDbVars) {
 }
 
 // ── Storage privado ────────────────────────────────────────────────────────
-// Valida credenciales, límites y —cuando el project ref está disponible en el
-// usuario de Postgres— que BD y Storage pertenezcan al mismo proyecto. Esto es
-// la barrera que evita que una instancia PE escriba por error en Chile.
+// Valida credenciales, límites y que BD y Storage sean el mismo proyecto.
+// Chile y Perú lo comparten; el cruce que sí se bloquea es bucket o rol
+// dedicado del otro país.
 try {
   const { getStorageConfig } = require("./storage");
   getStorageConfig(process.env);
@@ -107,7 +96,7 @@ if (isValidCountryCode(process.env.COUNTRY)) {
 if (errors.length > 0) {
   throw new Error(
     `Configuración de entorno inválida:\n  - ${errors.join("\n  - ")}\n` +
-      "Revisa tu archivo .env (ver .env.cl.example / .env.pe.example).",
+      "Revisa tu archivo .env (ver .env.example). En local usa npm run dev:cl o npm run dev:pe.",
   );
 }
 

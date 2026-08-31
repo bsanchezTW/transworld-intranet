@@ -21,17 +21,17 @@ Auth es propia (sesiones + PBKDF2). No se usa Supabase Auth.
 
 Vacaciones usan la misma pantalla con reglas distintas (estrategias Chile / Perú). El login solo acepta el TLD del país de la instancia (`.cl` no entra en Perú y al revés).
 
-## Un proyecto Supabase, datos separados
+## Un repo, dos dominios, una base
 
-Proyecto `INTRANET - TW_P&T` (`dgadjvptxhotjylwsglx`). Node habla con Postgres por `pg` (`search_path` del país) y con Storage por secret key.
+El mismo código se despliega dos veces (`COUNTRY=CL` y `COUNTRY=PE`). Comparten el proyecto Supabase `INTRANET - TW_P&T` (`dgadjvptxhotjylwsglx`) y la misma Postgres. Lo que cambia es el **schema** (`chile` / `peru`), el bucket y las variables de cada proceso. Node fija `search_path` según `COUNTRY`; no hay dos bases.
 
 | | Chile | Perú |
 | --- | --- | --- |
+| Dominio | `transworld.cl` | `transworld.pe` |
 | Schema | `chile` | `peru` |
-| Rol | `intranet_chile` | `intranet_peru` |
+| Login pooler | `postgres.<ref>` (el mismo) | `postgres.<ref>` (el mismo) |
 | Bucket | `intranet-content` | `intranet-content-pe` |
 | Cookie | `tw_sid_cl` | `tw_sid_pe` |
-| Dominio | `transworld.cl` | `transworld.pe` |
 
 No añadir `chile` ni `peru` a Extra Schemas de PostgREST. El SQL de referencia está en `supabase/chile/` y `supabase/peru/` (`schema.sql` + `storage.sql`).
 
@@ -52,16 +52,13 @@ Los archivos se sirven por `/content` (sesión) o `/media/<firma>/...` (imágene
 
 ```bash
 npm install
-cp .env.cl.example .env.cl.local   # completar credenciales Chile
-cp .env.pe.example .env.pe.local   # completar credenciales Perú
+cp .env.example .env   # credenciales compartidas (BD, Supabase, Brevo)
 
-npm run dev:cl   # http://localhost:3000
-npm run dev:pe   # http://localhost:3001
+npm run dev:cl   # http://localhost:3000  Chile
+npm run dev:pe   # http://localhost:3001  Perú (puede correr a la vez)
 ```
 
-Precedencia: variables del proceso → `.env.<pais>.local` → `.env`.
-
-El usuario del pooler es `intranet_chile.<ref>` / `intranet_peru.<ref>`, puerto **5432** (sesión), no 6543. Si el rol o el bucket no coinciden con `COUNTRY`, la app no arranca.
+El lanzador pone `COUNTRY`, puerto, `APP_BASE_URL` y el bucket. No hace falta un `.env` por país. En cPanel cada dominio declara `COUNTRY` y `APP_BASE_URL`; el resto puede ser el mismo.
 
 | Script | Qué hace |
 |--------|----------|
@@ -112,29 +109,29 @@ Los roles viejos por área (`rrhh`, `marketing`, …) se tratan como administrad
 ## Entorno (núcleo)
 
 ```env
-COUNTRY=CL
-PORT=3000
 SESSION_SECRET=
-APP_BASE_URL=http://localhost:3000
 
 DB_HOST=aws-1-us-west-2.pooler.supabase.com
 DB_PORT=5432
-DB_USER=intranet_chile.dgadjvptxhotjylwsglx
+DB_USER=postgres.dgadjvptxhotjylwsglx
 DB_PASSWORD=
 DB_NAME=postgres
 DB_SSL=true
 
 SUPABASE_URL=https://dgadjvptxhotjylwsglx.supabase.co
-SUPABASE_PROJECT_REF_CL=dgadjvptxhotjylwsglx
 SUPABASE_SECRET_KEY=
-SUPABASE_STORAGE_BUCKET=intranet-content
+
+BREVO_API_KEY=
+
+ANTHROPIC_API_KEY=
+
+LINKEDIN_CLIENT_ID=
+LINKEDIN_CLIENT_SECRET=
+LINKEDIN_ORG_ID=
+LINKEDIN_CALLBACK_URL=
 ```
 
-En Perú: `COUNTRY=PE`, puerto 3001, `DB_USER=intranet_peru.…`, `SUPABASE_PROJECT_REF_PE` y bucket `intranet-content-pe`. Misma `SUPABASE_URL` y secret key.
-
-Otras variables: Brevo (`BREVO_API_KEY`, `MAIL_FROM`), Claude (`ANTHROPIC_API_KEY`, solo Chile), LinkedIn, vacaciones (`VACATION_RRHH_EMAIL`). `TZ` no se configura: la fija el país.
-
-Storage: límite de bucket 250 MiB; chunk TUS 6 MiB. En el dashboard del proyecto, el máximo global de archivos debe ser ≥ 250 MiB.
+`COUNTRY`, puerto, `APP_BASE_URL`, bucket y remitente los pone `dev:cl` / `dev:pe` (o el panel en cPanel).
 
 ## Estructura
 

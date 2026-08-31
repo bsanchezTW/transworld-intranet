@@ -38,6 +38,7 @@ const COUNTRY_CONFIGS = {
     corporateEmailDomain: "transworld.cl",
     pageTitleSuffix: "Intranet Transworld Chile",
     sessionCookieName: "tw_sid_cl",
+    devPort: 3000,
     businessHours: DEFAULT_BUSINESS_HOURS,
     // Celulares chilenos: +56 9 XXXX XXXX
     phone: {
@@ -69,6 +70,7 @@ const COUNTRY_CONFIGS = {
     corporateEmailDomain: "transworld.pe",
     pageTitleSuffix: "Intranet Transworld Perú",
     sessionCookieName: "tw_sid_pe",
+    devPort: 3001,
     // TODO(RRHH Perú): confirmar la jornada real de la oficina de Lima.
     businessHours: DEFAULT_BUSINESS_HOURS,
     // Celulares peruanos: +51 XXX XXX XXX (9 dígitos, empiezan en 9)

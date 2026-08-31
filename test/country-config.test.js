@@ -61,6 +61,10 @@ describe("config/country — COUNTRY sin fallback", () => {
     assert.equal(pe.locale, "es-PE");
     assert.equal(cl.corporateEmailDomain, "transworld.cl");
     assert.equal(pe.corporateEmailDomain, "transworld.pe");
+    assert.equal(cl.sessionCookieName, "tw_sid_cl");
+    assert.equal(pe.sessionCookieName, "tw_sid_pe");
+    assert.equal(cl.devPort, 3000);
+    assert.equal(pe.devPort, 3001);
     assert.equal(cl.weather.locationName, "Huechuraba");
     assert.equal(pe.weather.locationName, "Lima");
     assert.match(pe.weather.detailUrl, /meteored\.pe/);

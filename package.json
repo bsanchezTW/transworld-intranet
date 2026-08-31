@@ -42,7 +42,6 @@
     "dev:pe": "node scripts/dev.js --country=PE --port=3001",
     "start": "node src/app.js",
     "test": "node --test test/**/*.test.js",
-    "migrate:storage": "node scripts/migrate-sharepoint-to-supabase.js",
     "email-listener": "node src/email-listener"
   },
   "keywords": [],

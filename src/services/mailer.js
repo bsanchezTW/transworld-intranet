@@ -1,5 +1,6 @@
 // src/services/mailer.js
 const Brevo = require('@getbrevo/brevo');
+const { getCountryConfig } = require('../config/country');
 const APP_BASE_URL = process.env.APP_BASE_URL || 'http://localhost:3000';
 
 // --- CONSTANTES DE FIRMA ---
@@ -36,11 +37,20 @@ apiInstance.setApiKey(
   brevoApiKey
 );
 
+function resolveMailFrom() {
+  return (
+    process.env.MAIL_FROM?.trim() ||
+    getCountryConfig().noReplyEmail ||
+    ""
+  );
+}
+
 const sendMail = async ({ to, subject, text, html, bcc, skipFooter = false, senderName }) => {
   if (!brevoApiKey) {
     throw new Error('Falta BREVO_API_KEY o SMTP_PASS (API key de Brevo) en las variables de entorno');
   }
-  if (!process.env.MAIL_FROM) {
+  const mailFrom = resolveMailFrom();
+  if (!mailFrom) {
     throw new Error('Falta MAIL_FROM (remitente verificado en Brevo) en las variables de entorno');
   }
 
@@ -60,7 +70,7 @@ const sendMail = async ({ to, subject, text, html, bcc, skipFooter = false, send
 
   sendSmtpEmail.sender = { 
     name: senderName || "Intranet Transworld", 
-    email: process.env.MAIL_FROM 
+    email: mailFrom 
   };
   
   // Destinatario principal

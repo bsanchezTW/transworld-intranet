@@ -5,6 +5,11 @@ const KNOWN_COUNTRY_PROJECT_REFS = Object.freeze({
   PE: SHARED_INTRANET_PROJECT_REF,
 });
 
+// Un repo, dos procesos (dominios). Misma base; el aislamiento es el schema.
+// El pooler usa el usuario compartido postgres.<ref>. Los roles intranet_*
+// son opcionales (least privilege), no obligatorios para arrancar.
+const SHARED_POOLER_ROLE = "postgres";
+
 const COUNTRY_BINDINGS = Object.freeze({
   CL: Object.freeze({
     schema: "chile",
@@ -132,6 +137,17 @@ function extractDatabaseRole(env = process.env) {
   return pooler ? pooler[1] : lower;
 }
 
+function foreignDatabaseRoles(country) {
+  return Object.entries(COUNTRY_BINDINGS)
+    .filter(([code]) => code !== country)
+    .map(([, binding]) => binding.role);
+}
+
+function isAllowedDatabaseRole(country, actualRole) {
+  const binding = getCountryDbBinding(country);
+  return actualRole === SHARED_POOLER_ROLE || actualRole === binding.role;
+}
+
 function assertCountryDatabaseRole(env = process.env) {
   const country = String(env.COUNTRY || "").trim().toUpperCase();
   if (!country) return null;
@@ -139,18 +155,27 @@ function assertCountryDatabaseRole(env = process.env) {
   const actualRole = extractDatabaseRole(env);
   if (!actualRole) {
     throw new SupabaseProjectBindingError(
-      `La instancia ${country} exige el rol Postgres "${binding.role}".`,
+      `La instancia ${country} necesita DB_USER o DATABASE_URL.`,
       { country, expectedRole: binding.role, actualRole: null },
     );
   }
-  if (actualRole !== binding.role) {
+
+  if (foreignDatabaseRoles(country).includes(actualRole)) {
     throw new SupabaseProjectBindingError(
-      `La instancia ${country} exige el rol Postgres "${binding.role}", ` +
-        `pero la base de datos usa "${actualRole}". Se rechaza el cruce de países.`,
+      `La instancia ${country} no puede usar el rol "${actualRole}" ` +
+        `(reservado para el otro país). El aislamiento es el schema "${binding.schema}".`,
       { country, expectedRole: binding.role, actualRole },
     );
   }
-  return actualRole;
+
+  if (isAllowedDatabaseRole(country, actualRole)) return actualRole;
+
+  throw new SupabaseProjectBindingError(
+    `Rol Postgres no reconocido: "${actualRole}". ` +
+      `Ambas instancias comparten el proyecto; el login es "${SHARED_POOLER_ROLE}.<ref>" ` +
+      `o el rol dedicado "${binding.role}". El schema lo fija COUNTRY.`,
+    { country, expectedRole: binding.role, actualRole },
+  );
 }
 
 function assertCountryStorageBucket(bucket, countryValue) {
@@ -188,6 +213,7 @@ function searchPathStatement(countryValue) {
 
 module.exports = {
   SHARED_INTRANET_PROJECT_REF,
+  SHARED_POOLER_ROLE,
   KNOWN_COUNTRY_PROJECT_REFS,
   COUNTRY_BINDINGS,
   SupabaseProjectBindingError,

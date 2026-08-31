@@ -2,22 +2,29 @@
 /**
  * Lanzador de desarrollo por país.
  *
- *   node scripts/dev.js --country=CL
- *   node scripts/dev.js --country=PE --port=3001
+ *   npm run dev:cl   → Chile en :3000
+ *   npm run dev:pe   → Perú en :3001
  *
- * Existe porque `COUNTRY=CL npm run dev` no funciona en PowerShell, que es el
- * shell de desarrollo habitual aquí. Resolverlo con un lanzador en Node evita
- * añadir cross-env o dotenv-cli solo para dos scripts.
+ * Un solo .env con secretos compartidos (BD, Supabase, Brevo). Este script
+ * fija la identidad de la instancia (COUNTRY, puerto, URL, bucket) para
+ * poder levantar las dos a la vez sin dos archivos de entorno.
  *
- * Precedencia de configuración (de mayor a menor):
- *   1. variables ya presentes en el entorno del proceso
- *   2. .env.<cc>.local      → credenciales del país, no versionado
- *   3. .env                 → base compartida, lo carga config/env.js
+ * PowerShell no propaga `COUNTRY=CL npm run dev`; por eso el país va en --country.
+ *
+ * Precedencia (de mayor a menor):
+ *   1. este lanzador (país, puerto, URL local, bucket)
+ *   2. variables ya presentes en el proceso
+ *   3. .env / .env.local  → secretos compartidos
  */
 
 const path = require("path");
 const fs = require("fs");
 const dotenv = require("dotenv");
+const { getCountryConfig, isValidCountryCode } = require("../src/config/country");
+const {
+  defaultStorageBucketForCountry,
+  getCountryDbBinding,
+} = require("../src/config/supabaseProjects");
 
 const ROOT = path.join(__dirname, "..");
 
@@ -30,32 +37,44 @@ function parseArgs(argv) {
   return args;
 }
 
+function loadSharedEnv() {
+  dotenv.config({ path: path.join(ROOT, ".env") });
+  dotenv.config({ path: path.join(ROOT, ".env.local") });
+}
+
 const args = parseArgs(process.argv);
 const country = String(args.country || "").trim().toUpperCase();
 
-if (!country) {
+if (!country || !isValidCountryCode(country)) {
   console.error(
-    "Falta --country. Uso: node scripts/dev.js --country=CL [--port=3000]",
+    "Falta --country. Uso: npm run dev:cl   o   npm run dev:pe",
   );
   process.exit(1);
 }
 
-// COUNTRY se fija antes de requerir la app: config/env.js la valida contra la
-// lista de países registrados y aborta el arranque si no es válida.
-process.env.COUNTRY = country;
-if (args.port) process.env.PORT = String(args.port);
+const config = getCountryConfig(country);
+const port = args.port ? Number(args.port) : config.devPort;
+const baseUrl =
+  args["base-url"]?.trim() || `http://localhost:${port}`;
 
-const envFile = path.join(ROOT, `.env.${country.toLowerCase()}.local`);
-if (fs.existsSync(envFile)) {
-  // dotenv no pisa lo que ya existe en process.env, así que --country y --port
-  // mandan por encima del archivo.
-  dotenv.config({ path: envFile });
-  console.log(`[dev] Configuración de ${country} desde ${path.basename(envFile)}`);
-} else {
-  console.log(
-    `[dev] Sin ${path.basename(envFile)} — se usará .env. ` +
-      `Copia .env.${country.toLowerCase()}.example para apuntar a la base de ${country}.`,
+loadSharedEnv();
+
+// La identidad gana siempre: si .env trae APP_BASE_URL o el bucket de Chile,
+// Perú en :3001 no debe heredarlos.
+process.env.COUNTRY = country;
+process.env.PORT = String(port);
+process.env.APP_BASE_URL = baseUrl;
+process.env.SUPABASE_STORAGE_BUCKET = defaultStorageBucketForCountry(country);
+process.env.MAIL_FROM = process.env.MAIL_FROM || config.noReplyEmail;
+
+if (!fs.existsSync(path.join(ROOT, ".env")) && !fs.existsSync(path.join(ROOT, ".env.local"))) {
+  console.warn(
+    "[dev] No hay .env en la raíz. Copia .env.example y completa las credenciales.",
   );
 }
+
+console.log(
+  `[dev] ${config.name} → ${baseUrl} · schema ${getCountryDbBinding(country).schema} · bucket ${process.env.SUPABASE_STORAGE_BUCKET}`,
+);
 
 require(path.join(ROOT, "src", "app.js"));

@@ -46,7 +46,7 @@ describe("aislamiento Chile / Perú en el mismo proyecto", () => {
           COUNTRY: "PE",
           DB_USER: "intranet_chile.dgadjvptxhotjylwsglx",
         }),
-      /intranet_peru/,
+      /otro país/,
     );
     assert.equal(
       assertCountryDatabaseRole({
@@ -54,6 +54,42 @@ describe("aislamiento Chile / Perú en el mismo proyecto", () => {
         DB_USER: "intranet_peru",
       }),
       "intranet_peru",
+    );
+    assert.equal(
+      extractDatabaseRole({
+        DB_USER: "postgres.dgadjvptxhotjylwsglx",
+      }),
+      "postgres",
+    );
+    assert.equal(
+      assertCountryDatabaseRole({
+        COUNTRY: "CL",
+        DB_USER: "postgres.dgadjvptxhotjylwsglx",
+      }),
+      "postgres",
+    );
+    assert.equal(
+      assertCountryDatabaseRole({
+        COUNTRY: "PE",
+        DB_USER: "postgres.dgadjvptxhotjylwsglx",
+      }),
+      "postgres",
+    );
+    assert.throws(
+      () =>
+        assertCountryDatabaseRole({
+          COUNTRY: "CL",
+          DB_USER: "intranet_peru.dgadjvptxhotjylwsglx",
+        }),
+      /otro país/,
+    );
+    assert.throws(
+      () =>
+        assertCountryDatabaseRole({
+          COUNTRY: "CL",
+          DB_USER: "otro_rol",
+        }),
+      /no reconocido/,
     );
   });
 
