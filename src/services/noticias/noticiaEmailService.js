@@ -140,8 +140,7 @@ async function buildPdfEmailPages(item) {
 
   if (!item.public_id) return { pages, expanded: null };
 
-  // 2) Rasterizado local (proceso hijo por página).
-  console.log(`[Noticias] Rasterizando PDF "${item.name}" para el correo…`);
+  // Rasterizado local (proceso hijo por página).
   try {
     const { buffer } = await storage.downloadFile(item.public_id);
     const { pages: numPages, excerpt, previews } = await pdfRenderer.analyze(buffer);
@@ -223,7 +222,6 @@ async function prepareForEmail(item, noticiaUrl) {
           page: 1,
         },
       ];
-      console.log(`[Noticias] Imagen "${item.name}" embebida en el correo.`);
     } else {
       console.warn(`[Noticias] Imagen "${item.name}" sin datos para embebir.`);
     }
@@ -236,11 +234,7 @@ async function prepareForEmail(item, noticiaUrl) {
       const refreshed = attachmentModel.normalizeOne(item);
       if (refreshed) Object.assign(item, refreshed);
     }
-    if (emailPages.length) {
-      console.log(
-        `[Noticias] PDF "${item.name}" embebido en correo: ${emailPages.length} página(s).`,
-      );
-    } else {
+    if (!emailPages.length) {
       console.warn(`[Noticias] PDF "${item.name}" sin páginas visibles para el correo.`);
     }
   }
@@ -368,9 +362,7 @@ async function enviarNoticia(noticia, opciones = {}) {
     senderName: "Noticias Transworld",
     skipFooter: true,
   });
-
-  console.log(`[Noticias] Correo "${noticia.title}" enviado a ${destinatarios.length} destinatario(s).`);
   return { enviados: destinatarios.length };
 }
 
-module.exports = { buildEmailHtml, buildEmailText, enviarNoticia };
+module.exports = { enviarNoticia };

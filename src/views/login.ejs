@@ -420,7 +420,10 @@
       <div class="login-visual-content">
       <div class="login-carousel" id="loginCarousel" aria-live="polite">
         <div class="login-carousel__slides">
+          <% const showSupportSlide = features.supportTickets; %>
+          <% const showClaudeSlide = features.claudeAssistant; %>
 
+          <% if (showSupportSlide) { %>
           <article class="login-carousel__slide is-active" data-slide="0">
             <svg class="login-carousel__icon" viewBox="0 0 56 56" fill="none" aria-hidden="true">
               <rect width="56" height="56" rx="14" fill="rgba(125,211,252,0.15)"/>
@@ -436,8 +439,9 @@
               <p class="login-carousel__desc">Abre tickets de soporte, sigue su avance y recibe respuesta del equipo sin salir de la intranet.</p>
             </div>
           </article>
+          <% } %>
 
-          <article class="login-carousel__slide" data-slide="1">
+          <article class="login-carousel__slide<%= showSupportSlide ? '' : ' is-active' %>" data-slide="1">
             <svg class="login-carousel__icon" viewBox="0 0 56 56" fill="none" aria-hidden="true">
               <rect width="56" height="56" rx="14" fill="rgba(125,211,252,0.15)"/>
               <path d="M18 38V26l10-6 10 6v12" stroke="#7dd3fc" stroke-width="2" stroke-linejoin="round"/>
@@ -465,6 +469,7 @@
             </div>
           </article>
 
+          <% if (showClaudeSlide) { %>
           <article class="login-carousel__slide" data-slide="3">
             <svg class="login-carousel__icon" viewBox="0 0 56 56" fill="none" aria-hidden="true">
               <rect width="56" height="56" rx="14" fill="rgba(125,211,252,0.15)"/>
@@ -478,15 +483,20 @@
               <p class="login-carousel__desc">Usa inteligencia artificial para idear, redactar y avanzar más rápido en tus tareas del día a día.</p>
             </div>
           </article>
+          <% } %>
 
         </div>
 
         <div class="login-carousel__controls">
           <div class="login-carousel__dots" role="tablist" aria-label="Diapositivas del carrusel">
+            <% if (showSupportSlide) { %>
             <button type="button" class="login-carousel__dot is-active" data-slide-to="0" role="tab" aria-selected="true" aria-label="Diapositiva 1"></button>
-            <button type="button" class="login-carousel__dot" data-slide-to="1" role="tab" aria-selected="false" aria-label="Diapositiva 2"></button>
-            <button type="button" class="login-carousel__dot" data-slide-to="2" role="tab" aria-selected="false" aria-label="Diapositiva 3"></button>
-            <button type="button" class="login-carousel__dot" data-slide-to="3" role="tab" aria-selected="false" aria-label="Diapositiva 4"></button>
+            <% } %>
+            <button type="button" class="login-carousel__dot<%= showSupportSlide ? '' : ' is-active' %>" data-slide-to="1" role="tab" aria-selected="<%= showSupportSlide ? 'false' : 'true' %>" aria-label="Diapositiva <%= showSupportSlide ? '2' : '1' %>"></button>
+            <button type="button" class="login-carousel__dot" data-slide-to="2" role="tab" aria-selected="false" aria-label="Diapositiva <%= showSupportSlide ? '3' : '2' %>"></button>
+            <% if (showClaudeSlide) { %>
+            <button type="button" class="login-carousel__dot" data-slide-to="3" role="tab" aria-selected="false" aria-label="Diapositiva <%= showSupportSlide ? '4' : '3' %>"></button>
+            <% } %>
           </div>
         </div>
       </div>
@@ -847,9 +857,9 @@
         timer = setInterval(nextSlide, INTERVAL);
       }
 
-      dots.forEach((dot) => {
+      dots.forEach((dot, i) => {
         dot.addEventListener('click', () => {
-          showSlide(Number(dot.dataset.slideTo));
+          showSlide(i);
           startAutoplay();
         });
       });

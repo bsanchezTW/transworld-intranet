@@ -82,7 +82,7 @@ router.post('/eventos/nuevo', requireRole(...WRITE_ROLES), async (req, res) => {
   const slug = createSlug(nombre);
 
   try {
-    await db.query('INSERT INTO events (name, slug, description) VALUES ($1, $2, $3)',
+    await db.queryRetryIdCollision('INSERT INTO events (name, slug, description) VALUES ($1, $2, $3)',
       [nombre, slug, descripcion]);
     res.redirect('/marketing/eventos');
   } catch (err) {

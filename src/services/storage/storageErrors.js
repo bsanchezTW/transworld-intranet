@@ -122,6 +122,5 @@ module.exports = {
   StorageValidationError,
   StoragePathError,
   StoragePartialFailureError,
-  getStatusCode,
   toStorageError,
 };

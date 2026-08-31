@@ -77,7 +77,6 @@ const sendMail = async ({ to, subject, text, html, bcc, skipFooter = false, send
 
   try {
     const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log('[Mailer] Correo enviado exitosamente vía API de Brevo');
     return data;
   } catch (error) {
     const detail = error?.response?.data || error?.body || error?.message;

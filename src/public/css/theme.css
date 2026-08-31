@@ -221,8 +221,7 @@ main {
 }
 
 /* ── Cursos / Academy ── */
-.btn-cursos,
-.btn-dual.btn-cursos {
+.btn-cursos {
   background: var(--glass-bg-strong);
   color: var(--color-text);
   border: 1px solid var(--glass-border);
@@ -231,8 +230,7 @@ main {
   -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
-.btn-cursos:hover,
-.btn-dual.btn-cursos:hover {
+.btn-cursos:hover {
   background: var(--color-surface-elevated);
 }
 

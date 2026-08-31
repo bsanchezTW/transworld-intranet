@@ -17,7 +17,6 @@ const {
 } = require("../constants/roles");
 const linkedinService = require("../services/linkedinService");
 const { mapCompletedCourseForView } = require("../utils/schemaMappers");
-const { generateUniqueUsuarioId } = require("../utils/userId");
 const {
   getCountryConfig,
   isForeignCountryEmailDomain,
@@ -549,8 +548,6 @@ router.post(
         return res.redirect("/login?exists=1");
       }
 
-      const generatedUserId = await generateUniqueUsuarioId(pool);
-
       const saltHex = crypto.randomBytes(16).toString("hex");
       const hashHex = pbkdf2Hash(password, saltHex);
       const verificationCode = generateEmailVerificationCode();
@@ -561,12 +558,12 @@ router.post(
         ? ROLES.USUARIO
         : ROLES.DESHABILITADO;
 
-      await pool.query(
+      const { rows: inserted } = await pool.queryRetryIdCollision(
         `INSERT INTO users
-        (id, first_name, last_name, email, password_hash, password_salt, role, email_confirmed, confirm_token, confirm_expires, photo, must_change_password, work_area_id, birth_date, phone, is_intranet_user, home_tutorial_seen)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, $9, NULL, FALSE, NULL, $10, $11, TRUE, FALSE)`,
+        (first_name, last_name, email, password_hash, password_salt, role, email_confirmed, confirm_token, confirm_expires, photo, must_change_password, work_area_id, birth_date, phone, is_intranet_user, home_tutorial_seen)
+       VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, $8, NULL, FALSE, NULL, $9, $10, TRUE, FALSE)
+       RETURNING id`,
         [
-          generatedUserId,
           firstName,
           lastName,
           email,
@@ -579,6 +576,7 @@ router.post(
           telefono,
         ],
       );
+      const generatedUserId = inserted[0].id;
 
       if (hasPhotoFile) {
         try {

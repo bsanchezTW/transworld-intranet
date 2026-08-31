@@ -52,8 +52,4 @@ function set(relativePath, html) {
   evictIfNeeded();
 }
 
-function clear() {
-  cache.clear();
-}
-
-module.exports = { getHtml, set, clear };
+module.exports = { getHtml, set };

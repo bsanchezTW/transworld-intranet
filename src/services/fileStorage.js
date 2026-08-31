@@ -183,7 +183,6 @@ module.exports = {
   deleteFolder,
   listFiles,
   getPublicUrl,
-  generateFileName,
   validateFileSize,
   getResourceType,
   resolveStoredPath,

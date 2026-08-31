@@ -147,10 +147,12 @@
             </span>
             <span class="home-quick__label">Caja L.A.</span>
           </a>
+          <% if (features.supportTickets) { %>
           <a href="/sistemas/tickets" class="home-quick__item ticket-notif-target">
             <span class="home-quick__glyph home-quick__glyph--muted">✚</span>
             <span class="home-quick__label">Tickets</span>
           </a>
+          <% } %>
         </div>
       </section>
 
@@ -477,6 +479,7 @@
           <p>Noticias internas, procesos y documentos, RRHH y galería de eventos de la empresa.</p>
         </div>
       </li>
+      <% if (features.supportTickets) { %>
       <li class="home-tutorial__step">
         <span class="home-tutorial__icon" aria-hidden="true"><%- include('partials/icon', { name: 'ticket' }) %></span>
         <div>
@@ -484,6 +487,7 @@
           <p>Usa <em>Soporte</em> en la barra superior para revisar la ticketera y el botón <em>Abrir Ticket</em> para crear un nuevo caso.</p>
         </div>
       </li>
+      <% } %>
       <li class="home-tutorial__step">
         <span class="home-tutorial__icon" aria-hidden="true"><%- include('partials/icon', { name: 'user' }) %></span>
         <div>

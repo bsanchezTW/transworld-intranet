@@ -3,6 +3,17 @@
 // Escucha el buzón IMAP del correo de soporte
 // y crea un ticket nuevo en la tabla `support_tickets` por cada correo entrante.
 
+require("./config/env");
+const { isFeatureEnabled } = require("./config/features");
+const { getCurrentCountry } = require("./config/country");
+
+if (!isFeatureEnabled("supportTickets")) {
+  console.log(
+    `[email-listener] Tickets no disponibles en ${getCurrentCountry()}. Saliendo.`,
+  );
+  process.exit(0);
+}
+
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
 const db = require('./db');
@@ -51,7 +62,7 @@ async function main() {
         return;
       }
 
-      const { rows } = await db.query(
+      const { rows } = await db.queryRetryIdCollision(
         `
         INSERT INTO support_tickets (
           title,

@@ -7,7 +7,9 @@
     <title><%= formatPageTitle(titulo) %></title>
     <link rel="stylesheet" href="/css/intranet.css">
     <link rel="stylesheet" href="/css/modal.css?v=20260728c">
+    <% if (features.supportTickets) { %>
     <link rel="stylesheet" href="/css/ticket-modal.css?v=20260728c">
+    <% } %>
     <% if (typeof extraCss !== 'undefined' && Array.isArray(extraCss)) { %>
       <% extraCss.forEach((href) => { %>
         <link rel="stylesheet" href="<%= href %>">
@@ -19,8 +21,10 @@
     <link rel="stylesheet" href="/css/claude-chat.css">
     <% } %>
     <script src="/js/modal.js?v=20260728c" defer></script>
+    <% if (features.supportTickets) { %>
     <script src="/js/ticket-create-form.js" defer></script>
     <script src="/js/ticket-detail.js" defer></script>
+    <% } %>
 </head>
 
 <body>
@@ -74,7 +78,9 @@
   <a href="/marketing/eventos">GALERÍA</a>
 
   <a href="/apps">APLICACIONES</a>
+  <% if (features.supportTickets) { %>
   <a href="/sistemas/tickets" class="ticket-notif-target">SOPORTE</a>
+  <% } %>
   </div>
 
   <% if (currentUser) { %>
@@ -132,12 +138,16 @@
       </div>
       <div class="nav-item"><a href="/marketing/eventos">GALERÍA</a></div>
       <div class="nav-item"><a href="/apps">APPS</a></div>
+      <% if (features.supportTickets) { %>
       <div class="nav-item"><a href="/sistemas/tickets" class="ticket-notif-target">SOPORTE</a></div>
+      <% } %>
 
     </nav>
     
     <div class="header-right">
+      <% if (features.supportTickets) { %>
       <a href="/sistemas/tickets/nuevo" class="btn-ticket-nav js-open-ticket-modal" title="Abrir nuevo ticket de soporte">Abrir Ticket</a>
+      <% } %>
 
       <div class="social-nav">
         <% if (features.linkedinFeed) { %>
@@ -188,7 +198,7 @@
     </div>
 </main>
 
-<% if (currentUser) { %>
+<% if (currentUser && features.supportTickets) { %>
   <%- include('partials/modal', {
     id: 'modalNuevoTicketNavbar',
     titleId: 'ticket-modal-title',
@@ -219,10 +229,12 @@
        <a href="/noticias">Noticias internas</a>
     </div>
 
+    <% if (features.supportTickets) { %>
     <div class="footer-col">
       <strong>Ayuda</strong>
       <a href="/sistemas/tickets">Soporte de TI</a>
     </div>
+    <% } %>
 
     <div class="footer-col">
       <strong class="footer-heading-accent">Links Externos</strong>
@@ -352,6 +364,7 @@
       }, 4000);
     }
 
+    <% if (features.supportTickets) { %>
     // --- BURBUJA DE NOTIFICACIONES ---
     function renderTicketBadges(count) {
       const btnsTicket = document.querySelectorAll('.ticket-notif-target');
@@ -387,6 +400,7 @@
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) refreshTicketNotifications();
     });
+    <% } %>
 
   });
 </script>

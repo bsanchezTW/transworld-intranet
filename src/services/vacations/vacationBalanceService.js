@@ -126,7 +126,7 @@ async function upsertPeriod({
     ? "GREATEST(vacation_periods.entitled_days, EXCLUDED.entitled_days)"
     : "EXCLUDED.entitled_days";
 
-  await db.query(
+  await db.queryRetryIdCollision(
     `INSERT INTO vacation_periods
        (user_id, country_code, period_start, period_end, entitled_days, expires_at)
      VALUES ($1, $2, $3, $4, $5, $6)

@@ -62,7 +62,7 @@ async function getWeather() {
       `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m` +
       `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunset,sunrise,precipitation_probability_max` +
       `&timezone=auto&forecast_days=7`;
-    const response = await axios.get(url);
+    const response = await axios.get(url, { timeout: 8000 });
 
     const current = response.data.current;
     const daily = response.data.daily;

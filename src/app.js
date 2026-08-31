@@ -33,7 +33,7 @@ const { ROLES, normalizeRole, isAdministrador } = require("./constants/roles");
 const { formatPageTitle } = require("./utils/pageTitle");
 const { phoneClientConfig } = require("./utils/phone");
 const requireFeature = require("./middlewares/requireFeature");
-const { getFeatures } = require("./config/features");
+const { getFeatures, isFeatureEnabled } = require("./config/features");
 const { syncUnverifiedUsersToDisabled } = require("./utils/syncDisabledUsers");
 const storageService = require("./services/storage/storageService");
 const {
@@ -50,6 +50,11 @@ const vacationRequestService = require("./services/vacations/vacationRequestServ
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET?.trim();
+
+process.on("unhandledRejection", (reason) => {
+  const message = reason instanceof Error ? reason.message : reason;
+  console.error("[unhandledRejection]", message);
+});
 
 if (
   process.env.NODE_ENV === "production" ||
@@ -345,7 +350,7 @@ app.use("/", authRoutes); // Login/Registro (Públicas)
 app.use("/", requireAuth, indexRoutes);
 app.use("/procesos", requireAuth, procesosRoutes);
 app.use("/RRHH", requireAuth, personasRoutes);
-app.use("/sistemas", requireAuth, ticketsRoutes);
+app.use("/sistemas", requireAuth, requireFeature("supportTickets"), ticketsRoutes);
 app.use("/marketing", requireAuth, marketingRoutes);
 app.use("/docs", requireAuth, docsRoutes);
 app.use("/noticias", requireAuth, noticiasRoutes);
@@ -459,12 +464,6 @@ function iniciarTransicionesVacaciones() {
   setInterval(ejecutar, 43200000);
 }
 
-// ================================
-// INICIAR CRON JOBS
-// ================================
-iniciarTareaCierreTickets();
-iniciarLimpiezaHistorial();
-
 async function sincronizarUsuariosDeshabilitados() {
   try {
     const actualizados = await syncUnverifiedUsersToDisabled();
@@ -569,23 +568,73 @@ async function asegurarSchemaVacaciones() {
   }
 }
 
-app.listen(PORT, () => {
-  console.log(`Servidor de Intranet corriendo en puerto ${PORT}`);
-  // Contexto de instancia para diagnosticar producción. Sin secretos.
+function startBackgroundJobs() {
+  if (isFeatureEnabled("supportTickets")) {
+    iniciarTareaCierreTickets();
+  }
+  iniciarLimpiezaHistorial();
+
+  // Migraciones y sincronización en background (no bloquean el arranque).
+  Promise.allSettled([
+    asegurarCorreoUnico(),
+    asegurarColumnaNoticiasDestacada(),
+    asegurarColumnaAppsIconUrl(),
+    asegurarColumnaAppsUrlIos(),
+    asegurarColumnaAppsUrlWeb(),
+    sincronizarUsuariosDeshabilitados(),
+    asegurarSchemaVacaciones(),
+  ]).finally(() => {
+    iniciarTransicionesVacaciones();
+  });
+}
+
+function onHttpListening(bindLabel) {
+  console.log(`Servidor de Intranet corriendo en ${bindLabel}`);
   console.log(
     `[Instancia] COUNTRY=${countryConfig.code} · TZ=${countryConfig.timezone} · APP_BASE_URL=${process.env.APP_BASE_URL}`,
   );
-});
+  startBackgroundJobs();
+}
 
-// Migraciones y sincronización en background (no bloquean el arranque del servidor).
-Promise.allSettled([
-  asegurarCorreoUnico(),
-  asegurarColumnaNoticiasDestacada(),
-  asegurarColumnaAppsIconUrl(),
-  asegurarColumnaAppsUrlIos(),
-  asegurarColumnaAppsUrlWeb(),
-  sincronizarUsuariosDeshabilitados(),
-  asegurarSchemaVacaciones(),
-]).finally(() => {
-  iniciarTransicionesVacaciones();
-});
+function listenAndLog(args, bindLabel) {
+  const server = app.listen(...args, () => onHttpListening(bindLabel));
+  server.on("error", (err) => {
+    console.error("[http] No se pudo abrir el puerto:", err.message);
+  });
+  return server;
+}
+
+function startHttpServer() {
+  const rawPort = process.env.PORT;
+  const passengerGlobal =
+    typeof PhusionPassenger !== "undefined" ? PhusionPassenger : null;
+  const isPassenger =
+    Boolean(passengerGlobal) || String(rawPort || "").trim() === "passenger";
+
+  if (passengerGlobal) {
+    passengerGlobal.configure({ autoInstall: false });
+  }
+
+  // cPanel/Passenger: hay que marcar el socket como listo YA. Los crons de
+  // Chile (tickets, LinkedIn, mindicador) no pueden retrasar el listen.
+  if (isPassenger) {
+    listenAndLog(["passenger"], "passenger");
+    return;
+  }
+
+  const trimmed = String(rawPort || "").trim();
+  if (trimmed.includes("/") || trimmed.endsWith(".sock")) {
+    listenAndLog([trimmed], trimmed);
+    return;
+  }
+
+  const parsed = Number(trimmed);
+  const listenPort = Number.isFinite(parsed) && parsed > 0 ? parsed : Number(PORT) || 3000;
+  // IPv4 explícito: listen(PORT) puede quedar solo en :: y Apache (127.0.0.1)
+  // responde 503 para siempre.
+  const host = process.env.HOST || "0.0.0.0";
+  listenAndLog([listenPort, host], `${host}:${listenPort}`);
+}
+
+startHttpServer();
+module.exports = app;

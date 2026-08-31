@@ -1,10 +1,14 @@
 const { Pool } = require("pg");
-require("dotenv").config();
 
 const {
   getCountryDbBinding,
   searchPathStatement,
 } = require("./config/supabaseProjects");
+const { isIdPrimaryKeyCollision } = require("./utils/idCollision");
+
+const DEFAULT_POOL_MAX = 8;
+const DEFAULT_CONNECT_TIMEOUT_MS = 10000;
+const DEFAULT_IDLE_TIMEOUT_MS = 30000;
 
 function resolveSsl() {
   const flag = String(process.env.DB_SSL || "").trim().toLowerCase();
@@ -28,21 +32,42 @@ function resolveSsl() {
 
 function postgresOptionsForCountry(country = process.env.COUNTRY) {
   const raw = String(country || "").trim();
-  if (!raw) return undefined;
-  const { schema } = getCountryDbBinding(raw);
-  return `-c search_path=${schema}`;
+  const parts = [];
+  if (raw) {
+    const { schema } = getCountryDbBinding(raw);
+    parts.push(`-c search_path=${schema}`);
+  }
+  return parts.length ? parts.join(" ") : undefined;
+}
+
+function poolLimits() {
+  const max = Number(process.env.DB_POOL_MAX);
+  const connectionTimeoutMillis = Number(process.env.DB_CONNECT_TIMEOUT_MS);
+  const idleTimeoutMillis = Number(process.env.DB_IDLE_TIMEOUT_MS);
+  return {
+    max: Number.isFinite(max) && max > 0 ? max : DEFAULT_POOL_MAX,
+    connectionTimeoutMillis: Number.isFinite(connectionTimeoutMillis) && connectionTimeoutMillis > 0
+      ? connectionTimeoutMillis
+      : DEFAULT_CONNECT_TIMEOUT_MS,
+    idleTimeoutMillis: Number.isFinite(idleTimeoutMillis) && idleTimeoutMillis > 0
+      ? idleTimeoutMillis
+      : DEFAULT_IDLE_TIMEOUT_MS,
+    keepAlive: true,
+  };
 }
 
 function createPool() {
   const ssl = resolveSsl();
   const options = postgresOptionsForCountry();
   const extra = options ? { options } : {};
+  const limits = poolLimits();
 
   if (process.env.DATABASE_URL?.trim()) {
     return new Pool({
       connectionString: process.env.DATABASE_URL.trim(),
       ssl,
       ...extra,
+      ...limits,
     });
   }
 
@@ -54,6 +79,7 @@ function createPool() {
     database: process.env.DB_NAME,
     ssl,
     ...extra,
+    ...limits,
   });
 }
 
@@ -65,16 +91,18 @@ const pool = createPool();
 
 pool.on("connect", (client) => {
   if (!String(process.env.COUNTRY || "").trim()) return;
-  applySearchPath(client)
-    .then(() => {
-      console.log("Conectado a la base de datos exitosamente");
-    })
-    .catch((error) => {
-      console.error(
-        "[db] No se pudo fijar search_path del país:",
-        error.message,
-      );
-    });
+  applySearchPath(client).catch((error) => {
+    console.error(
+      "[db] No se pudo fijar search_path del país:",
+      error.message,
+    );
+  });
+});
+
+// Sin este handler, un cliente idle que muere (Supabase corta a ~60s) tumba
+// el proceso Node. Passenger lo reinicia en bucle y cPanel sirve 503 eterno.
+pool.on("error", (error) => {
+  console.error("[db] Error en cliente idle del pool:", error.message);
 });
 
 async function getClient() {
@@ -97,8 +125,25 @@ async function query(text, params) {
   }
 }
 
+async function queryRetryIdCollision(text, params, maxAttempts = 8) {
+  let lastErr;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      return await query(text, params);
+    } catch (err) {
+      lastErr = err;
+      if (!isIdPrimaryKeyCollision(err) || attempt === maxAttempts - 1) {
+        throw err;
+      }
+    }
+  }
+  throw lastErr;
+}
+
 module.exports = {
   query,
+  queryRetryIdCollision,
+  isIdPrimaryKeyCollision,
   getClient,
   pool,
   applySearchPath,

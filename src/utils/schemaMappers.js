@@ -401,7 +401,6 @@ module.exports = {
   mapCompletedCourseForView,
   buildCourseProgressMap,
   groupCoursesBySubsection,
-  courseStatusLabel,
   mapCourseCatalogRow,
   mapIntegranteCourseProgress,
 };

@@ -297,7 +297,7 @@ router.post("/tickets/crear", async (req, res) => {
       RETURNING id
     `;
 
-    const { rows } = await db.query(sql, [
+    const { rows } = await db.queryRetryIdCollision(sql, [
       title,
       description,
       category,

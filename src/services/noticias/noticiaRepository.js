@@ -75,7 +75,7 @@ async function findByIdOrSlug(param) {
 }
 
 async function create({ title, subtitle, slug, content, image, attachments, author }) {
-  const { rows } = await db.query(
+  const { rows } = await db.queryRetryIdCollision(
     `INSERT INTO news_articles (title, subtitle, slug, content, image, attachments, author, created_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
      RETURNING id`,

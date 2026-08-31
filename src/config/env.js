@@ -7,7 +7,33 @@
  * en vez de arrancar con una configuración equivocada.
  */
 
-require("dotenv").config();
+const path = require("path");
+const dotenv = require("dotenv");
+
+// Passenger/cPanel a menudo arranca con cwd distinto al root de la app.
+// dotenv.config() sin path buscaría .env en ese cwd y Chile quedaría sin
+// COUNTRY → crash al boot → 503 eterno. Cargamos desde el root del repo.
+const PROJECT_ROOT = path.join(__dirname, "..", "..");
+
+function loadEnvFiles() {
+  // process.env (panel de cPanel / systemd) nunca se pisa: dotenv no overridea.
+  // Si COUNTRY ya viene del panel, el archivo del país llena el resto primero.
+  const countryHint = String(process.env.COUNTRY || "").trim().toLowerCase();
+  if (countryHint) {
+    dotenv.config({ path: path.join(PROJECT_ROOT, `.env.${countryHint}.local`) });
+    dotenv.config({ path: path.join(PROJECT_ROOT, `.env.${countryHint}`) });
+  }
+  dotenv.config({ path: path.join(PROJECT_ROOT, ".env") });
+  dotenv.config();
+
+  const country = String(process.env.COUNTRY || "").trim().toLowerCase();
+  if (country && country !== countryHint) {
+    dotenv.config({ path: path.join(PROJECT_ROOT, `.env.${country}.local`) });
+    dotenv.config({ path: path.join(PROJECT_ROOT, `.env.${country}`) });
+  }
+}
+
+loadEnvFiles();
 
 const { COUNTRY_CODES, isValidCountryCode } = require("./country");
 const { assertCountryDatabaseRole } = require("./supabaseProjects");

@@ -16,7 +16,7 @@ function getJson(url) {
         }
     };
 
-    https.get(url, options, (res) => { 
+    const req = https.get(url, options, (res) => { 
       if (res.statusCode >= 400) {
           res.resume();
           return reject(new Error(`API respondió con estado ${res.statusCode}`));
@@ -30,7 +30,12 @@ function getJson(url) {
           resolve(JSON.parse(raw));
         } catch (e) { reject(e); }
       });
-    }).on('error', reject);
+    });
+    req.setTimeout(8000, () => {
+      req.destroy();
+      reject(new Error(`Timeout obteniendo ${url}`));
+    });
+    req.on('error', reject);
   });
 }
 
@@ -108,4 +113,4 @@ async function getIndicadores({ includeUf = true } = {}) {
   }
 }
 
-module.exports = { getIndicadores, getUsdHoy: getIndicadores };
+module.exports = { getIndicadores };

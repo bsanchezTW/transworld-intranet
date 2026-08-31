@@ -26,7 +26,6 @@ const {
 } = require("../utils/phone");
 const { validateEmail } = require("../utils/email");
 const { mapPersonaForView } = require("../utils/schemaMappers");
-const { generateUniqueUsuarioId } = require("../utils/userId");
 const balanceService = require("../services/vacations/vacationBalanceService");
 const { getCurrentCountry } = require("../config/country");
 
@@ -341,19 +340,19 @@ router.post("/crear", requireRole.administrador(), async (req, res) => {
     }
 
     const crearCuentaIntranet = puedeCrearCuentaIntranet(emailClean);
-    const userId = await generateUniqueUsuarioId(db);
     let successMsg = "Colaborador+agregado+correctamente";
+    let userId;
 
     if (crearCuentaIntranet) {
       const { passwordTemporal, saltHex, hashHex } =
         generarCredencialesTemporales();
 
-      await db.query(
+      const { rows: inserted } = await db.queryRetryIdCollision(
         `INSERT INTO users
-          (id, first_name, last_name, email, password_hash, password_salt, role, email_confirmed, must_change_password, work_area_id, birth_date, phone, is_intranet_user, home_tutorial_seen, employment_country, hire_date, prior_years_credited, progressive_days_override, work_days_per_week)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, TRUE, $8, $9, $10, TRUE, FALSE, $11, $12, $13, $14, $15)`,
+          (first_name, last_name, email, password_hash, password_salt, role, email_confirmed, must_change_password, work_area_id, birth_date, phone, is_intranet_user, home_tutorial_seen, employment_country, hire_date, prior_years_credited, progressive_days_override, work_days_per_week)
+        VALUES ($1, $2, $3, $4, $5, $6, FALSE, TRUE, $7, $8, $9, TRUE, FALSE, $10, $11, $12, $13, $14)
+        RETURNING id`,
         [
-          userId,
           firstName,
           lastName,
           emailClean,
@@ -370,17 +369,18 @@ router.post("/crear", requireRole.administrador(), async (req, res) => {
           workDaysVal,
         ],
       );
+      userId = inserted[0].id;
 
       await enviarClaveTemporal(emailClean, firstName, passwordTemporal);
       successMsg =
         "Usuario+creado+correctamente.+Se+envió+la+clave+temporal+al+correo.";
     } else {
-      await db.query(
+      const { rows: inserted } = await db.queryRetryIdCollision(
         `INSERT INTO users
-          (id, first_name, last_name, email, role, email_confirmed, must_change_password, work_area_id, birth_date, phone, is_intranet_user, employment_country, hire_date, prior_years_credited, progressive_days_override, work_days_per_week)
-        VALUES ($1, $2, $3, $4, $5, FALSE, FALSE, $6, $7, $8, FALSE, $9, $10, $11, $12, $13)`,
+          (first_name, last_name, email, role, email_confirmed, must_change_password, work_area_id, birth_date, phone, is_intranet_user, employment_country, hire_date, prior_years_credited, progressive_days_override, work_days_per_week)
+        VALUES ($1, $2, $3, $4, FALSE, FALSE, $5, $6, $7, FALSE, $8, $9, $10, $11, $12)
+        RETURNING id`,
         [
-          userId,
           firstName,
           lastName,
           emailClean,
@@ -395,6 +395,7 @@ router.post("/crear", requireRole.administrador(), async (req, res) => {
           workDaysVal,
         ],
       );
+      userId = inserted[0].id;
     }
 
     // Genera los períodos de vacaciones si se registró fecha de ingreso.

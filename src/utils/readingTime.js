@@ -41,4 +41,4 @@ function etiquetaDeLectura(html) {
   return `${minutosDeLectura(html)} min de lectura`;
 }
 
-module.exports = { PALABRAS_POR_MINUTO, contarPalabras, minutosDeLectura, etiquetaDeLectura };
+module.exports = { minutosDeLectura, etiquetaDeLectura };

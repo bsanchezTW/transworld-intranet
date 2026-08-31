@@ -154,4 +154,4 @@ async function analyze(buffer) {
   };
 }
 
-module.exports = { analyze, PREVIEW_TARGET_WIDTH, MAX_RASTER_PAGES };
+module.exports = { analyze };

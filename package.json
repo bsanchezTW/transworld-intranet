@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.2",
-    "@getbrevo/brevo": "^3.0.1",
+    "@getbrevo/brevo": "^3.0.4",
     "@napi-rs/canvas": "^1.0.3",
     "@supabase/supabase-js": "^2.112.2",
     "axios": "^1.13.2",
@@ -35,7 +35,7 @@
     "node": ">=22.0.0"
   },
   "description": "Intranet corporativa de Transworld Power & Telecom: comunicación, Academy, RRHH, tickets TI y asistente de IA",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
     "dev": "node src/app.js",
     "dev:cl": "node scripts/dev.js --country=CL --port=3000",

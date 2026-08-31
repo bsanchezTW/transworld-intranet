@@ -293,10 +293,6 @@ function serialize(items) {
   return JSON.stringify(clean);
 }
 
-function byKind(items, kind) {
-  return items.filter((item) => item.kind === kind);
-}
-
 /**
  * Resumen para los "chips" de la tarjeta de noticia ("3 imágenes · 1 PDF").
  */
@@ -327,16 +323,11 @@ function formatSize(bytes) {
 
 module.exports = {
   KIND,
-  KIND_LABEL,
-  EXTENSIONS_BY_KIND,
-  extensionOf,
   kindFor,
   mimeFor,
   generateId,
   normalize,
   normalizeOne,
   serialize,
-  byKind,
   summarize,
-  formatSize,
 };

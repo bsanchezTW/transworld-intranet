@@ -34,4 +34,4 @@ function isPasswordStrongEnough(password) {
   return score >= 3;
 }
 
-module.exports = { analyzePasswordStrength, isPasswordStrongEnough };
+module.exports = { isPasswordStrongEnough };

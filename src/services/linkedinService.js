@@ -3,6 +3,8 @@ const db = require("../db");
 const qs = require("querystring");
 const fileStorage = require("./fileStorage");
 
+const linkedInHttp = axios.create({ timeout: 15000 });
+
 const CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
 const CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
 const ORG_ID = process.env.LINKEDIN_ORG_ID;
@@ -178,7 +180,6 @@ function getAuthorizationUrl(req) {
     scope,
     prompt: "consent",
   });
-  console.log("[LINKEDIN] Iniciando OAuth con redirect_uri:", redirectUri);
   return `https://www.linkedin.com/oauth/v2/authorization?${params.toString()}`;
 }
 
@@ -193,7 +194,7 @@ async function exchangeCodeForToken(code, req) {
   };
 
   try {
-    const response = await axios.post(TOKEN_URL, qs.stringify(values), {
+    const response = await linkedInHttp.post(TOKEN_URL, qs.stringify(values), {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     });
 
@@ -231,13 +232,12 @@ async function refreshAccessToken(req) {
   };
 
   try {
-    const response = await axios.post(TOKEN_URL, qs.stringify(values), {
+    const response = await linkedInHttp.post(TOKEN_URL, qs.stringify(values), {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     });
 
     const { access_token, refresh_token, expires_in } = response.data;
     await saveTokens(access_token, refresh_token || refreshToken, expires_in);
-    console.log("[LINKEDIN] Access token renovado automáticamente.");
     return access_token;
   } catch (error) {
     logLinkedInError("Error renovando token", error);
@@ -397,7 +397,7 @@ async function fetchImageDownloadUrls(accessToken, imageUrns) {
   const idsParam = `List(${uniqueUrns.map((urn) => encodeURIComponent(urn)).join(",")})`;
 
   try {
-    const response = await axios.get(
+    const response = await linkedInHttp.get(
       `https://api.linkedin.com/rest/images?ids=${idsParam}`,
       { headers: getLinkedInHeaders(accessToken) },
     );
@@ -448,7 +448,7 @@ async function parsePosts(response, accessToken) {
 
       posts.push({ text, image_url: imageUrl, link_url: postUrl });
     } catch (parseError) {
-      console.log("[LINKEDIN] Error al procesar un post específico.");
+      console.warn("[LINKEDIN] No se pudo procesar un post:", parseError.message);
     }
   }
 
@@ -456,7 +456,7 @@ async function parsePosts(response, accessToken) {
 }
 
 async function fetchPostByUrn(accessToken, urn) {
-  const response = await axios.get(
+  const response = await linkedInHttp.get(
     `https://api.linkedin.com/rest/posts/${encodeURIComponent(urn)}`,
     { headers: getLinkedInHeaders(accessToken) },
   );
@@ -525,7 +525,7 @@ async function fetchOrganizationPosts(accessToken) {
   assertLinkedInConfig();
   const organizationUrn = `urn:li:organization:${ORG_ID}`;
   const author = encodeURIComponent(organizationUrn);
-  return axios.get(
+  return linkedInHttp.get(
     `https://api.linkedin.com/rest/posts?author=${author}&q=author&count=5&sortBy=LAST_MODIFIED`,
     { headers: getLinkedInHeaders(accessToken) },
   );
@@ -614,9 +614,6 @@ async function fetchPostsFromApi(accessToken) {
     previewFingerprint === cachedFingerprint &&
     cached.every((post) => isUsableCachedImage(post.image_url))
   ) {
-    console.log(
-      "[LINKEDIN] Posts sin cambios; reutilizando imágenes en caché (sin Images API).",
-    );
     const merged = mergeCachedWithApiText(cached, response.data?.elements);
     await syncPostsToDb(merged);
     return merged;
@@ -627,9 +624,6 @@ async function fetchPostsFromApi(accessToken) {
 
   const reused = reuseCachedPostsIfUnchanged(parsed, cached);
   if (reused) {
-    console.log(
-      "[LINKEDIN] Reutilizando imágenes en caché tras fallo/throttle de Images API.",
-    );
     return reused;
   }
 
@@ -684,7 +678,6 @@ async function getCompanyPosts() {
   if (!accessToken) {
     const cached = await getPostsFromDb();
     if (cached.length) {
-      console.log("[LINKEDIN] Sin token activo; usando caché local.");
       return cached;
     }
     return getPlaceholderPosts();
@@ -728,6 +721,4 @@ module.exports = {
   exchangeCodeForToken,
   getCompanyPosts,
   getPlaceholderPosts,
-  getRedirectUri,
-  getReauthUrl,
 };

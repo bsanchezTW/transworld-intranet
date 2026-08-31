@@ -80,4 +80,4 @@ function truncateHtml(html, maxLength) {
   return { html: out, truncated: true };
 }
 
-module.exports = { inlineStyles, truncateHtml, TAG_STYLES };
+module.exports = { inlineStyles, truncateHtml };

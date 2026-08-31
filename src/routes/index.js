@@ -142,15 +142,14 @@ async function updateDataBackground() {
   }
 }
 
-if (isFeatureEnabled("linkedinFeed") && process.env.LINKEDIN_CLIENT_ID) {
-  console.log(
-    "[LINKEDIN] OAuth callback:",
-    linkedinService.getRedirectUri(),
-  );
+function startHomeBackgroundJobs() {
+  updateDataBackground();
+  setInterval(updateDataBackground, 15 * 60 * 1000);
 }
 
-updateDataBackground();
-setInterval(updateDataBackground, 15 * 60 * 1000);
+// Después del listen de Express: si corre al cargar el módulo, Chile pega
+// mindicador + LinkedIn + Storage antes de que Passenger marque la app lista.
+setImmediate(startHomeBackgroundJobs);
 
 function mapNoticiaHomeRow(n) {
   // El mismo resumen de contenido que muestra el módulo de noticias, para que
@@ -294,8 +293,10 @@ async function fetchEventosCarousel() {
   return getEventosCarouselFromCache();
 }
 
-loadEventosCarouselPool().catch((err) => {
-  console.warn("[HOME] Precarga de galería de eventos:", err.message);
+setImmediate(() => {
+  loadEventosCarouselPool().catch((err) => {
+    console.warn("[HOME] Precarga de galería de eventos:", err.message);
+  });
 });
 
 // ==========================================
@@ -1517,7 +1518,7 @@ router.post(
         url_ios = result.secure_url;
       }
 
-      await db.query(
+      await db.queryRetryIdCollision(
         `INSERT INTO applications (name, description, url_pc, url_apk, url_ios, url_web, icon_url, notified) 
          VALUES ($1, $2, $3, $4, $5, $6, $7, false)`,
         [

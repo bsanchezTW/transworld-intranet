@@ -22,6 +22,7 @@ const FEATURE_KEYS = [
   "chileUfIndicator",
   "lunchMenu",
   "claudeAssistant",
+  "supportTickets",
 ];
 
 const FEATURE_MATRIX = {
@@ -34,6 +35,8 @@ const FEATURE_MATRIX = {
     lunchMenu: true,
     // Asistente Claude (FAB + /claude).
     claudeAssistant: true,
+    // Ticketera / área de Soporte TI (/sistemas).
+    supportTickets: true,
   },
   PE: {
     // Sin tabla linkedin_posts ni tokens; no se sincroniza el feed.
@@ -44,6 +47,8 @@ const FEATURE_MATRIX = {
     lunchMenu: false,
     // El asistente Claude no se ofrece en la intranet de Perú.
     claudeAssistant: false,
+    // Perú no opera ticketera ni mesa de ayuda en esta intranet.
+    supportTickets: false,
   },
 };
 

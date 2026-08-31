@@ -35,4 +35,4 @@ function formatPageTitle(title) {
   return `${base} | ${suffix}`;
 }
 
-module.exports = { formatPageTitle, getPageTitleSuffix };
+module.exports = { formatPageTitle };

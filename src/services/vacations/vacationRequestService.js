@@ -132,7 +132,7 @@ async function createRequest({
       ? new Date()
       : null;
 
-  const { rows } = await db.query(
+  const { rows } = await db.queryRetryIdCollision(
     `INSERT INTO vacation_requests
        (user_id, country_code, start_date, end_date, business_days, calendar_days,
         status, requester_notes, fraction_ack_at, policy_warning_ack)
