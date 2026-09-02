@@ -29,7 +29,7 @@ El mismo código se despliega dos veces (`COUNTRY=CL` y `COUNTRY=PE`). Comparten
 | --- | --- | --- |
 | Dominio | `transworld.cl` | `transworld.pe` |
 | Schema | `chile` | `peru` |
-| Login pooler | `postgres.<ref>` (el mismo) | `postgres.<ref>` (el mismo) |
+| Login pooler | `intranet_chile.<ref>` | `intranet_peru.<ref>` |
 | Bucket | `intranet-content` | `intranet-content-pe` |
 | Cookie | `tw_sid_cl` | `tw_sid_pe` |
 
@@ -58,7 +58,7 @@ npm run dev:cl   # http://localhost:3000  Chile
 npm run dev:pe   # http://localhost:3001  Perú (puede correr a la vez)
 ```
 
-El lanzador pone `COUNTRY`, puerto, `APP_BASE_URL` y el bucket. No hace falta un `.env` por país. En cPanel cada dominio declara `COUNTRY` y `APP_BASE_URL`; el resto puede ser el mismo.
+El lanzador pone `COUNTRY`, puerto, `APP_BASE_URL`, bucket y el usuario de Postgres del país. En cPanel / Render cada dominio declara `COUNTRY`, `APP_BASE_URL`, el bucket y `DB_USER` del país (`intranet_chile.<ref>` / `intranet_peru.<ref>`). El resto (host, password de cada rol, Supabase, Brevo) puede ser el mismo archivo como base.
 
 | Script | Qué hace |
 |--------|----------|
@@ -113,7 +113,7 @@ SESSION_SECRET=
 
 DB_HOST=aws-1-us-west-2.pooler.supabase.com
 DB_PORT=5432
-DB_USER=postgres.dgadjvptxhotjylwsglx
+DB_USER=intranet_chile.dgadjvptxhotjylwsglx
 DB_PASSWORD=
 DB_NAME=postgres
 DB_SSL=true

@@ -8,6 +8,8 @@ const {
   getCountryDbBinding,
   searchPathStatement,
   extractDatabaseRole,
+  resolveCountryPoolerUser,
+  applyCountryPoolerUser,
   assertCountryDatabaseRole,
   assertCountryStorageBucket,
   assertCountrySupabaseProject,
@@ -83,6 +85,23 @@ describe("aislamiento Chile / Perú en el mismo proyecto", () => {
         }),
       /otro país/,
     );
+    assert.equal(
+      resolveCountryPoolerUser("CL", "postgres.dgadjvptxhotjylwsglx"),
+      "intranet_chile.dgadjvptxhotjylwsglx",
+    );
+    assert.equal(
+      resolveCountryPoolerUser("PE", "postgres.dgadjvptxhotjylwsglx"),
+      "intranet_peru.dgadjvptxhotjylwsglx",
+    );
+    assert.equal(
+      resolveCountryPoolerUser("PE", "intranet_chile.dgadjvptxhotjylwsglx"),
+      "intranet_peru.dgadjvptxhotjylwsglx",
+    );
+    const remapped = applyCountryPoolerUser({
+      COUNTRY: "CL",
+      DB_USER: "postgres.dgadjvptxhotjylwsglx",
+    });
+    assert.equal(remapped, "intranet_chile.dgadjvptxhotjylwsglx");
     assert.throws(
       () =>
         assertCountryDatabaseRole({

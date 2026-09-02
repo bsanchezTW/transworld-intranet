@@ -24,7 +24,7 @@ const { getCountryConfig, isValidCountryCode } = require("../src/config/country"
 const {
   defaultStorageBucketForCountry,
   getCountryDbBinding,
-  SHARED_INTRANET_PROJECT_REF,
+  applyCountryPoolerUser,
 } = require("../src/config/supabaseProjects");
 
 const ROOT = path.join(__dirname, "..");
@@ -68,14 +68,8 @@ process.env.APP_BASE_URL = baseUrl;
 process.env.SUPABASE_STORAGE_BUCKET = defaultStorageBucketForCountry(country);
 process.env.MAIL_FROM = process.env.MAIL_FROM || config.noReplyEmail;
 
-// El password del .env local corresponde al rol del país (intranet_chile /
-// intranet_peru), no al usuario postgres del pooler. Si DB_USER viene como
-// postgres.<ref> o como el rol del otro país, lo alineamos al de esta instancia.
 const dbBinding = getCountryDbBinding(country);
-const currentDbUser = String(process.env.DB_USER || "").trim();
-const poolerMatch = currentDbUser.match(/^([a-z0-9_]+)\.([a-z0-9-]{8,})$/i);
-const projectRef = poolerMatch?.[2] || SHARED_INTRANET_PROJECT_REF;
-process.env.DB_USER = `${dbBinding.role}.${projectRef}`;
+applyCountryPoolerUser(process.env);
 
 if (!fs.existsSync(path.join(ROOT, ".env")) && !fs.existsSync(path.join(ROOT, ".env.local"))) {
   console.warn(

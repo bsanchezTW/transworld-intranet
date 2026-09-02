@@ -25,7 +25,10 @@ function loadEnvFiles() {
 loadEnvFiles();
 
 const { COUNTRY_CODES, isValidCountryCode } = require("./country");
-const { assertCountryDatabaseRole } = require("./supabaseProjects");
+const {
+  assertCountryDatabaseRole,
+  applyCountryPoolerUser,
+} = require("./supabaseProjects");
 
 const errors = [];
 
@@ -86,6 +89,7 @@ try {
 }
 
 if (isValidCountryCode(process.env.COUNTRY)) {
+  applyCountryPoolerUser(process.env);
   try {
     assertCountryDatabaseRole(process.env);
   } catch (error) {

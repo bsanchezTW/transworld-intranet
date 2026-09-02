@@ -6,8 +6,9 @@ const KNOWN_COUNTRY_PROJECT_REFS = Object.freeze({
 });
 
 // Un repo, dos procesos (dominios). Misma base; el aislamiento es el schema.
-// El pooler usa el usuario compartido postgres.<ref>. Los roles intranet_*
-// son opcionales (least privilege), no obligatorios para arrancar.
+// El login del pooler es el rol del país: intranet_chile.<ref> / intranet_peru.<ref>.
+// postgres.<ref> se reescribe al arrancar al rol de COUNTRY (la clave del .env
+// es la de esos roles, no la del usuario postgres del dashboard).
 const SHARED_POOLER_ROLE = "postgres";
 
 const COUNTRY_BINDINGS = Object.freeze({
@@ -206,6 +207,38 @@ function defaultStorageBucketForCountry(countryValue) {
   return COUNTRY_BINDINGS[country].bucket;
 }
 
+function resolveCountryPoolerUser(countryValue, currentUser) {
+  const { role } = getCountryDbBinding(countryValue);
+  const current = String(currentUser || "").trim();
+  const match = current.match(/^([a-z0-9_]+)\.([a-z0-9-]{8,})$/i);
+  const ref = match?.[2] || SHARED_INTRANET_PROJECT_REF;
+  return `${role}.${ref}`;
+}
+
+function applyCountryPoolerUser(env = process.env) {
+  const country = String(env.COUNTRY || "").trim().toUpperCase();
+  if (!COUNTRY_BINDINGS[country]) return null;
+
+  if (env.DB_USER?.trim()) {
+    env.DB_USER = resolveCountryPoolerUser(country, env.DB_USER);
+  }
+
+  if (env.DATABASE_URL?.trim()) {
+    try {
+      const parsed = new URL(env.DATABASE_URL.trim());
+      parsed.username = resolveCountryPoolerUser(
+        country,
+        decodeURIComponent(parsed.username),
+      );
+      env.DATABASE_URL = parsed.toString();
+    } catch {
+      // assertCountryDatabaseRole valida el valor original si no se puede parsear.
+    }
+  }
+
+  return env.DB_USER || extractDatabaseRole(env);
+}
+
 function searchPathStatement(countryValue) {
   const { schema } = getCountryDbBinding(countryValue);
   return `SET search_path TO ${schema}`;
@@ -223,6 +256,8 @@ module.exports = {
   resolveExpectedProjectRef,
   assertCountrySupabaseProject,
   extractDatabaseRole,
+  resolveCountryPoolerUser,
+  applyCountryPoolerUser,
   assertCountryDatabaseRole,
   assertCountryStorageBucket,
   defaultStorageBucketForCountry,
