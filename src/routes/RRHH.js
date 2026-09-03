@@ -31,12 +31,6 @@ const {
 const { validateEmail } = require("../utils/email");
 const { mapPersonaForView } = require("../utils/schemaMappers");
 const balanceService = require("../services/vacations/vacationBalanceService");
-const { getCurrentCountry } = require("../config/country");
-
-function belongsToThisInstance(employmentCountry) {
-  const code = String(employmentCountry || "").trim().toUpperCase();
-  return !code || code === getCurrentCountry();
-}
 
 function parsePriorYearsCredited(value) {
   const n = Number(value);
@@ -252,12 +246,11 @@ router.get("/personal", async (req, res) => {
       at.color AS area_color
     FROM users u
     LEFT JOIN work_areas at ON at.id = u.work_area_id
-    WHERE u.employment_country = $1
     ORDER BY u.last_name ASC NULLS LAST, u.first_name ASC
   `;
 
   try {
-    const { rows: results } = await db.query(sql, [getCurrentCountry()]);
+    const { rows: results } = await db.query(sql);
     const mostrarColumnaRol = Boolean(res.locals.isAdministrador);
 
     const personasFormateadas = results.map((p) => {
@@ -349,7 +342,6 @@ router.post("/crear", requireRole.administrador(), async (req, res) => {
   } = req.body;
 
   try {
-    const countryVal = getCurrentCountry();
     const hireVal = hire_date && String(hire_date).trim() ? hire_date : null;
     const priorYearsVal = parsePriorYearsCredited(prior_years_credited);
     const progressiveOverrideVal = parseProgressiveOverride(progressive_days_override);
@@ -416,8 +408,8 @@ router.post("/crear", requireRole.administrador(), async (req, res) => {
 
       const { rows: inserted } = await db.queryRetryIdCollision(
         `INSERT INTO users
-          (first_name, last_name, email, password_hash, password_salt, role, email_confirmed, must_change_password, work_area_id, birth_date, phone, is_intranet_user, home_tutorial_seen, employment_country, hire_date, prior_years_credited, progressive_days_override, work_days_per_week)
-        VALUES ($1, $2, $3, $4, $5, $6, FALSE, TRUE, $7, $8, $9, TRUE, FALSE, $10, $11, $12, $13, $14)
+          (first_name, last_name, email, password_hash, password_salt, role, email_confirmed, must_change_password, work_area_id, birth_date, phone, is_intranet_user, home_tutorial_seen, hire_date, prior_years_credited, progressive_days_override, work_days_per_week)
+        VALUES ($1, $2, $3, $4, $5, $6, FALSE, TRUE, $7, $8, $9, TRUE, FALSE, $10, $11, $12, $13)
         RETURNING id`,
         [
           firstName,
@@ -429,7 +421,6 @@ router.post("/crear", requireRole.administrador(), async (req, res) => {
           areaId,
           fechaVal,
           telefonoVal,
-          countryVal,
           hireVal,
           priorYearsVal,
           progressiveOverrideVal,
@@ -444,8 +435,8 @@ router.post("/crear", requireRole.administrador(), async (req, res) => {
     } else {
       const { rows: inserted } = await db.queryRetryIdCollision(
         `INSERT INTO users
-          (first_name, last_name, email, role, email_confirmed, must_change_password, work_area_id, birth_date, phone, is_intranet_user, employment_country, hire_date, prior_years_credited, progressive_days_override, work_days_per_week)
-        VALUES ($1, $2, $3, $4, FALSE, FALSE, $5, $6, $7, FALSE, $8, $9, $10, $11, $12)
+          (first_name, last_name, email, role, email_confirmed, must_change_password, work_area_id, birth_date, phone, is_intranet_user, hire_date, prior_years_credited, progressive_days_override, work_days_per_week)
+        VALUES ($1, $2, $3, $4, FALSE, FALSE, $5, $6, $7, FALSE, $8, $9, $10, $11)
         RETURNING id`,
         [
           firstName,
@@ -455,7 +446,6 @@ router.post("/crear", requireRole.administrador(), async (req, res) => {
           areaId,
           fechaVal,
           telefonoVal,
-          countryVal,
           hireVal,
           priorYearsVal,
           progressiveOverrideVal,
@@ -498,9 +488,6 @@ router.get("/editar/:id", requireRole.administrador(), async (req, res) => {
     const { rows } = userResult;
 
     if (rows.length === 0) return res.status(404).send("Usuario no encontrado");
-    if (!belongsToThisInstance(rows[0].employment_country)) {
-      return res.status(404).send("Usuario no encontrado");
-    }
 
     const phoneRaw = rows[0].phone ?? rows[0].telefono;
     const phoneDisplay =
@@ -550,7 +537,6 @@ router.post(
     } = req.body;
 
     try {
-      const countryVal = getCurrentCountry();
       const hireVal = hire_date && String(hire_date).trim() ? hire_date : null;
       const priorYearsVal = parsePriorYearsCredited(prior_years_credited);
       const progressiveOverrideVal = parseProgressiveOverride(progressive_days_override);
@@ -610,16 +596,13 @@ router.post(
       }
 
       const { rows: prev } = await db.query(
-        "SELECT photo AS foto, password_hash, email_confirmed, role, email, employment_country FROM users WHERE id = $1",
+        "SELECT photo AS foto, password_hash, email_confirmed, role, email FROM users WHERE id = $1",
         [id],
       );
       if (!prev.length) {
         return redirectPersonalEditarError(res, id, "Usuario no encontrado.");
       }
       const prevUser = prev[0];
-      if (!belongsToThisInstance(prevUser.employment_country)) {
-        return redirectPersonalEditarError(res, id, "Usuario no encontrado.");
-      }
       const prevEmail = prevUser.email ? String(prevUser.email).trim() : "";
       if (prevEmail && !emailClean) {
         return redirectPersonalEditarError(
@@ -659,11 +642,10 @@ router.post(
         "birth_date=$5",
         "phone=$6",
         "email=$7",
-        "employment_country=$8",
-        "hire_date=$9",
-        "prior_years_credited=$10",
-        "progressive_days_override=$11",
-        "work_days_per_week=$12",
+        "hire_date=$8",
+        "prior_years_credited=$9",
+        "progressive_days_override=$10",
+        "work_days_per_week=$11",
       ];
       const values = [
         firstName,
@@ -673,7 +655,6 @@ router.post(
         fechaVal,
         telefonoVal,
         emailClean,
-        countryVal,
         hireVal,
         priorYearsVal,
         progressiveOverrideVal,
@@ -749,10 +730,10 @@ router.post("/eliminar/:id", requireRole.administrador(), async (req, res) => {
   const { id } = req.params;
   try {
     const { rows } = await db.query(
-      "SELECT photo AS foto, employment_country FROM users WHERE id = $1",
+      "SELECT photo AS foto FROM users WHERE id = $1",
       [id],
     );
-    if (!rows.length || !belongsToThisInstance(rows[0].employment_country)) {
+    if (!rows.length) {
       return res.status(404).send("Usuario no encontrado");
     }
     await userPhotoStorage.removeUserPhoto(id, rows[0].foto);
@@ -838,7 +819,6 @@ router.post(
 
 router.get("/areas", async (req, res) => {
   try {
-    const country = getCurrentCountry();
     const [areasResult, peopleResult] = await Promise.all([
       db.query(
         "SELECT id, area_name, color FROM work_areas ORDER BY area_name ASC",
@@ -848,9 +828,7 @@ router.get("/areas", async (req, res) => {
                 at.area_name
          FROM users u
          LEFT JOIN work_areas at ON at.id = u.work_area_id
-         WHERE u.employment_country = $1
          ORDER BY u.last_name ASC NULLS LAST, u.first_name ASC`,
-        [country],
       ),
     ]);
 
@@ -1005,7 +983,7 @@ router.post(
       const [areaResult, userResult] = await Promise.all([
         db.query("SELECT id FROM work_areas WHERE id = $1", [areaId]),
         db.query(
-          "SELECT id, work_area_id, employment_country FROM users WHERE id = $1",
+          "SELECT id, work_area_id FROM users WHERE id = $1",
           [userId],
         ),
       ]);
@@ -1013,13 +991,13 @@ router.post(
         return redirectAreasError(res, "El área no existe.");
       }
       const user = userResult.rows[0];
-      if (!user || !belongsToThisInstance(user.employment_country)) {
+      if (!user) {
         return redirectAreasError(res, "Colaborador no encontrado.");
       }
 
       await db.query(
-        "UPDATE users SET work_area_id = $1 WHERE id = $2 AND employment_country = $3",
-        [areaId, userId, getCurrentCountry()],
+        "UPDATE users SET work_area_id = $1 WHERE id = $2",
+        [areaId, userId],
       );
       return redirectAreasOk(res, "Colaborador asignado al área.");
     } catch (err) {
@@ -1043,8 +1021,8 @@ router.post(
       const { rowCount } = await db.query(
         `UPDATE users
          SET work_area_id = NULL
-         WHERE id = $1 AND work_area_id = $2 AND employment_country = $3`,
-        [userId, areaId, getCurrentCountry()],
+         WHERE id = $1 AND work_area_id = $2`,
+        [userId, areaId],
       );
       if (!rowCount) {
         return redirectAreasError(res, "Colaborador no encontrado en esta área.");

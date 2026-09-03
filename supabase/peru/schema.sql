@@ -72,8 +72,6 @@ CREATE TABLE IF NOT EXISTS peru.users (
   phone numeric,
   home_tutorial_seen boolean NOT NULL DEFAULT true,
   last_login_at timestamp with time zone,
-  employment_country character varying(2) NOT NULL DEFAULT 'PE'
-    CHECK (employment_country IN ('CL', 'PE')),
   hire_date date,
   manager_user_id integer REFERENCES peru.users(id) ON DELETE SET NULL,
   prior_years_credited numeric(4,1) NOT NULL DEFAULT 0,
@@ -87,7 +85,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique_idx
   ON peru.users (LOWER(TRIM(email)))
   WHERE email IS NOT NULL AND TRIM(email) <> '';
 
-CREATE INDEX IF NOT EXISTS idx_users_employment_country ON peru.users (employment_country);
 CREATE INDEX IF NOT EXISTS idx_users_hire_date ON peru.users (hire_date) WHERE hire_date IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS peru.applications (
@@ -463,8 +460,9 @@ BEGIN
 END$$;
 
 -- IDs: 6 dígitos aleatorios (100000-999999) en entidades visibles (users,
--- tickets, noticias, cursos, vacaciones, eventos, apps). IDENTITY secuencial
--- en internas/catálogo (logs, mensajes Claude, respuestas, áreas, feriados).
+-- tickets, noticias, cursos, vacaciones, eventos, apps). 4 dígitos aleatorios
+-- (1111-9999) en work_areas. IDENTITY secuencial en internas/catálogo (logs,
+-- mensajes Claude, respuestas, feriados).
 -- ensure_id_strategy remapea filas y deja trigger o IDENTITY. No llamar en
 -- cada arranque de Node: toma ACCESS EXCLUSIVE en todo el schema.
 
@@ -506,6 +504,44 @@ BEGIN
 END;
 $fn$;
 
+CREATE OR REPLACE FUNCTION peru.next_four_digit_id(p_table text)
+RETURNS integer
+LANGUAGE plpgsql
+AS $fn$
+DECLARE
+  candidate integer;
+  found_id integer;
+  i integer;
+BEGIN
+  IF p_table IS NULL OR p_table !~ '^[a-z0-9_]+$' THEN
+    RAISE EXCEPTION 'tabla inválida para ID de 4 dígitos';
+  END IF;
+  FOR i IN 1..80 LOOP
+    candidate := 1111 + floor(random() * 8889)::integer;
+    found_id := NULL;
+    EXECUTE format('SELECT 1 FROM peru.%I WHERE id = $1', p_table)
+      INTO found_id
+      USING candidate;
+    IF found_id IS NULL THEN
+      RETURN candidate;
+    END IF;
+  END LOOP;
+  RAISE EXCEPTION 'No fue posible generar un ID de 4 dígitos para peru.%', p_table;
+END;
+$fn$;
+
+CREATE OR REPLACE FUNCTION peru.assign_four_digit_id()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $fn$
+BEGIN
+  IF NEW.id IS NULL OR NEW.id < 1111 OR NEW.id > 9999 THEN
+    NEW.id := peru.next_four_digit_id(TG_TABLE_NAME);
+  END IF;
+  RETURN NEW;
+END;
+$fn$;
+
 CREATE OR REPLACE FUNCTION peru.ensure_id_strategy()
 RETURNS void
 LANGUAGE plpgsql
@@ -518,9 +554,12 @@ DECLARE
     'question_options', 'events', 'applications', 'vacation_requests',
     'vacation_periods'
   ];
+  four_digit_tables constant text[] := ARRAY[
+    'work_areas'
+  ];
   identity_tables constant text[] := ARRAY[
     'change_log', 'claude_conversations', 'claude_messages', 'ticket_replies',
-    'vacation_balance_adjustments', 'work_areas', 'lunch_menu', 'public_holidays',
+    'vacation_balance_adjustments', 'lunch_menu', 'public_holidays',
     'documents', 'other_documents', 'study_materials', 'event_photos',
     'linkedin_posts', 'user_course_progress'
   ];
@@ -725,6 +764,7 @@ BEGIN
        AND min(a.atttypid) = 'integer'::regtype
   LOOP
     EXECUTE format('DROP TRIGGER IF EXISTS trg_six_digit_id ON %I.%I', p_schema, t.relname);
+    EXECUTE format('DROP TRIGGER IF EXISTS trg_four_digit_id ON %I.%I', p_schema, t.relname);
   END LOOP;
 
   FOREACH tname IN ARRAY six_digit_tables LOOP
@@ -751,6 +791,34 @@ BEGIN
 
     EXECUTE format(
       'CREATE TRIGGER trg_six_digit_id BEFORE INSERT ON %I.%I FOR EACH ROW EXECUTE FUNCTION peru.assign_six_digit_id()',
+      p_schema, tname
+    );
+  END LOOP;
+
+  FOREACH tname IN ARRAY four_digit_tables LOOP
+    SELECT EXISTS (
+      SELECT 1 FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = p_schema AND c.relkind = 'r' AND c.relname = tname
+    ) INTO table_ok;
+    IF NOT table_ok THEN
+      CONTINUE;
+    END IF;
+
+    seq_name := pg_get_serial_sequence(format('%I.%I', p_schema, tname), 'id');
+    EXECUTE format('ALTER TABLE %I.%I ALTER COLUMN id DROP DEFAULT', p_schema, tname);
+    BEGIN
+      EXECUTE format('ALTER TABLE %I.%I ALTER COLUMN id DROP IDENTITY IF EXISTS', p_schema, tname);
+    EXCEPTION
+      WHEN undefined_object THEN
+        NULL;
+    END;
+    IF seq_name IS NOT NULL THEN
+      EXECUTE format('DROP SEQUENCE IF EXISTS %s', seq_name);
+    END IF;
+
+    EXECUTE format(
+      'CREATE TRIGGER trg_four_digit_id BEFORE INSERT ON %I.%I FOR EACH ROW EXECUTE FUNCTION peru.assign_four_digit_id()',
       p_schema, tname
     );
   END LOOP;
@@ -814,16 +882,22 @@ $fn$;
 
 ALTER FUNCTION peru.next_six_digit_id(text) SET search_path = peru, pg_temp;
 ALTER FUNCTION peru.assign_six_digit_id() SET search_path = peru, pg_temp;
+ALTER FUNCTION peru.next_four_digit_id(text) SET search_path = peru, pg_temp;
+ALTER FUNCTION peru.assign_four_digit_id() SET search_path = peru, pg_temp;
 ALTER FUNCTION peru.ensure_id_strategy() SET search_path = peru, pg_temp;
 ALTER FUNCTION peru.ensure_six_digit_ids() SET search_path = peru, pg_temp;
 
 REVOKE ALL ON FUNCTION peru.next_six_digit_id(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION peru.assign_six_digit_id() FROM PUBLIC;
+REVOKE ALL ON FUNCTION peru.next_four_digit_id(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION peru.assign_four_digit_id() FROM PUBLIC;
 REVOKE ALL ON FUNCTION peru.ensure_id_strategy() FROM PUBLIC;
 REVOKE ALL ON FUNCTION peru.ensure_six_digit_ids() FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION peru.next_six_digit_id(text) TO intranet_peru;
 GRANT EXECUTE ON FUNCTION peru.assign_six_digit_id() TO intranet_peru;
+GRANT EXECUTE ON FUNCTION peru.next_four_digit_id(text) TO intranet_peru;
+GRANT EXECUTE ON FUNCTION peru.assign_four_digit_id() TO intranet_peru;
 GRANT EXECUTE ON FUNCTION peru.ensure_id_strategy() TO intranet_peru;
 GRANT EXECUTE ON FUNCTION peru.ensure_six_digit_ids() TO intranet_peru;
 
@@ -832,6 +906,8 @@ BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
     GRANT EXECUTE ON FUNCTION peru.next_six_digit_id(text) TO service_role;
     GRANT EXECUTE ON FUNCTION peru.assign_six_digit_id() TO service_role;
+    GRANT EXECUTE ON FUNCTION peru.next_four_digit_id(text) TO service_role;
+    GRANT EXECUTE ON FUNCTION peru.assign_four_digit_id() TO service_role;
     GRANT EXECUTE ON FUNCTION peru.ensure_id_strategy() TO service_role;
     GRANT EXECUTE ON FUNCTION peru.ensure_six_digit_ids() TO service_role;
   END IF;

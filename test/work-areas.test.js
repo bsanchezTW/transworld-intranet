@@ -3,6 +3,9 @@ const assert = require("node:assert/strict");
 
 const {
   DEFAULT_COLOR,
+  WORK_AREA_ID_MIN,
+  WORK_AREA_ID_MAX,
+  isWorkAreaPublicId,
   WORK_AREA_COLORS,
   hslToHex,
   hexToHsl,
@@ -12,6 +15,21 @@ const {
   getWorkAreaPillClass,
   enrichAreaWithPill,
 } = require("../src/constants/workAreas");
+
+describe("workAreas — id de 4 dígitos", () => {
+  it("acepta solo enteros entre 1111 y 9999", () => {
+    assert.equal(WORK_AREA_ID_MIN, 1111);
+    assert.equal(WORK_AREA_ID_MAX, 9999);
+    assert.equal(isWorkAreaPublicId(1111), true);
+    assert.equal(isWorkAreaPublicId(9999), true);
+    assert.equal(isWorkAreaPublicId(4721), true);
+    assert.equal(isWorkAreaPublicId(1), false);
+    assert.equal(isWorkAreaPublicId(3), false);
+    assert.equal(isWorkAreaPublicId(1110), false);
+    assert.equal(isWorkAreaPublicId(10000), false);
+    assert.equal(isWorkAreaPublicId("4820"), true);
+  });
+});
 
 describe("workAreas — color persistido", () => {
   it("normaliza hex de 6 dígitos con o sin numeral", () => {

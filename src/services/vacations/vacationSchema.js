@@ -14,14 +14,15 @@ const { getCurrentCountry } = require("../../config/country");
  */
 
 const DDL_STATEMENTS = [
-  // users — campos laborales
-  `ALTER TABLE users ADD COLUMN IF NOT EXISTS employment_country VARCHAR(2) NOT NULL DEFAULT 'CL' CHECK (employment_country IN ('CL', 'PE'))`,
+  // users — campos laborales. El país lo fija el schema de la instancia
+  // (chile / peru), no una columna por colaborador.
+  `DROP INDEX IF EXISTS idx_users_employment_country`,
+  `ALTER TABLE users DROP COLUMN IF EXISTS employment_country`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS hire_date DATE`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS manager_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS prior_years_credited NUMERIC(4,1) NOT NULL DEFAULT 0`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS progressive_days_override NUMERIC(4,1)`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS work_days_per_week SMALLINT NOT NULL DEFAULT 5 CHECK (work_days_per_week BETWEEN 3 AND 6)`,
-  `CREATE INDEX IF NOT EXISTS idx_users_employment_country ON users (employment_country)`,
   `CREATE INDEX IF NOT EXISTS idx_users_hire_date ON users (hire_date) WHERE hire_date IS NOT NULL`,
 
   // vacation_periods — PK 6 dígitos (trigger en schema.sql)

@@ -8,7 +8,7 @@
 %>
 
 <link rel="stylesheet" href="/css/personal.css?v=20260902">
-<link rel="stylesheet" href="/css/areas.css?v=20260902b">
+<link rel="stylesheet" href="/css/areas.css?v=20260903">
 
 <div id="popup" class="popup-notification <%= successMsg ? 'success show' : errorMsg ? 'error show' : '' %>" role="status">
   <span><%= successMsg || errorMsg || '' %></span>
@@ -49,6 +49,7 @@
             <div class="area-card__title">
               <span class="area-swatch-dot" style="background: <%= area.color %>" aria-hidden="true"></span>
               <span class="<%= area.pillClass %>" style="<%= area.pillStyle %>"><%= area.area_name %></span>
+              <span class="area-card__id" title="ID del área"><%= area.id %></span>
             </div>
             <span class="area-card__count"><%= area.memberCount %> <%= area.memberCount === 1 ? 'colaborador' : 'colaboradores' %></span>
             <% if (puedeEditar) { %>

@@ -40,7 +40,7 @@ function addYears(value, years) {
 
 async function getUserVacationProfile(userId) {
   const { rows } = await db.query(
-    `SELECT id, first_name, last_name, email, employment_country, hire_date,
+    `SELECT id, first_name, last_name, email, hire_date,
             manager_user_id, prior_years_credited, progressive_days_override,
             work_days_per_week
      FROM users WHERE id = $1`,

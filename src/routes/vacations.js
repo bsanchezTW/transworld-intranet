@@ -198,12 +198,6 @@ router.get("/gestion/:userId", requireRole.administrador(), async (req, res) => 
   try {
     const profile = await balanceService.getUserVacationProfile(userId);
     if (!profile) return res.status(404).send(VACATION_MESSAGES.collaboratorNotFound);
-    if (
-      profile.employment_country &&
-      profile.employment_country !== getCurrentCountry()
-    ) {
-      return res.status(404).send(VACATION_MESSAGES.collaboratorNotFound);
-    }
     if (profile.hire_date) await balanceService.recalculatePeriods(userId);
 
     const [summary, periods, requests] = await Promise.all([
@@ -237,11 +231,7 @@ router.post("/gestion/:userId/ajustar", requireRole.administrador(), async (req,
   const backTo = `/RRHH/vacaciones/gestion/${encodeURIComponent(userId)}`;
   try {
     const profile = await balanceService.getUserVacationProfile(userId);
-    if (
-      !profile ||
-      (profile.employment_country &&
-        profile.employment_country !== getCurrentCountry())
-    ) {
+    if (!profile) {
       return redirectErr(res, "/RRHH/vacaciones/gestion", VACATION_MESSAGES.collaboratorNotFound);
     }
     const delta = Number(days_delta);
@@ -273,11 +263,7 @@ router.post("/gestion/:userId/periodo/:periodId/record", requireRole.administrad
   const backTo = `/RRHH/vacaciones/gestion/${encodeURIComponent(userId)}`;
   try {
     const profile = await balanceService.getUserVacationProfile(userId);
-    if (
-      !profile ||
-      (profile.employment_country &&
-        profile.employment_country !== getCurrentCountry())
-    ) {
+    if (!profile) {
       return redirectErr(res, "/RRHH/vacaciones/gestion", VACATION_MESSAGES.collaboratorNotFound);
     }
     const met = record_met === "on" || record_met === "1" || record_met === "true";

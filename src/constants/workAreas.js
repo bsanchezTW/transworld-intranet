@@ -2,9 +2,19 @@
  * Colores de áreas de trabajo: hex persistido en work_areas.color.
  * Los chips derivan fondo y texto de matiz/saturación para que el modo
  * oscuro no necesite un par de hex por área.
+ *
+ * El id público es un entero de 4 dígitos (1111–9999), no IDENTITY 1, 2, 3.
  */
 
 const DEFAULT_COLOR = "#5a6879";
+
+const WORK_AREA_ID_MIN = 1111;
+const WORK_AREA_ID_MAX = 9999;
+
+function isWorkAreaPublicId(id) {
+  const n = Number(id);
+  return Number.isInteger(n) && n >= WORK_AREA_ID_MIN && n <= WORK_AREA_ID_MAX;
+}
 
 const WORK_AREA_HSL = {
   Informática: { h: 142, s: 55 },
@@ -151,6 +161,9 @@ function enrichAreaWithPill(area) {
 
 module.exports = {
   DEFAULT_COLOR,
+  WORK_AREA_ID_MIN,
+  WORK_AREA_ID_MAX,
+  isWorkAreaPublicId,
   WORK_AREA_HSL,
   WORK_AREA_COLORS,
   COLOR_PALETTE,

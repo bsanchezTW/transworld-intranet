@@ -27,23 +27,11 @@ function isSupportedCountry(countryCode) {
 }
 
 /**
- * País de vacaciones de un colaborador. Punto único de resolución.
- *
- * Lo define la instancia (`COUNTRY`), no un campo del formulario. Si el
- * colaborador tiene employment_country de otro país, se rechaza: aplicar las
- * reglas legales ajenas produce un saldo incorrecto.
+ * País de vacaciones de un colaborador. Lo define la instancia (`COUNTRY`):
+ * cada schema solo tiene trabajadores de ese país.
  */
-function resolveCountryForUser(user) {
-  const instanceCountry = getCurrentCountry();
-  const code = String(user?.employment_country || "").toUpperCase();
-
-  if (code && code !== instanceCountry) {
-    throw new Error(
-      `El colaborador ${user?.id ?? "(sin id)"} pertenece a ${code}, no a esta instancia (${instanceCountry}).`,
-    );
-  }
-
-  return instanceCountry;
+function resolveCountryForUser() {
+  return getCurrentCountry();
 }
 
 /** Estrategia que corresponde a un colaborador. */
