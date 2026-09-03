@@ -8,7 +8,7 @@
 <div class="vac-wrap">
   <div class="vac-header">
     <div>
-      <h2 class="vac-title"><%= nombre %> <span class="vac-country"><%= countryLabel %></span></h2>
+      <h2 class="vac-title"><%= nombre %></h2>
       <p class="vac-subtitle">
         Ingreso: <%= profile.hire_date ? new Date(profile.hire_date).toISOString().split('T')[0] : 'no registrado' %>
         · Jornada: <%= profile.work_days_per_week || 5 %> días/semana

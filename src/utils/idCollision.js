@@ -1,7 +1,7 @@
 /**
- * Distingue colisión del PK `id` (reintentable: el trigger de 6 dígitos
- * puede devolver el mismo candidato a dos INSERT paralelos) de otros
- * UNIQUE (email, slug, etc.), que no se reintentan.
+ * Distingue colisión del PK `id` (reintentable: los triggers de 6 y 4
+ * dígitos pueden devolver el mismo candidato a dos INSERT paralelos) de
+ * otros UNIQUE (email, slug, etc.), que no se reintentan.
  */
 function isIdPrimaryKeyCollision(err) {
   if (!err || err.code !== "23505") return false;
