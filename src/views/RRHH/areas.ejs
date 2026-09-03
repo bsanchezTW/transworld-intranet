@@ -1,0 +1,183 @@
+<%
+  const puedeEditar = typeof isAdministrador !== 'undefined' && isAdministrador;
+  const listado = areas || [];
+  const palette = colorPalette || [];
+  const successMsg = (typeof success !== 'undefined' && success) ? success : null;
+  const errorMsg   = (typeof error   !== 'undefined' && error)   ? error   : null;
+  const totalMiembros = listado.reduce((n, a) => n + (a.memberCount || 0), 0);
+%>
+
+<link rel="stylesheet" href="/css/personal.css?v=20260902">
+<link rel="stylesheet" href="/css/areas.css?v=20260902b">
+
+<div id="popup" class="popup-notification <%= successMsg ? 'success show' : errorMsg ? 'error show' : '' %>" role="status">
+  <span><%= successMsg || errorMsg || '' %></span>
+  <button type="button" class="popup-close" data-popup-close aria-label="Cerrar aviso">&times;</button>
+</div>
+
+<div class="contenedor-areas">
+  <div class="page-header page-header--toolbar">
+    <div class="page-header__text">
+      <h2 class="page-title">Áreas de trabajo</h2>
+      <p class="page-description">
+        <span id="contadorAreas"><%= listado.length %></span> áreas ·
+        <%= totalMiembros %> colaboradores asignados
+        <% if (unassigned && unassigned.length) { %>
+          · <%= unassigned.length %> sin área
+        <% } %>
+      </p>
+    </div>
+    <div class="page-header-actions">
+      <a href="/RRHH" class="link-volver">← Volver al menú</a>
+      <% if (puedeEditar) { %>
+      <button type="button" class="btn-agregar-persona" data-abrir-crear>
+        <span aria-hidden="true">+</span> Agregar área
+      </button>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (!listado.length && !(unassigned && unassigned.length)) { %>
+    <div class="panel area-empty-panel">
+      <p class="personal-empty">No hay áreas de trabajo registradas.</p>
+    </div>
+  <% } else { %>
+    <div class="areas-grid">
+      <% listado.forEach(area => { %>
+        <article class="area-card" style="--area-color: <%= area.color %>">
+          <div class="area-card__head">
+            <div class="area-card__title">
+              <span class="area-swatch-dot" style="background: <%= area.color %>" aria-hidden="true"></span>
+              <span class="<%= area.pillClass %>" style="<%= area.pillStyle %>"><%= area.area_name %></span>
+            </div>
+            <span class="area-card__count"><%= area.memberCount %> <%= area.memberCount === 1 ? 'colaborador' : 'colaboradores' %></span>
+            <% if (puedeEditar) { %>
+            <div class="area-card__actions">
+              <button type="button" class="area-icon-btn" data-editar-area
+                      data-id="<%= area.id %>"
+                      data-name="<%= area.area_name %>"
+                      data-color="<%= area.color %>"
+                      title="Editar área" aria-label="Editar <%= area.area_name %>">
+                <%- include('../partials/icon', { name: 'edit' }) %>
+              </button>
+              <form action="/RRHH/areas/<%= area.id %>/eliminar" method="POST" class="area-inline-form"
+                    data-eliminar-area="<%= area.area_name %>"
+                    data-miembros="<%= area.memberCount %>">
+                <button type="submit" class="area-icon-btn area-icon-btn--danger"
+                        <%= area.memberCount > 0 ? 'disabled' : '' %>
+                        title="<%= area.memberCount > 0 ? 'Mueve a los colaboradores antes de eliminar' : 'Eliminar área' %>"
+                        aria-label="Eliminar <%= area.area_name %>">
+                  <%- include('../partials/icon', { name: 'trash' }) %>
+                </button>
+              </form>
+            </div>
+            <% } %>
+          </div>
+
+          <ul class="area-members">
+            <% if (!area.members.length) { %>
+              <li class="area-members__empty">Sin colaboradores en esta área.</li>
+            <% } %>
+            <% area.members.forEach(m => { %>
+              <li class="area-member">
+                <% if (m.photo) { %>
+                  <img src="<%= m.photo %>" alt="" class="avatar area-member__avatar" loading="lazy" decoding="async">
+                <% } else { %>
+                  <span class="avatar-fallback <%= m.paletaAvatar %> area-member__avatar" aria-hidden="true"><%= m.inicial %></span>
+                <% } %>
+                <span class="area-member__name" title="<%= m.nombreCompleto %>"><%= m.nombreLista %></span>
+                <% if (puedeEditar) { %>
+                <form action="/RRHH/areas/<%= area.id %>/miembros/<%= m.id %>/quitar" method="POST" class="area-inline-form"
+                      data-quitar-miembro="<%= m.nombreLista %>">
+                  <button type="submit" class="area-member__remove" title="Quitar del área" aria-label="Quitar a <%= m.nombreLista %>">×</button>
+                </form>
+                <% } %>
+              </li>
+            <% }) %>
+          </ul>
+
+          <% if (puedeEditar) { %>
+          <form action="/RRHH/areas/<%= area.id %>/miembros" method="POST" class="area-add-form" data-agregar-miembro>
+            <label class="sr-only" for="user_id_<%= area.id %>">Agregar colaborador a <%= area.area_name %></label>
+            <select id="user_id_<%= area.id %>" name="user_id" required>
+              <option value="">Agregar colaborador…</option>
+              <% (people || []).forEach(p => { %>
+                <% if (Number(p.work_area_id) === Number(area.id)) return; %>
+                <option value="<%= p.id %>"
+                        data-area-actual="<%= p.area_name || '' %>"
+                        data-nombre="<%= p.nombreLista %>">
+                  <%= p.nombreLista %><% if (p.area_name) { %> (<%= p.area_name %>)<% } %>
+                </option>
+              <% }) %>
+            </select>
+            <button type="submit" class="area-add-btn">Agregar</button>
+          </form>
+          <% } %>
+        </article>
+      <% }) %>
+
+      <% if (unassigned && unassigned.length) { %>
+        <article class="area-card area-card--unassigned">
+          <div class="area-card__head">
+            <div class="area-card__title">
+              <span class="area-swatch-dot area-swatch-dot--muted" aria-hidden="true"></span>
+              <span class="pill pill-area pill-area-default">Sin área</span>
+            </div>
+            <span class="area-card__count"><%= unassigned.length %></span>
+          </div>
+          <ul class="area-members">
+            <% unassigned.forEach(m => { %>
+              <li class="area-member">
+                <% if (m.photo) { %>
+                  <img src="<%= m.photo %>" alt="" class="avatar area-member__avatar" loading="lazy" decoding="async">
+                <% } else { %>
+                  <span class="avatar-fallback <%= m.paletaAvatar %> area-member__avatar" aria-hidden="true"><%= m.inicial %></span>
+                <% } %>
+                <span class="area-member__name" title="<%= m.nombreCompleto %>"><%= m.nombreLista %></span>
+              </li>
+            <% }) %>
+          </ul>
+        </article>
+      <% } %>
+    </div>
+  <% } %>
+</div>
+
+<% if (puedeEditar) { %>
+<div id="modalArea" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalAreaTitle" aria-hidden="true">
+  <div class="modal-content">
+    <button type="button" class="modal-close" data-modal-close aria-label="Cerrar">&times;</button>
+    <h2 id="modalAreaTitle" class="modal-title">Agregar área</h2>
+    <form id="formArea" method="POST" action="/RRHH/areas">
+      <div class="campo">
+        <label for="area_name">Nombre <span class="required-mark">*</span></label>
+        <input type="text" id="area_name" name="area_name" required maxlength="150" placeholder="Ej: Operaciones">
+      </div>
+      <div class="campo">
+        <label for="area_color">Color</label>
+        <div class="area-palette" role="listbox" aria-label="Paleta de colores">
+          <% palette.forEach(c => { %>
+            <button type="button" class="area-palette__swatch" data-color="<%= c.hex %>"
+                    title="<%= c.label %>" aria-label="<%= c.label %>"
+                    style="background: <%= c.hex %>"></button>
+          <% }) %>
+        </div>
+        <div class="area-color-row">
+          <input type="color" id="area_color_picker" value="<%= defaultColor %>" aria-label="Elegir color personalizado">
+          <input type="text" id="area_color" name="color" value="<%= defaultColor %>" maxlength="7" pattern="#[0-9A-Fa-f]{6}" spellcheck="false">
+        </div>
+      </div>
+      <div class="modal-form-actions">
+        <button type="button" class="btn-secundario" data-modal-close>Cancelar</button>
+        <button type="submit" class="btn-primario" id="modalAreaSubmit">Crear área</button>
+      </div>
+    </form>
+  </div>
+</div>
+<% } %>
+
+<script type="application/json" id="areas-config"><%- JSON.stringify({
+  puedeEditar,
+  defaultColor: defaultColor || '#5a6879',
+}).replace(/</g, '\\u003c') %></script>
+<script src="/js/areas.js?v=20260902" defer></script>

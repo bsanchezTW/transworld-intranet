@@ -39,19 +39,20 @@
 </style>
 
 <div class="contenedor">
-  <div class="page-header">
-    <h2 class="page-title">Eventos y Galerías</h2>
-    <p class="page-description">Selecciona un evento para ver su galería de fotos.</p>
-  </div>
+  <div class="page-header page-header--toolbar">
+    <div class="page-header__text">
+      <h2 class="page-title">Eventos y Galerías</h2>
+      <p class="page-description">Selecciona un evento para ver su galería de fotos.</p>
+    </div>
 
-  <% if (can.eventos_write) { %>
-    <div style="margin-bottom: 20px;">
-      <a class="boton-opcion" href="/marketing/eventos/nuevo">
-        + Crear nuevo evento
-        <span>Generar una nueva carpeta para subir fotos.</span>
+    <% if (can.eventos_write) { %>
+    <div class="page-header-actions">
+      <a href="/marketing/eventos/nuevo" class="page-header-btn">
+        <span aria-hidden="true">+</span> Crear nuevo evento
       </a>
     </div>
-  <% } %>
+    <% } %>
+  </div>
 
   <% if (!eventos || eventos.length === 0) { %>
     <p class="no-data">No hay eventos creados por el momento.</p>

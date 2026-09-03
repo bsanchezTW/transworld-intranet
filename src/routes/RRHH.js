@@ -8,8 +8,12 @@ const userPhotoStorage = require("../services/userPhotoStorage");
 const { UPLOAD_LIMITS_BYTES } = require("../config/uploadLimits");
 const { ROLES, ALL_ROLES } = require("../constants/roles");
 const {
+  DEFAULT_COLOR,
+  COLOR_PALETTE,
+  getWorkAreaPill,
   getWorkAreaPillClass,
   enrichAreaWithPill,
+  normalizeHex,
 } = require("../constants/workAreas");
 
 function parseRoleFromForm(role) {
@@ -152,9 +156,67 @@ function enviarClaveTemporal(email, firstName, passwordTemporal) {
 
 async function getAreasTrabajo() {
   const { rows } = await db.query(
-    "SELECT id, area_name FROM work_areas ORDER BY area_name ASC",
+    "SELECT id, area_name, color FROM work_areas ORDER BY area_name ASC",
   );
   return rows.map(enrichAreaWithPill);
+}
+
+function parsePositiveInt(value) {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n <= 0) return null;
+  return n;
+}
+
+function parseAreaName(value) {
+  const name = String(value || "")
+    .trim()
+    .replace(/\s+/g, " ");
+  if (!name || name.length > 150) return null;
+  return name;
+}
+
+function parseAreaColor(value) {
+  return normalizeHex(value) || DEFAULT_COLOR;
+}
+
+function redirectAreasOk(res, msg) {
+  return res.redirect(
+    `/RRHH/areas?ok=1&msg=${encodeURIComponent(msg)}`,
+  );
+}
+
+function redirectAreasError(res, message) {
+  return res.redirect(
+    `/RRHH/areas?error=${encodeURIComponent(message)}`,
+  );
+}
+
+function isUniqueViolation(err) {
+  return err && err.code === "23505";
+}
+
+function formatAreaMember(row, idx) {
+  const firstName = row.first_name || "";
+  const lastName = row.last_name || "";
+  const primerNombre = String(firstName).trim().split(/\s+/)[0] || "";
+  const primerApellido = String(lastName).trim().split(/\s+/)[0] || "";
+  const nombreLista =
+    [primerNombre, primerApellido].filter(Boolean).join(" ") || "-";
+  const nombreCompleto =
+    [firstName, lastName].filter(Boolean).join(" ") || "-";
+  const inicial = (primerNombre || primerApellido || "?").charAt(0).toUpperCase();
+  return {
+    id: row.id,
+    first_name: firstName,
+    last_name: lastName,
+    photo: row.photo || null,
+    work_area_id: row.work_area_id,
+    area_name: row.area_name || null,
+    nombreLista,
+    nombreCompleto,
+    inicial,
+    paletaAvatar: `avatar-fallback--c${(idx % 6) + 1}`,
+  };
 }
 
 // ==========================================
@@ -186,7 +248,8 @@ router.get("/personal", async (req, res) => {
       u.phone,
       u.is_intranet_user,
       u.email_confirmed,
-      at.area_name AS area
+      at.area_name AS area,
+      at.color AS area_color
     FROM users u
     LEFT JOIN work_areas at ON at.id = u.work_area_id
     WHERE u.employment_country = $1
@@ -208,6 +271,7 @@ router.get("/personal", async (req, res) => {
 
       const telefonoHref = toTelHref(phoneRaw);
       const telefonoDisplay = formatPhoneForDisplay(phoneRaw);
+      const pill = getWorkAreaPill(p.area, p.area_color);
 
       const persona = {
         ...p,
@@ -216,6 +280,8 @@ router.get("/personal", async (req, res) => {
         ordenCumple,
         fechaCumpleFmt,
         telefonoHref,
+        pillClass: pill.pillClass,
+        pillStyle: pill.pillStyle,
       };
 
       if (!mostrarColumnaRol) {
@@ -245,6 +311,7 @@ router.get("/personal", async (req, res) => {
       areas,
       mostrarColumnaRol,
       getWorkAreaPillClass,
+      getWorkAreaPill,
       user: req.session.user,
       success: successMsg,
       error: null,
@@ -450,6 +517,7 @@ router.get("/editar/:id", requireRole.administrador(), async (req, res) => {
         persona,
         areas,
         getWorkAreaPillClass,
+        getWorkAreaPill,
       });
     }
 
@@ -760,6 +828,231 @@ router.post(
     } catch (e) {
       console.error("Error eliminando:", e);
       res.status(500).send("Error al eliminar.");
+    }
+  },
+);
+
+// ==========================================
+// ÁREAS DE TRABAJO
+// ==========================================
+
+router.get("/areas", async (req, res) => {
+  try {
+    const country = getCurrentCountry();
+    const [areasResult, peopleResult] = await Promise.all([
+      db.query(
+        "SELECT id, area_name, color FROM work_areas ORDER BY area_name ASC",
+      ),
+      db.query(
+        `SELECT u.id, u.first_name, u.last_name, u.photo, u.work_area_id,
+                at.area_name
+         FROM users u
+         LEFT JOIN work_areas at ON at.id = u.work_area_id
+         WHERE u.employment_country = $1
+         ORDER BY u.last_name ASC NULLS LAST, u.first_name ASC`,
+        [country],
+      ),
+    ]);
+
+    const people = peopleResult.rows.map((row, idx) =>
+      formatAreaMember(row, idx),
+    );
+    const peopleByArea = new Map();
+    const unassigned = [];
+    for (const person of people) {
+      const areaId = person.work_area_id ? Number(person.work_area_id) : null;
+      if (areaId) {
+        const list = peopleByArea.get(areaId) || [];
+        list.push(person);
+        peopleByArea.set(areaId, list);
+      } else {
+        unassigned.push(person);
+      }
+    }
+
+    const areas = areasResult.rows.map((area) => {
+      const members = peopleByArea.get(Number(area.id)) || [];
+      return {
+        ...enrichAreaWithPill(area),
+        members,
+        memberCount: members.length,
+      };
+    });
+
+    const successMsg =
+      req.query.ok === "1"
+        ? decodeURIComponent(req.query.msg || "Operación exitosa")
+        : null;
+    const errorMsg = req.query.error
+      ? decodeURIComponent(req.query.error)
+      : null;
+
+    res.render("RRHH/areas", {
+      titulo: "Áreas de trabajo",
+      areas,
+      people,
+      unassigned,
+      colorPalette: COLOR_PALETTE,
+      defaultColor: DEFAULT_COLOR,
+      user: req.session.user,
+      success: successMsg,
+      error: errorMsg,
+    });
+  } catch (err) {
+    console.error("Error consultando áreas:", err);
+    res.status(500).send("Error consultando áreas");
+  }
+});
+
+router.post("/areas", requireRole.administrador(), async (req, res) => {
+  const areaName = parseAreaName(req.body.area_name);
+  const color = parseAreaColor(req.body.color);
+  if (!areaName) {
+    return redirectAreasError(res, "El nombre del área es obligatorio.");
+  }
+
+  try {
+    await db.query(
+      "INSERT INTO work_areas (area_name, color) VALUES ($1, $2)",
+      [areaName, color],
+    );
+    return redirectAreasOk(res, "Área creada.");
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return redirectAreasError(res, "Ya existe un área con ese nombre.");
+    }
+    console.error("Error creando área:", err);
+    return redirectAreasError(res, "No se pudo crear el área.");
+  }
+});
+
+router.post("/areas/:id", requireRole.administrador(), async (req, res) => {
+  const areaId = parsePositiveInt(req.params.id);
+  const areaName = parseAreaName(req.body.area_name);
+  const color = parseAreaColor(req.body.color);
+  if (!areaId) {
+    return redirectAreasError(res, "Área inválida.");
+  }
+  if (!areaName) {
+    return redirectAreasError(res, "El nombre del área es obligatorio.");
+  }
+
+  try {
+    const { rowCount } = await db.query(
+      "UPDATE work_areas SET area_name = $1, color = $2 WHERE id = $3",
+      [areaName, color, areaId],
+    );
+    if (!rowCount) {
+      return redirectAreasError(res, "El área no existe.");
+    }
+    return redirectAreasOk(res, "Área actualizada.");
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return redirectAreasError(res, "Ya existe un área con ese nombre.");
+    }
+    console.error("Error actualizando área:", err);
+    return redirectAreasError(res, "No se pudo actualizar el área.");
+  }
+});
+
+router.post(
+  "/areas/:id/eliminar",
+  requireRole.administrador(),
+  async (req, res) => {
+    const areaId = parsePositiveInt(req.params.id);
+    if (!areaId) {
+      return redirectAreasError(res, "Área inválida.");
+    }
+
+    try {
+      const { rows } = await db.query(
+        "SELECT COUNT(*)::int AS n FROM users WHERE work_area_id = $1",
+        [areaId],
+      );
+      if (rows[0].n > 0) {
+        return redirectAreasError(
+          res,
+          "No se puede eliminar un área con colaboradores. Muévelos primero.",
+        );
+      }
+
+      const { rowCount } = await db.query(
+        "DELETE FROM work_areas WHERE id = $1",
+        [areaId],
+      );
+      if (!rowCount) {
+        return redirectAreasError(res, "El área no existe.");
+      }
+      return redirectAreasOk(res, "Área eliminada.");
+    } catch (err) {
+      console.error("Error eliminando área:", err);
+      return redirectAreasError(res, "No se pudo eliminar el área.");
+    }
+  },
+);
+
+router.post(
+  "/areas/:id/miembros",
+  requireRole.administrador(),
+  async (req, res) => {
+    const areaId = parsePositiveInt(req.params.id);
+    const userId = parsePositiveInt(req.body.user_id);
+    if (!areaId || !userId) {
+      return redirectAreasError(res, "Datos inválidos.");
+    }
+
+    try {
+      const [areaResult, userResult] = await Promise.all([
+        db.query("SELECT id FROM work_areas WHERE id = $1", [areaId]),
+        db.query(
+          "SELECT id, work_area_id, employment_country FROM users WHERE id = $1",
+          [userId],
+        ),
+      ]);
+      if (!areaResult.rows.length) {
+        return redirectAreasError(res, "El área no existe.");
+      }
+      const user = userResult.rows[0];
+      if (!user || !belongsToThisInstance(user.employment_country)) {
+        return redirectAreasError(res, "Colaborador no encontrado.");
+      }
+
+      await db.query(
+        "UPDATE users SET work_area_id = $1 WHERE id = $2 AND employment_country = $3",
+        [areaId, userId, getCurrentCountry()],
+      );
+      return redirectAreasOk(res, "Colaborador asignado al área.");
+    } catch (err) {
+      console.error("Error asignando colaborador:", err);
+      return redirectAreasError(res, "No se pudo asignar el colaborador.");
+    }
+  },
+);
+
+router.post(
+  "/areas/:id/miembros/:userId/quitar",
+  requireRole.administrador(),
+  async (req, res) => {
+    const areaId = parsePositiveInt(req.params.id);
+    const userId = parsePositiveInt(req.params.userId);
+    if (!areaId || !userId) {
+      return redirectAreasError(res, "Datos inválidos.");
+    }
+
+    try {
+      const { rowCount } = await db.query(
+        `UPDATE users
+         SET work_area_id = NULL
+         WHERE id = $1 AND work_area_id = $2 AND employment_country = $3`,
+        [userId, areaId, getCurrentCountry()],
+      );
+      if (!rowCount) {
+        return redirectAreasError(res, "Colaborador no encontrado en esta área.");
+      }
+      return redirectAreasOk(res, "Colaborador quitado del área.");
+    } catch (err) {
+      console.error("Error quitando colaborador:", err);
+      return redirectAreasError(res, "No se pudo quitar el colaborador.");
     }
   },
 );

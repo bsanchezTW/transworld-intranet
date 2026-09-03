@@ -191,13 +191,17 @@ const SEED_HOLIDAYS = [
 ];
 
 async function ensureVacationSchema() {
-  for (const stmt of DDL_STATEMENTS) {
-    await db.query(stmt);
+  const client = await db.getClient();
+  try {
+    // Un solo round-trip: cada ALTER/CREATE por separado suma ~175ms a us-west-2.
+    await client.query(DDL_STATEMENTS.join(";\n"));
+    await seedHolidays(client);
+  } finally {
+    client.release();
   }
-  await seedHolidays();
 }
 
-async function seedHolidays() {
+async function seedHolidays(client) {
   // Solo los feriados del país de esta instancia: sembrar los del otro país
   // ensucia la base con un calendario que nadie va a usar ni mantener.
   const instanceCountry = getCurrentCountry();
@@ -208,7 +212,7 @@ async function seedHolidays() {
   const dates = rows.map(([, date]) => date);
   const names = rows.map(([, , name]) => name);
 
-  await db.query(
+  await client.query(
     `INSERT INTO public_holidays (country_code, holiday_date, name)
      SELECT country_code, holiday_date, name
      FROM UNNEST($1::varchar[], $2::date[], $3::varchar[])

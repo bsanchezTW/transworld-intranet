@@ -2,6 +2,7 @@ const axios = require("axios");
 const db = require("../db");
 const qs = require("querystring");
 const fileStorage = require("./fileStorage");
+const logger = require("../utils/logger");
 
 const linkedInHttp = axios.create({ timeout: 15000 });
 
@@ -96,8 +97,9 @@ function markImagesApiThrottled(error) {
     ? retryAfterSec * 1000
     : 6 * 60 * 60 * 1000; // 6h por defecto (límite diario LinkedIn)
   imagesApiBlockedUntil = Date.now() + cooldownMs;
-  console.warn(
-    `[LINKEDIN] Images API en throttle diario (429). Sin más llamadas hasta ${new Date(imagesApiBlockedUntil).toISOString()}.`,
+  logger.warn(
+    "linkedin",
+    `images API 429; sin más llamadas hasta ${new Date(imagesApiBlockedUntil).toISOString()}`,
   );
 }
 
@@ -126,9 +128,16 @@ function assertLinkedInConfig() {
 
 function logLinkedInError(context, error) {
   const details = error.response?.data;
-  const detailStr =
-    typeof details === "object" ? JSON.stringify(details) : details || error.message;
-  console.error(`[LINKEDIN] ${context}:`, detailStr);
+  const status = error.response?.status;
+  let detailStr;
+  if (status === 429 || details?.code === "TOO_MANY_REQUESTS") {
+    detailStr = `429 límite diario${details?.message ? `: ${details.message}` : ""}`;
+  } else if (typeof details === "object" && details) {
+    detailStr = details.message || details.code || JSON.stringify(details);
+  } else {
+    detailStr = details || error.message;
+  }
+  logger.warn("linkedin", `${context}: ${detailStr}`);
   return detailStr;
 }
 
@@ -278,7 +287,7 @@ async function persistImageToStorage(imageUrl, enlaceUrl) {
     );
     return saved.url;
   } catch (error) {
-    console.warn("[LINKEDIN] No se pudo guardar la imagen:", error.message);
+    logger.warn("linkedin", error);
     return FALLBACK_IMAGE;
   }
 }
@@ -448,7 +457,7 @@ async function parsePosts(response, accessToken) {
 
       posts.push({ text, image_url: imageUrl, link_url: postUrl });
     } catch (parseError) {
-      console.warn("[LINKEDIN] No se pudo procesar un post:", parseError.message);
+      logger.warn("linkedin", parseError);
     }
   }
 
@@ -545,7 +554,7 @@ async function getPostsFromDb() {
       .filter((row) => row.image_url && row.link_url)
       .map((row) => normalizeLinkedInPost(row));
   } catch (error) {
-    console.warn("[LINKEDIN] No se pudo leer linkedin_posts:", error.message);
+    logger.warn("linkedin", error);
     return [];
   }
 }
@@ -565,7 +574,7 @@ async function syncPostsToDb(posts) {
       );
     }
   } catch (error) {
-    console.warn("[LINKEDIN] No se pudo sincronizar linkedin_posts:", error.message);
+    logger.warn("linkedin", error);
   }
 }
 

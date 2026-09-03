@@ -7,6 +7,7 @@ const {
   toDateOnly,
   rangesOverlap,
 } = require("../../../utils/vacationDateUtils");
+const { VACATION_MESSAGES } = require("../../../constants/vacationMessages");
 
 const BASE_ENTITLEMENT = 15; // días hábiles tras 1 año
 const MONTHLY_ACCRUAL = 1.25; // días hábiles/mes (informativo)
@@ -104,11 +105,11 @@ class ChileVacationStrategy extends BaseVacationStrategy {
     });
 
     if (!start || !end) {
-      errors.push("Fechas de inicio y término inválidas.");
+      errors.push(VACATION_MESSAGES.invalidDates);
       return { valid: false, errors, warnings, days: 0 };
     }
     if (end < start) {
-      errors.push("La fecha de término no puede ser anterior al inicio.");
+      errors.push(VACATION_MESSAGES.endBeforeStart);
     }
     if (days <= 0) {
       errors.push(
@@ -116,7 +117,7 @@ class ChileVacationStrategy extends BaseVacationStrategy {
       );
     }
     if (!allowPast && start < today) {
-      errors.push("No puedes solicitar vacaciones en fechas pasadas.");
+      errors.push(VACATION_MESSAGES.pastDates);
     }
 
     const minNotice = Number(config.minNoticeDaysCL ?? 15);
@@ -139,9 +140,7 @@ class ChileVacationStrategy extends BaseVacationStrategy {
       rangesOverlap(start, end, r.start_date, r.end_date),
     );
     if (overlaps) {
-      errors.push(
-        "El rango se solapa con otra solicitud pendiente, aprobada o en curso.",
-      );
+      errors.push(VACATION_MESSAGES.overlap);
     }
 
     const minLong = Number(config.minLongFractionCL ?? 10);

@@ -58,7 +58,7 @@
     });
   }
 
-  const listaNoticias = (typeof noticiasLista !== 'undefined' && noticiasLista) ? noticiasLista : [];
+  const listaNoticias = ((typeof noticiasLista !== 'undefined' && noticiasLista) ? noticiasLista : []).slice(0, 6);
   const destacada = (typeof noticiaDestacada !== 'undefined' && noticiaDestacada) ? noticiaDestacada : null;
   const tieneDestacada = Boolean(destacada);
 
@@ -114,6 +114,7 @@
     <!-- ── Columna principal ── -->
     <div class="home-dash__main">
 
+      <% if (features.homeQuickAccess) { %>
       <!-- Accesos rápidos -->
       <section class="home-section home-quick-section" aria-label="Accesos rápidos">
         <div class="home-quick">
@@ -129,6 +130,7 @@
             </span>
             <span class="home-quick__label">Academy</span>
           </a>
+          <% if (features.chileHrPortals) { %>
           <a href="https://transworld.mirexmas.com/" target="_blank" rel="noopener noreferrer" class="home-quick__item">
             <span class="home-quick__glyph home-quick__glyph--sky home-quick__glyph--logo">
               <img src="/img/rex-logo.png" alt="" class="home-quick__glyph-img">
@@ -147,6 +149,7 @@
             </span>
             <span class="home-quick__label">Caja L.A.</span>
           </a>
+          <% } %>
           <% if (features.supportTickets) { %>
           <a href="/sistemas/tickets" class="home-quick__item ticket-notif-target">
             <span class="home-quick__glyph home-quick__glyph--muted">✚</span>
@@ -155,6 +158,7 @@
           <% } %>
         </div>
       </section>
+      <% } %>
 
       <!-- Noticia destacada -->
       <% if (tieneDestacada) { %>
@@ -469,7 +473,7 @@
         <span class="home-tutorial__icon" aria-hidden="true"><%- include('partials/icon', { name: 'home' }) %></span>
         <div>
           <strong>Tu panel de inicio</strong>
-          <p>Indicadores financieros, clima<% if (features.lunchMenu) { %>, menú del casino<% } %> y accesos rápidos a cursos y el sitio web.</p>
+          <p>Indicadores financieros, clima<% if (features.lunchMenu) { %>, menú del casino<% } %><% if (features.homeQuickAccess) { %> y accesos rápidos a cursos y el sitio web<% } %>.</p>
         </div>
       </li>
       <li class="home-tutorial__step">

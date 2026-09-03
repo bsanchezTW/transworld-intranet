@@ -52,7 +52,7 @@
         <thead>
           <tr>
             <th>Período</th><th>Devengado</th><th>Ajuste</th><th>Usado</th><th>Disponible</th>
-            <% if (isPeru) { %><th>Bloques P/F</th><% } %>
+            <% if (isPeru) { %><th>Seguidos rest.</th><th>Sueltos rest.</th><% } %>
             <th>Récord</th><th>Vence</th>
           </tr>
         </thead>
@@ -65,7 +65,8 @@
               <td><%= p.used %></td>
               <td><strong><%= p.available %></strong></td>
               <% if (isPeru) { %>
-                <td><%= p.protectedBlockUsed %> / <%= p.flexibleBlockUsed %></td>
+                <td><%= p.protectedBlockRemaining %> <span class="vac-stat-unit">(usados <%= p.protectedBlockUsed %>)</span></td>
+                <td><%= p.flexibleBlockRemaining %> <span class="vac-stat-unit">(usados <%= p.flexibleBlockUsed %>)</span></td>
               <% } %>
               <td><%= p.recordMet === false ? ('No — ' + (p.record_notes || '')) : 'Cumplido' %></td>
               <td><%= p.noExpiry ? 'No caduca' : (p.expired ? 'Vencido' : (p.expiresAtFmt || '-')) %></td>

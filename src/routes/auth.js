@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const multer = require("multer");
 const router = express.Router();
 const pool = require("../db");
+const logger = require("../utils/logger");
 const { sendMail } = require("../services/mailer");
 const { UPLOAD_LIMITS_BYTES } = require("../config/uploadLimits");
 const { toTitleCase } = require("../utils/formatName");
@@ -430,7 +431,7 @@ router.post("/login", async (req, res) => {
     delete req.session.returnTo;
     return succeed(redirectUrl);
   } catch (err) {
-    console.error("Login error:", err);
+    logger.error("auth", err);
     return fail(500, "Error interno del servidor");
   }
 });

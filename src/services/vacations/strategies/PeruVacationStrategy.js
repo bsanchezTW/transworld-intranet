@@ -7,6 +7,7 @@ const {
   toDateOnly,
   rangesOverlap,
 } = require("../../../utils/vacationDateUtils");
+const { VACATION_MESSAGES } = require("../../../constants/vacationMessages");
 
 const ANNUAL_ENTITLEMENT = 30; // días calendario por año completo
 const PROTECTED_BLOCK_SIZE = 15;
@@ -77,7 +78,7 @@ class PeruVacationStrategy extends BaseVacationStrategy {
     const N = Number(days);
 
     if (N <= 0) {
-      return { valid: false, error: "El rango seleccionado no contiene días." };
+      return { valid: false, error: VACATION_MESSAGES.noDays };
     }
 
     // Completar bloque protegido con tramo pequeño (ej. 7+6 inválido)
@@ -91,8 +92,7 @@ class PeruVacationStrategy extends BaseVacationStrategy {
       if (needed >= 7) {
         return {
           valid: false,
-          error:
-            "Fraccionamiento inválido (art. 17.i): el complemento del bloque protegido debe ser de al menos 7 u 8 días ininterrumpidos.",
+          error: VACATION_MESSAGES.protectedComplement,
         };
       }
     }
@@ -104,8 +104,7 @@ class PeruVacationStrategy extends BaseVacationStrategy {
       }
       return {
         valid: false,
-        error:
-          "Fraccionamiento inválido (art. 17.ii D.L. 713): el bloque flexible de 15 días ya está agotado o no alcanza para este tramo.",
+        error: VACATION_MESSAGES.flexibleExhausted,
       };
     }
 
@@ -120,7 +119,7 @@ class PeruVacationStrategy extends BaseVacationStrategy {
       }
       return {
         valid: false,
-        error: `Saldo insuficiente en el período para ${N} día(s).`,
+        error: VACATION_MESSAGES.insufficientPeriod(N),
       };
     }
 
@@ -132,8 +131,7 @@ class PeruVacationStrategy extends BaseVacationStrategy {
         }
         return {
           valid: false,
-          error:
-            "Fraccionamiento inválido (art. 17.i): el bloque protegido no alcanza para este tramo.",
+          error: VACATION_MESSAGES.protectedNotEnough,
         };
       }
       if (protectedUsed === 7 && N >= 8 && protectedUsed + N <= PROTECTED_BLOCK_SIZE) {
@@ -145,8 +143,7 @@ class PeruVacationStrategy extends BaseVacationStrategy {
       if (protectedUsed > 0 && protectedUsed < PROTECTED_BLOCK_SIZE) {
         return {
           valid: false,
-          error:
-            "Fraccionamiento inválido (art. 17.i): el complemento del bloque protegido debe ser de al menos 7 u 8 días ininterrumpidos.",
+          error: VACATION_MESSAGES.protectedComplement,
         };
       }
       if (protectedRemaining >= N) {
@@ -158,14 +155,13 @@ class PeruVacationStrategy extends BaseVacationStrategy {
     if (N > 6 && N < 7) {
       return {
         valid: false,
-        error: "Fraccionamiento inválido: tramo intermedio no permitido entre 6 y 7 días.",
+        error: VACATION_MESSAGES.fractionInvalid,
       };
     }
 
     return {
       valid: false,
-      error:
-        "Fraccionamiento inválido según art. 17 D.L. 713 para este período.",
+      error: VACATION_MESSAGES.fractionInvalid,
     };
   }
 
@@ -257,7 +253,7 @@ class PeruVacationStrategy extends BaseVacationStrategy {
     if (remaining > 0.001) {
       return {
         valid: false,
-        error: `Saldo insuficiente en el período para ${days} día(s).`,
+        error: VACATION_MESSAGES.insufficientPeriod(days),
       };
     }
     return { valid: true, requiresFractionAck };
@@ -282,49 +278,41 @@ class PeruVacationStrategy extends BaseVacationStrategy {
     const days = this.countRequestDays({ startDate: start, endDate: end });
 
     if (!start || !end) {
-      errors.push("Fechas de inicio y término inválidas.");
+      errors.push(VACATION_MESSAGES.invalidDates);
       return { valid: false, errors, warnings, days: 0, requiresFractionAck: false };
     }
     if (end < start) {
-      errors.push("La fecha de término no puede ser anterior al inicio.");
+      errors.push(VACATION_MESSAGES.endBeforeStart);
     }
     if (days <= 0) {
-      errors.push("El rango seleccionado no contiene días.");
+      errors.push(VACATION_MESSAGES.noDays);
     }
     if (!allowPast && start < today) {
-      errors.push("No puedes solicitar vacaciones en fechas pasadas.");
+      errors.push(VACATION_MESSAGES.pastDates);
     }
 
     const minNotice = Number(config.minNoticeDaysPE ?? 7);
     if (!allowPast && start >= today) {
       const noticeDays = countCalendarDays(addDays(today, 1), start);
       if (noticeDays < minNotice) {
-        errors.push(
-          `Debes solicitar con al menos ${minNotice} días de anticipación.`,
-        );
+        errors.push(VACATION_MESSAGES.minNotice(minNotice));
       }
     }
 
     const suggestedMin = Number(config.suggestedMinFractionDaysPE ?? 7);
     if (days < suggestedMin && days < availableBalance && days >= 1 && days <= 6) {
-      warnings.push(
-        `Política interna sugiere tramos de al menos ${suggestedMin} días, pero tu solicitud de ${days} día(s) es válida según el art. 17.ii D.L. 713.`,
-      );
+      warnings.push(VACATION_MESSAGES.policyWarning(suggestedMin, days));
     }
 
     if (days > availableBalance + 0.001) {
-      errors.push(
-        `Saldo insuficiente: solicitas ${days} día(s) calendario y tienes ${availableBalance} disponible(s).`,
-      );
+      errors.push(VACATION_MESSAGES.insufficientBalance(days, availableBalance));
     }
 
     const overlaps = existingActiveRequests.some((r) =>
       rangesOverlap(start, end, r.start_date, r.end_date),
     );
     if (overlaps) {
-      errors.push(
-        "El rango se solapa con otra solicitud pendiente, aprobada o en curso.",
-      );
+      errors.push(VACATION_MESSAGES.overlap);
     }
 
     let requiresFractionAck = days < ANNUAL_ENTITLEMENT;
@@ -346,9 +334,7 @@ class PeruVacationStrategy extends BaseVacationStrategy {
     }
 
     if (requiresFractionAck && !fractionAcknowledged) {
-      errors.push(
-        "Debes confirmar que solicitas el fraccionamiento por escrito (art. 17 D.L. 713).",
-      );
+      errors.push(VACATION_MESSAGES.fractionAckRequired);
     }
 
     return {

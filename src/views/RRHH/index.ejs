@@ -3,19 +3,18 @@
    un portal es tocar el arreglo, no duplicar 12 líneas de marcado. */
 const INTERNOS = [
   { href: '/RRHH/organigrama', icono: 'building', titulo: 'Organigrama', desc: 'Estructura general y departamentos.' },
-  { href: '/RRHH/personal', icono: 'users', titulo: 'Personal', desc: 'Directorio de contacto de colaboradores.' },
+  { href: '/RRHH/personal', icono: 'users', titulo: 'Personal', desc: 'Directorio de gestión y registro de colaboradores.' },
+  { href: '/RRHH/areas', icono: 'layers', titulo: 'Áreas', desc: 'Gestionar áreas de trabajo y colaboradores asignados.' },
   { href: '/RRHH/vacaciones', icono: 'umbrella', titulo: 'Vacaciones', desc: 'Solicita y gestiona vacaciones.' },
 ];
 
-const EXTERNOS = [
-  { href: 'https://transworld.rexmas.com/', img: '/img/logo_rex.png', titulo: 'Rex+', desc: 'Portal del colaborador y liquidaciones.' },
-];
-if (country === 'CL') {
-  EXTERNOS.push(
-    { href: 'https://www.achs.cl/', img: '/img/achs.png', titulo: 'ACHS', desc: 'Seguridad y salud ocupacional.' },
-    { href: 'https://www.cajalosandes.cl/', img: '/img/cajalosandes.png', titulo: 'Caja Los Andes', desc: 'Beneficios, convenios y ahorros.' },
-  );
-}
+const EXTERNOS = features.chileHrPortals
+  ? [
+      { href: 'https://transworld.rexmas.com/', img: '/img/logo_rex.png', titulo: 'Rex+', desc: 'Portal del colaborador y liquidaciones.' },
+      { href: 'https://www.achs.cl/', img: '/img/achs.png', titulo: 'ACHS', desc: 'Seguridad y salud ocupacional.' },
+      { href: 'https://www.cajalosandes.cl/', img: '/img/cajalosandes.png', titulo: 'Caja Los Andes', desc: 'Beneficios, convenios y ahorros.' },
+    ]
+  : [];
 %>
 
 <link rel="stylesheet" href="/css/rrhh.css?v=20260729a">
@@ -24,7 +23,7 @@ if (country === 'CL') {
   <div class="page-header">
     <h2 class="page-title">Recursos Humanos</h2>
     <p class="page-description">
-      Accede a las herramientas internas y portales externos de gestión.
+      Accede a las herramientas internas<% if (EXTERNOS.length) { %> y portales externos<% } %> de gestión.
     </p>
   </div>
 
@@ -42,6 +41,7 @@ if (country === 'CL') {
     <% }) %>
   </div>
 
+  <% if (EXTERNOS.length) { %>
   <h3 class="rrhh-section-title">Portales Externos</h3>
   <div class="grid-opciones-exec">
     <% EXTERNOS.forEach(item => { %>
@@ -55,4 +55,5 @@ if (country === 'CL') {
       </a>
     <% }) %>
   </div>
+  <% } %>
 </div>

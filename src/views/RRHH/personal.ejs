@@ -21,10 +21,10 @@
   const errorMsg   = (typeof error   !== 'undefined' && error)   ? error   : null;
 %>
 
-<link rel="stylesheet" href="/css/personal.css?v=20260803b">
-<link rel="stylesheet" href="/css/phone.css">
+<link rel="stylesheet" href="/css/personal.css?v=20260902">
+<link rel="stylesheet" href="/css/phone.css?v=20260902">
 <% if (puedeEditar) { %>
-<link rel="stylesheet" href="/css/horizontal-forms.css">
+<link rel="stylesheet" href="/css/horizontal-forms.css?v=20260902">
 <link rel="stylesheet" href="/css/profile-photo-crop.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 <% } %>
@@ -149,7 +149,7 @@
               </td>
 
               <td class="col-area" data-label="Área">
-                <span class="<%= getWorkAreaPillClass(areaNombre) %>"><%= areaNombre %></span>
+                <span class="<%= p.pillClass || getWorkAreaPillClass(areaNombre, p.area_color) %>"<% if (p.pillStyle) { %> style="<%= p.pillStyle %>"<% } %>><%= areaNombre %></span>
               </td>
 
               <td class="col-correo col-desktop" data-label="Correo">

@@ -217,7 +217,22 @@ html[data-theme="dark"] .vac-badge {
 }
 
 .vac-form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+.vac-form-grid-3 { grid-template-columns: 1fr 1fr minmax(110px, 0.7fr); }
 .vac-hint { font-size: 0.8rem; color: var(--muted); margin-top: 4px; display: block; }
+
+.vac-form input[type="checkbox"] {
+  width: auto;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.vac-check-campo label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-weight: 500;
+  line-height: 1.4;
+}
 
 .vac-preview {
   margin: 4px 0 16px;
@@ -229,6 +244,20 @@ html[data-theme="dark"] .vac-badge {
   font-size: 0.9rem;
   font-weight: 600;
 }
+
+.vac-preview-error {
+  background: rgba(208, 92, 92, 0.1);
+  border-color: rgba(208, 92, 92, 0.3);
+  color: var(--down);
+}
+
+.vac-preview-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  font-weight: 600;
+}
+
+.vac-preview-list li + li { margin-top: 6px; }
 
 /* ==========================================================================
    Botones
@@ -323,7 +352,8 @@ html[data-theme="dark"] .vac-btn-approve { color: var(--color-bg); }
 }
 
 @media (max-width: 640px) {
-  .vac-form-grid-2 { grid-template-columns: 1fr; }
+  .vac-form-grid-2,
+  .vac-form-grid-3 { grid-template-columns: 1fr; }
   .vac-grid { gap: 14px; }
   .vac-btn { width: 100%; }
   .vac-btn-sm { width: auto; }

@@ -1,4 +1,5 @@
 const https = require('https');
+const logger = require('../utils/logger');
 
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutos
 
@@ -56,7 +57,12 @@ async function fetchIndicator(codigo) {
       historico: serie.slice(0, 10).reverse()
     };
   } catch (error) {
-    console.error(`Error obteniendo ${codigo}:`, error.message);
+    const reason = /timeout/i.test(error.message)
+      ? "timeout"
+      : /hang up|TLS|disconnected/i.test(error.message)
+        ? "red"
+        : error.message;
+    logger.warn("finanzas", `mindicador/${codigo}: ${reason}`);
     return null;
   }
 }
@@ -100,7 +106,7 @@ async function getIndicadores({ includeUf = true } = {}) {
     return result;
 
   } catch (err) {
-    console.error('Error fetching indicadores:', err.message);
+    logger.warn("finanzas", err);
     if (cache.data) {
       if (includeUf) return cache.data;
       return { ...cache.data, uf: { valor: null, valorAyer: null } };

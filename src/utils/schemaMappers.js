@@ -189,18 +189,23 @@ function mapVacationPeriodForView(row) {
   const isChile = row.country_code === "CL";
   const expired =
     !isChile && row.expires_at ? toDateOnly(row.expires_at) < today : false;
+  const protectedBlockUsed = Number(row.protected_block_days_used || 0);
+  const flexibleBlockUsed = Number(row.flexible_block_days_used || 0);
+  const round2 = (n) => Math.round(n * 100) / 100;
   return {
     ...row,
     periodStartFmt: formatDisplay(row.period_start),
     periodEndFmt: formatDisplay(row.period_end),
     expiresAtFmt: isChile ? null : row.expires_at ? formatDisplay(row.expires_at) : null,
-    available: Math.round(available * 100) / 100,
+    available: round2(available),
     entitled: Number(row.entitled_days),
     entitledEffective,
     used: Number(row.used_days),
     adjusted: Number(row.adjusted_days),
-    protectedBlockUsed: Number(row.protected_block_days_used || 0),
-    flexibleBlockUsed: Number(row.flexible_block_days_used || 0),
+    protectedBlockUsed,
+    flexibleBlockUsed,
+    protectedBlockRemaining: Math.max(0, round2(15 - protectedBlockUsed)),
+    flexibleBlockRemaining: Math.max(0, round2(15 - flexibleBlockUsed)),
     recordMet,
     expired,
     noExpiry: isChile,

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const QRCode = require("qrcode");
 const db = require("../db");
+const logger = require("../utils/logger");
 const multer = require("multer");
 const fileStorage = require("../services/fileStorage");
 const userPhotoStorage = require("../services/userPhotoStorage");
@@ -79,6 +80,7 @@ let eventosCarouselRefreshPromise = null;
 const EVENTOS_CAROUSEL_CACHE_MS = 15 * 60 * 1000;
 const EVENTOS_CAROUSEL_DISPLAY_LIMIT = 8;
 const EVENTOS_CAROUSEL_LIST_LIMIT = 12;
+const NOTICIAS_HOME_LIST_LIMIT = 6;
 
 function shuffleArray(items) {
   const shuffled = [...items];
@@ -117,14 +119,14 @@ async function updateDataBackground() {
       };
     }
   } catch (err) {
-    console.error("[FINANZAS] Error:", err.message);
+    logger.error("finanzas", err);
   }
 
   try {
     const climaData = await getWeather();
     if (climaData) cachedClima = climaData;
   } catch (err) {
-    console.error("[CLIMA] Error:", err.message);
+    logger.warn("clima", err);
   }
 
   if (!isFeatureEnabled("linkedinFeed")) {
@@ -138,7 +140,7 @@ async function updateDataBackground() {
       cachedLinkedin = posts;
     }
   } catch (err) {
-    console.error("[LINKEDIN] Error actualizando feed:", err.message);
+    logger.warn("linkedin", err);
   }
 }
 
@@ -186,10 +188,7 @@ async function fetchNoticiasHome() {
       noticiaDestacada = mapNoticiaHomeRow(rows[0]);
     }
   } catch (err) {
-    console.warn(
-      "[HOME] Columna destacada no disponible en noticias;",
-      err.message,
-    );
+    logger.warn("home", err);
   }
 
   let noticiasLista = [];
@@ -199,16 +198,16 @@ async function fetchNoticiasHome() {
          FROM news_articles
          WHERE id != $1
          ORDER BY created_at DESC
-         LIMIT 8`
+         LIMIT ${NOTICIAS_HOME_LIST_LIMIT}`
       : `SELECT id, title, image, subtitle, created_at, attachments
          FROM news_articles
          ORDER BY created_at DESC
-         LIMIT 8`;
+         LIMIT ${NOTICIAS_HOME_LIST_LIMIT}`;
     const params = noticiaDestacada ? [noticiaDestacada.id] : [];
     const { rows } = await db.query(sql, params);
     noticiasLista = rows.map((n) => mapNoticiaHomeRow(n));
   } catch (err) {
-    console.error("[HOME] Error cargando lista de noticias:", err.message);
+    logger.error("home", err);
   }
 
   const mixedFeed = noticiaDestacada
@@ -251,10 +250,7 @@ async function loadEventosCarouselPool() {
                 created_at: item.created_at,
               }));
           } catch (err) {
-            console.warn(
-              `[HOME] No se pudo leer galería de ${evento.slug}:`,
-              err.message,
-            );
+            logger.warn("home", err);
             return [];
           }
         }),
@@ -265,7 +261,7 @@ async function loadEventosCarouselPool() {
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       cachedEventosCarouselAt = Date.now();
     } catch (err) {
-      console.error("[HOME] Error cargando galería de eventos:", err.message);
+      logger.error("home", err);
     } finally {
       eventosCarouselRefreshPromise = null;
     }
@@ -284,7 +280,7 @@ async function fetchEventosCarousel() {
 
   if (cachedEventosPool.length > 0) {
     loadEventosCarouselPool().catch((err) => {
-      console.error("[HOME] Error refrescando galería en background:", err.message);
+      logger.error("home", err);
     });
     return getEventosCarouselFromCache();
   }
@@ -295,7 +291,7 @@ async function fetchEventosCarousel() {
 
 setImmediate(() => {
   loadEventosCarouselPool().catch((err) => {
-    console.warn("[HOME] Precarga de galería de eventos:", err.message);
+    logger.warn("home", err);
   });
 });
 
@@ -438,7 +434,7 @@ router.get("/", async (req, res) => {
         req.session.user.show_home_tutorial === true,
     });
   } catch (err) {
-    console.error("Error en Home:", err);
+    logger.error("home", err);
     res.status(500).send("Error cargando el inicio");
   }
 });

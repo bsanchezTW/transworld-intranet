@@ -68,7 +68,7 @@ describe("PeruVacationStrategy — fraccionamiento art. 17", () => {
     };
     const r = pe.validateFractionAgainstPeriod(5, period);
     assert.equal(r.valid, false);
-    assert.match(r.error, /art\. 17\.ii/);
+    assert.match(r.error, /tramos cortos/);
   });
 
   it("PE-07: tramo 7 + tramo 6 sobre bloque protegido → segunda rechazada", () => {
@@ -78,7 +78,7 @@ describe("PeruVacationStrategy — fraccionamiento art. 17", () => {
     };
     const r = pe.validateFractionAgainstPeriod(6, afterSeven);
     assert.equal(r.valid, false);
-    assert.match(r.error, /art\. 17\.i/);
+    assert.match(r.error, /7 u 8 días/);
   });
 
   it("T-04: min sugerido genera warning, no error", () => {
@@ -176,7 +176,7 @@ describe("PeruVacationStrategy — allocateBlockDays", () => {
     ];
     const r = pe.validateFractionAcrossPeriods(5, periods);
     assert.equal(r.valid, false);
-    assert.match(r.error, /art\. 17\.ii/);
+    assert.match(r.error, /tramos cortos/);
   });
 });
 

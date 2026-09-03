@@ -5,6 +5,7 @@ const balanceService = require("./vacationBalanceService");
 const holidayService = require("./holidayService");
 const { VACATION_STATUS, VACATION_ACTIVE_STATUSES } = require("../../constants/vacationStatuses");
 const { VACATION_CONFIG } = require("../../constants/vacationConfig");
+const { VACATION_MESSAGES } = require("../../constants/vacationMessages");
 const { toDateOnly, todayInCountry } = require("../../utils/vacationDateUtils");
 
 function requestBelongsToInstance(request) {
@@ -61,11 +62,11 @@ async function createRequest({
   policyWarningAck = false,
 }) {
   const user = await balanceService.getUserVacationProfile(userId);
-  if (!user) return { ok: false, errors: ["Colaborador no encontrado."] };
+  if (!user) return { ok: false, errors: [VACATION_MESSAGES.collaboratorNotFound] };
   if (!user.hire_date) {
     return {
       ok: false,
-      errors: ["No tienes fecha de ingreso registrada. Contacta a RRHH."],
+      errors: [VACATION_MESSAGES.noHireDate],
     };
   }
 
@@ -116,9 +117,7 @@ async function createRequest({
   if (warnings.length > 0 && !policyWarningAck) {
     return {
       ok: false,
-      errors: [
-        "Debes confirmar que has leído la advertencia de política interna antes de continuar.",
-      ],
+      errors: [VACATION_MESSAGES.policyAckRequired],
       warnings,
       requiresPolicyAck: true,
     };
@@ -198,15 +197,15 @@ async function approveRequest({ requestId, reviewerId, notes }) {
     const request = lockRows[0];
     if (!request) {
       await client.query("ROLLBACK");
-      return { ok: false, error: "Solicitud no encontrada." };
+      return { ok: false, error: VACATION_MESSAGES.requestNotFound };
     }
     if (request.status !== VACATION_STATUS.PENDING) {
       await client.query("ROLLBACK");
-      return { ok: false, error: "Solo se pueden aprobar solicitudes pendientes." };
+      return { ok: false, error: VACATION_MESSAGES.onlyPendingApprove };
     }
     if (!requestBelongsToInstance(request)) {
       await client.query("ROLLBACK");
-      return { ok: false, error: "Solicitud no encontrada." };
+      return { ok: false, error: VACATION_MESSAGES.requestNotFound };
     }
 
     const days = requestDays(request);
@@ -240,7 +239,7 @@ async function approveRequest({ requestId, reviewerId, notes }) {
   } catch (err) {
     await client.query("ROLLBACK");
     if (/[Ss]aldo insuficiente/.test(err.message)) {
-      return { ok: false, error: "Saldo insuficiente para aprobar la solicitud." };
+      return { ok: false, error: VACATION_MESSAGES.insufficientToApprove };
     }
     throw err;
   } finally {
@@ -250,15 +249,15 @@ async function approveRequest({ requestId, reviewerId, notes }) {
 
 async function rejectRequest({ requestId, reviewerId, reason }) {
   const request = await getRequestById(requestId);
-  if (!request) return { ok: false, error: "Solicitud no encontrada." };
+  if (!request) return { ok: false, error: VACATION_MESSAGES.requestNotFound };
   if (!requestBelongsToInstance(request)) {
-    return { ok: false, error: "Solicitud no encontrada." };
+    return { ok: false, error: VACATION_MESSAGES.requestNotFound };
   }
   if (request.status !== VACATION_STATUS.PENDING) {
-    return { ok: false, error: "Solo se pueden rechazar solicitudes pendientes." };
+    return { ok: false, error: VACATION_MESSAGES.onlyPendingReject };
   }
   if (!reason || !String(reason).trim()) {
-    return { ok: false, error: "Debes indicar el motivo del rechazo." };
+    return { ok: false, error: VACATION_MESSAGES.rejectReasonRequired };
   }
 
   const { rows } = await db.query(
@@ -282,11 +281,11 @@ async function cancelRequest({ requestId, userId, isAdmin = false }) {
     const request = lockRows[0];
     if (!request) {
       await client.query("ROLLBACK");
-      return { ok: false, error: "Solicitud no encontrada." };
+      return { ok: false, error: VACATION_MESSAGES.requestNotFound };
     }
     if (!isAdmin && String(request.user_id) !== String(userId)) {
       await client.query("ROLLBACK");
-      return { ok: false, error: "No puedes cancelar solicitudes de otro colaborador." };
+      return { ok: false, error: VACATION_MESSAGES.cancelOthers };
     }
 
     const today = todayInCountry();
@@ -297,7 +296,7 @@ async function cancelRequest({ requestId, userId, isAdmin = false }) {
         await client.query("ROLLBACK");
         return {
           ok: false,
-          error: "No se puede cancelar una solicitud aprobada que ya comenzó.",
+          error: VACATION_MESSAGES.cancelAlreadyStarted,
         };
       }
       const storedAllocations = parsePeriodAllocations(request.period_allocations);
@@ -318,7 +317,7 @@ async function cancelRequest({ requestId, userId, isAdmin = false }) {
       }
     } else {
       await client.query("ROLLBACK");
-      return { ok: false, error: "Esta solicitud no se puede cancelar." };
+      return { ok: false, error: VACATION_MESSAGES.cannotCancel };
     }
 
     const { rows } = await client.query(
@@ -344,7 +343,7 @@ async function previewRequest({
 }) {
   const user = await balanceService.getUserVacationProfile(userId);
   if (!user || !user.hire_date) {
-    return { ok: false, error: "Perfil incompleto." };
+    return { ok: false, error: VACATION_MESSAGES.incompleteProfile };
   }
 
   const country = resolveCountryForUser(user);

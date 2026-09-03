@@ -7,6 +7,7 @@ const {
   SupabaseProjectBindingError,
   getCountryDbBinding,
   searchPathStatement,
+  postgresStartupOptions,
   extractDatabaseRole,
   resolveCountryPoolerUser,
   applyCountryPoolerUser,
@@ -32,6 +33,8 @@ describe("aislamiento Chile / Perú en el mismo proyecto", () => {
     assert.equal(searchPathStatement("CL").includes("peru"), false);
     assert.equal(searchPathStatement("PE").includes("chile"), false);
     assert.throws(() => searchPathStatement("XX"), SupabaseProjectBindingError);
+    assert.equal(postgresStartupOptions("CL"), "-c search_path=chile");
+    assert.equal(postgresStartupOptions("PE"), "-c search_path=peru");
   });
 
   it("lee el rol de DATABASE_URL del pooler y rechaza el del otro país", () => {

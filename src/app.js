@@ -5,6 +5,7 @@
 // obligatoria) falta o es inválida. Va primero: db.js y los servicios leen
 // process.env al ser requeridos.
 const { countryConfig } = require("./config/env");
+const logger = require("./utils/logger");
 
 // La zona horaria sale de la instancia, no de un literal: Chile es
 // America/Santiago y Perú America/Lima.
@@ -17,6 +18,8 @@ const { pipeline } = require("stream/promises");
 const session = require("express-session");
 const expressLayouts = require("express-ejs-layouts");
 const db = require("./db");
+// Handshake TLS+SCRAM al pooler lo antes posible, en paralelo con el setup.
+db.warmPool();
 // ================================
 // Importación de Rutas
 // ================================
@@ -42,6 +45,7 @@ const {
 } = require("./services/storage/storageHttp");
 const signedMedia = require("./services/media/signedMedia");
 const { ensureVacationSchema } = require("./services/vacations/vacationSchema");
+const { ensureWorkAreaSchema } = require("./services/workAreaSchema");
 const vacationRequestService = require("./services/vacations/vacationRequestService");
 
 // ================================
@@ -52,8 +56,7 @@ const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET?.trim();
 
 process.on("unhandledRejection", (reason) => {
-  const message = reason instanceof Error ? reason.message : reason;
-  console.error("[unhandledRejection]", message);
+  logger.error("process", reason);
 });
 
 if (
@@ -202,7 +205,7 @@ app.use("/media", async (req, res, next) => {
     }
     if (err.statusCode === 404) return res.status(404).send("Archivo no encontrado");
     if (err.statusCode === 416) return res.status(416).send("Rango no válido");
-    console.error("[Media proxy] Error:", err.message || err);
+    logger.error("media", err);
     return res.status(502).send("Error al obtener el archivo");
   } finally {
     requestContext?.cleanup();
@@ -284,7 +287,7 @@ app.use("/content", async (req, res, next) => {
     if (err.statusCode === 416) {
       return res.status(416).send("Rango no válido");
     }
-    console.error("[Content proxy] Error:", err.message || err);
+    logger.error("content", err);
     return res.status(502).send("Error al obtener el archivo");
   } finally {
     requestContext?.cleanup();
@@ -394,12 +397,10 @@ function iniciarTareaCierreTickets() {
       const afectados = result.rowCount || result.affectedRows || 0;
 
       if (afectados > 0) {
-        console.log(
-          `[CRON ${countryConfig.code}] Se cerraron automáticamente ${afectados} tickets en "Pendiente de cierre" hace más de 1 día.`,
-        );
+        logger.info("cron", `cerrados ${afectados} ticket(s) pendiente(s) de cierre`);
       }
     } catch (err) {
-      console.error(`[CRON ${countryConfig.code}] Error en tarea automática de tickets:`, err);
+      logger.error("cron", err);
     }
   };
 
@@ -425,12 +426,10 @@ function iniciarLimpiezaHistorial() {
       const borrados = result.rowCount || result.affectedRows || 0;
 
       if (borrados > 0) {
-        console.log(
-          `[CRON ${countryConfig.code}] Limpieza ejecutada: Se eliminaron ${borrados} registros antiguos.`,
-        );
+        logger.info("cron", `eliminados ${borrados} registro(s) de historial`);
       }
     } catch (err) {
-      console.error(`[CRON ${countryConfig.code}] Error en tarea de limpieza de historial:`, err);
+      logger.error("cron", err);
     }
   };
 
@@ -450,12 +449,13 @@ function iniciarTransicionesVacaciones() {
       const { inProgress, completed } =
         await vacationRequestService.runDailyStatusTransitions();
       if (inProgress > 0 || completed > 0) {
-        console.log(
-          `[CRON ${countryConfig.code}] Vacaciones: ${inProgress} en curso, ${completed} completadas.`,
+        logger.info(
+          "cron",
+          `vacaciones: ${inProgress} en curso, ${completed} completadas`,
         );
       }
     } catch (err) {
-      console.error(`[CRON ${countryConfig.code}] Error en transiciones de vacaciones:`, err.message);
+      logger.error("cron", err);
     }
   };
 
@@ -468,12 +468,13 @@ async function sincronizarUsuariosDeshabilitados() {
   try {
     const actualizados = await syncUnverifiedUsersToDisabled();
     if (actualizados > 0) {
-      console.log(
-        `[Usuarios] ${actualizados} colaborador(es) actualizados a Deshabilitado (sin correo o sin verificar).`,
+      logger.info(
+        "usuarios",
+        `${actualizados} colaborador(es) a Deshabilitado (sin correo o sin verificar)`,
       );
     }
   } catch (err) {
-    console.error("[Usuarios] Error sincronizando roles:", err.message);
+    logger.error("usuarios", err);
   }
 }
 
@@ -487,10 +488,7 @@ async function asegurarCorreoUnico() {
       WHERE email IS NOT NULL AND TRIM(email) <> ''
     `);
   } catch (err) {
-    console.error(
-      "[Usuarios] No se pudo asegurar el índice único de email (¿correos duplicados en la BD?):",
-      err.message,
-    );
+    logger.error("usuarios", err);
   }
 }
 
@@ -505,10 +503,7 @@ async function asegurarColumnaNoticiasDestacada() {
         WHERE featured = true
     `);
   } catch (err) {
-    console.error(
-      "[Noticias] No se pudo asegurar la columna destacada:",
-      err.message,
-    );
+    logger.error("noticias", err);
   }
 }
 
@@ -519,10 +514,7 @@ async function asegurarColumnaAppsIconUrl() {
         ADD COLUMN IF NOT EXISTS icon_url TEXT
     `);
   } catch (err) {
-    console.error(
-      "[Apps] No se pudo asegurar la columna icon_url:",
-      err.message,
-    );
+    logger.error("apps", err);
   }
 }
 
@@ -533,10 +525,7 @@ async function asegurarColumnaAppsUrlIos() {
         ADD COLUMN IF NOT EXISTS url_ios TEXT
     `);
   } catch (err) {
-    console.error(
-      "[Apps] No se pudo asegurar la columna url_ios:",
-      err.message,
-    );
+    logger.error("apps", err);
   }
 }
 
@@ -547,10 +536,7 @@ async function asegurarColumnaAppsUrlWeb() {
         ADD COLUMN IF NOT EXISTS url_web TEXT
     `);
   } catch (err) {
-    console.error(
-      "[Apps] No se pudo asegurar la columna url_web:",
-      err.message,
-    );
+    logger.error("apps", err);
   }
 }
 
@@ -561,10 +547,15 @@ async function asegurarSchemaVacaciones() {
   try {
     await ensureVacationSchema();
   } catch (err) {
-    console.error(
-      "[Vacaciones] No se pudo asegurar el schema del módulo:",
-      err.message,
-    );
+    logger.error("vacaciones", err);
+  }
+}
+
+async function asegurarSchemaAreas() {
+  try {
+    await ensureWorkAreaSchema();
+  } catch (err) {
+    logger.error("areas", err);
   }
 }
 
@@ -583,15 +574,16 @@ function startBackgroundJobs() {
     asegurarColumnaAppsUrlWeb(),
     sincronizarUsuariosDeshabilitados(),
     asegurarSchemaVacaciones(),
+    asegurarSchemaAreas(),
   ]).finally(() => {
     iniciarTransicionesVacaciones();
   });
 }
 
 function onHttpListening(bindLabel) {
-  console.log(`Servidor de Intranet corriendo en ${bindLabel}`);
-  console.log(
-    `[Instancia] COUNTRY=${countryConfig.code} · TZ=${countryConfig.timezone} · APP_BASE_URL=${process.env.APP_BASE_URL}`,
+  logger.info(
+    "http",
+    `${bindLabel}  ${countryConfig.code}  TZ=${countryConfig.timezone}`,
   );
   startBackgroundJobs();
 }
@@ -599,7 +591,7 @@ function onHttpListening(bindLabel) {
 function listenAndLog(args, bindLabel) {
   const server = app.listen(...args, () => onHttpListening(bindLabel));
   server.on("error", (err) => {
-    console.error("[http] No se pudo abrir el puerto:", err.message);
+    logger.error("http", err);
   });
   return server;
 }

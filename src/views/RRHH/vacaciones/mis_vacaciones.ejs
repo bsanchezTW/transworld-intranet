@@ -1,4 +1,13 @@
 <link rel="stylesheet" href="/css/vacaciones.css">
+<%
+  const isPeru = country === 'PE';
+  const peBlockPeriod = isPeru && Array.isArray(periods)
+    ? periods
+        .filter((p) => !p.expired && p.recordMet !== false && Number(p.available) > 0)
+        .slice()
+        .sort((a, b) => String(a.period_start).localeCompare(String(b.period_start)))[0]
+    : null;
+%>
 
 <div class="vac-wrap">
   <div class="vac-header">
@@ -39,6 +48,16 @@
       <div class="vac-stat-label">Usado</div>
       <div class="vac-stat-value"><%= summary.used %></div>
     </div>
+    <% if (peBlockPeriod) { %>
+      <div class="vac-stat">
+        <div class="vac-stat-label">Días seguidos (de 15)</div>
+        <div class="vac-stat-value"><%= peBlockPeriod.protectedBlockRemaining %></div>
+      </div>
+      <div class="vac-stat">
+        <div class="vac-stat-label">Días sueltos (de 15)</div>
+        <div class="vac-stat-value"><%= peBlockPeriod.flexibleBlockRemaining %></div>
+      </div>
+    <% } %>
     <% if (summary.expiringSoon > 0) { %>
       <div class="vac-stat">
         <div class="vac-stat-label">Por vencer (90 días)</div>
@@ -51,7 +70,7 @@
   <div class="vac-panel">
     <div class="vac-panel-head">Solicitar vacaciones</div>
     <form class="vac-form" action="/RRHH/vacaciones/mis-vacaciones/solicitar" method="POST" id="vacForm">
-      <div class="vac-form-grid-2">
+      <div class="vac-form-grid-2<%= isPeru ? ' vac-form-grid-3' : '' %>">
         <div class="campo">
           <label for="start_date">Desde *</label>
           <input type="date" id="start_date" name="start_date" required>
@@ -60,19 +79,25 @@
           <label for="end_date">Hasta *</label>
           <input type="date" id="end_date" name="end_date" required>
         </div>
+        <% if (isPeru) { %>
+        <div class="campo">
+          <label for="days_count">Días</label>
+          <input type="number" id="days_count" min="1" step="1" inputmode="numeric">
+        </div>
+        <% } %>
       </div>
       <div class="vac-preview" id="vacPreview" hidden></div>
       <div class="vac-preview vac-alert-info" id="vacWarnings" hidden></div>
-      <div class="campo" id="fractionAckWrap" hidden>
+      <div class="campo vac-check-campo" id="fractionAckWrap" hidden>
         <label>
           <input type="checkbox" id="fraction_ack" name="fraction_ack" value="1">
-          Confirmo que solicito el fraccionamiento por escrito (art. 17 D.L. 713).
+          Confirmo que pido mis vacaciones en partes, no los 30 días seguidos.
         </label>
       </div>
-      <div class="campo" id="policyAckWrap" hidden>
+      <div class="campo vac-check-campo" id="policyAckWrap" hidden>
         <label>
           <input type="checkbox" id="policy_warning_ack" name="policy_warning_ack" value="1">
-          He leído la advertencia de política interna y deseo continuar.
+          Entiendo la recomendación y quiero continuar con este tramo corto.
         </label>
       </div>
       <div class="campo">
@@ -91,7 +116,11 @@
     <% } else { %>
       <table class="vac-table">
         <thead>
-          <tr><th>Período</th><th>Devengado</th><th>Ajuste</th><th>Usado</th><th>Disponible</th><th>Vence</th></tr>
+          <tr>
+            <th>Período</th><th>Devengado</th><th>Ajuste</th><th>Usado</th><th>Disponible</th>
+            <% if (isPeru) { %><th>Seguidos rest.</th><th>Sueltos rest.</th><% } %>
+            <th>Vence</th>
+          </tr>
         </thead>
         <tbody>
           <% periods.forEach(p => { %>
@@ -101,6 +130,10 @@
               <td><%= p.adjusted %></td>
               <td><%= p.used %></td>
               <td><strong><%= p.available %></strong></td>
+              <% if (isPeru) { %>
+                <td><%= p.protectedBlockRemaining %></td>
+                <td><%= p.flexibleBlockRemaining %></td>
+              <% } %>
               <td><%= p.noExpiry ? 'No caduca' : (p.expired ? 'Vencido' : (p.expiresAtFmt || '-')) %></td>
             </tr>
           <% }) %>
@@ -146,6 +179,7 @@
   (function () {
     const startInput = document.getElementById('start_date');
     const endInput = document.getElementById('end_date');
+    const daysInput = document.getElementById('days_count');
     const preview = document.getElementById('vacPreview');
     const warningsEl = document.getElementById('vacWarnings');
     const fractionWrap = document.getElementById('fractionAckWrap');
@@ -155,11 +189,80 @@
     if (!startInput || !endInput || !preview) return;
 
     let timer = null;
+    let syncing = false;
+
+    function addCalendarDays(iso, n) {
+      const parts = String(iso).split('-').map(Number);
+      if (parts.length !== 3 || parts.some((x) => !Number.isFinite(x))) return null;
+      const dt = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 12, 0, 0));
+      dt.setUTCDate(dt.getUTCDate() + n);
+      const y = dt.getUTCFullYear();
+      const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
+      const d = String(dt.getUTCDate()).padStart(2, '0');
+      return y + '-' + m + '-' + d;
+    }
+
+    function countCalendarDays(start, end) {
+      const a = new Date(start + 'T12:00:00Z');
+      const b = new Date(end + 'T12:00:00Z');
+      if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return 0;
+      return Math.round((b - a) / 86400000) + 1;
+    }
+
+    function formatDisplayDate(iso) {
+      const parts = String(iso).split('-');
+      if (parts.length !== 3) return iso;
+      return parts[2] + '/' + parts[1] + '/' + parts[0];
+    }
+
+    function parsedDays() {
+      if (!daysInput) return 0;
+      const n = parseInt(daysInput.value, 10);
+      return Number.isFinite(n) && n >= 1 ? n : 0;
+    }
+
+    function setEndFromDays() {
+      if (syncing || !daysInput) return;
+      const start = startInput.value;
+      const n = parsedDays();
+      if (!start || n < 1) return;
+      const nextEnd = addCalendarDays(start, n - 1);
+      if (!nextEnd) return;
+      syncing = true;
+      endInput.value = nextEnd;
+      syncing = false;
+    }
+
+    function setDaysFromRange() {
+      if (syncing || !daysInput) return;
+      const start = startInput.value;
+      const end = endInput.value;
+      if (!start || !end) return;
+      const n = countCalendarDays(start, end);
+      if (n < 1) return;
+      syncing = true;
+      daysInput.value = String(n);
+      syncing = false;
+    }
+
+    function renderPreviewList(items) {
+      preview.textContent = '';
+      const ul = document.createElement('ul');
+      ul.className = 'vac-preview-list';
+      items.forEach((text) => {
+        const li = document.createElement('li');
+        li.textContent = text;
+        ul.appendChild(li);
+      });
+      preview.appendChild(ul);
+    }
+
     async function updatePreview() {
       const start = startInput.value;
       const end = endInput.value;
       if (!start || !end) {
         preview.hidden = true;
+        preview.classList.remove('vac-preview-error');
         if (warningsEl) warningsEl.hidden = true;
         if (fractionWrap) fractionWrap.hidden = true;
         if (policyWrap) policyWrap.hidden = true;
@@ -173,9 +276,15 @@
         );
         if (!res.ok) { preview.hidden = true; return; }
         const data = await res.json();
-        preview.textContent = data.ok
-          ? `Esta solicitud consumiría ${data.days} ${data.unitLabel}.`
-          : (data.errors || []).join(' ') || 'No se pudo validar la solicitud.';
+        if (data.ok) {
+          preview.classList.remove('vac-preview-error');
+          preview.textContent = `Vas a pedir ${data.days} días, del ${formatDisplayDate(start)} al ${formatDisplayDate(end)}.`;
+        } else {
+          preview.classList.add('vac-preview-error');
+          const errors = (data.errors || []).filter(Boolean);
+          if (errors.length) renderPreviewList(errors);
+          else preview.textContent = 'No se pudo revisar la solicitud.';
+        }
         preview.hidden = false;
 
         if (warningsEl) {
@@ -203,8 +312,26 @@
       clearTimeout(timer);
       timer = setTimeout(updatePreview, 250);
     }
-    startInput.addEventListener('change', debounced);
-    endInput.addEventListener('change', debounced);
+
+    startInput.addEventListener('change', function () {
+      if (parsedDays() >= 1) setEndFromDays();
+      else setDaysFromRange();
+      debounced();
+    });
+    endInput.addEventListener('change', function () {
+      setDaysFromRange();
+      debounced();
+    });
+    if (daysInput) {
+      daysInput.addEventListener('input', function () {
+        setEndFromDays();
+        debounced();
+      });
+      daysInput.addEventListener('change', function () {
+        setEndFromDays();
+        debounced();
+      });
+    }
     if (fractionAck) fractionAck.addEventListener('change', debounced);
   })();
 </script>

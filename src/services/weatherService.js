@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { getLocale, getCountryConfig } = require('../config/country');
+const logger = require('../utils/logger');
 
 // Claves de icono SVG (ver views/partials/icon.ejs)
 const WMO_CODES = {
@@ -103,7 +104,7 @@ async function getWeather() {
       semana,
     };
   } catch (error) {
-    console.error('[CLIMA] Error obteniendo datos:', error.message);
+    logger.warn("clima", error);
     return null;
   }
 }

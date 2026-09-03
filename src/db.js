@@ -1,14 +1,27 @@
+const dns = require("dns");
 const { Pool } = require("pg");
 
 const {
-  getCountryDbBinding,
+  postgresStartupOptions,
   searchPathStatement,
 } = require("./config/supabaseProjects");
 const { isIdPrimaryKeyCollision } = require("./utils/idCollision");
+const logger = require("./utils/logger");
 
 const DEFAULT_POOL_MAX = 8;
 const DEFAULT_CONNECT_TIMEOUT_MS = 10000;
 const DEFAULT_IDLE_TIMEOUT_MS = 30000;
+
+function looksLikeSupabaseHost() {
+  const host = process.env.DB_HOST || "";
+  const databaseUrl = process.env.DATABASE_URL || "";
+  return (
+    host.includes("supabase.co") ||
+    host.includes("supabase.com") ||
+    databaseUrl.includes("supabase.co") ||
+    databaseUrl.includes("supabase.com")
+  );
+}
 
 function resolveSsl() {
   const flag = String(process.env.DB_SSL || "").trim().toLowerCase();
@@ -19,25 +32,17 @@ function resolveSsl() {
     return false;
   }
 
-  const host = process.env.DB_HOST || "";
-  const databaseUrl = process.env.DATABASE_URL || "";
-  const looksLikeSupabase =
-    host.includes("supabase.co") ||
-    host.includes("supabase.com") ||
-    databaseUrl.includes("supabase.co") ||
-    databaseUrl.includes("supabase.com");
-
-  return looksLikeSupabase ? { rejectUnauthorized: false } : false;
+  return looksLikeSupabaseHost() ? { rejectUnauthorized: false } : false;
 }
 
 function postgresOptionsForCountry(country = process.env.COUNTRY) {
   const raw = String(country || "").trim();
-  const parts = [];
-  if (raw) {
-    const { schema } = getCountryDbBinding(raw);
-    parts.push(`-c search_path=${schema}`);
-  }
-  return parts.length ? parts.join(" ") : undefined;
+  if (!raw) return undefined;
+  return postgresStartupOptions(raw);
+}
+
+function lookupIpv4(hostname, _options, callback) {
+  dns.lookup(hostname, { family: 4 }, callback);
 }
 
 function poolLimits() {
@@ -53,6 +58,7 @@ function poolLimits() {
       ? idleTimeoutMillis
       : DEFAULT_IDLE_TIMEOUT_MS,
     keepAlive: true,
+    keepAliveInitialDelayMillis: 10000,
   };
 }
 
@@ -61,6 +67,7 @@ function createPool() {
   const options = postgresOptionsForCountry();
   const extra = options ? { options } : {};
   const limits = poolLimits();
+  const lookup = looksLikeSupabaseHost() ? { lookup: lookupIpv4 } : {};
 
   if (process.env.DATABASE_URL?.trim()) {
     return new Pool({
@@ -68,6 +75,7 @@ function createPool() {
       ssl,
       ...extra,
       ...limits,
+      ...lookup,
     });
   }
 
@@ -80,6 +88,7 @@ function createPool() {
     ssl,
     ...extra,
     ...limits,
+    ...lookup,
   });
 }
 
@@ -88,41 +97,33 @@ async function applySearchPath(client, country = process.env.COUNTRY) {
 }
 
 const pool = createPool();
+const poolCreatedAt = Date.now();
+let firstConnectLogged = false;
 
-pool.on("connect", (client) => {
-  if (!String(process.env.COUNTRY || "").trim()) return;
-  applySearchPath(client).catch((error) => {
-    console.error(
-      "[db] No se pudo fijar search_path del país:",
-      error.message,
-    );
-  });
+pool.on("connect", () => {
+  if (firstConnectLogged) return;
+  firstConnectLogged = true;
+  logger.info("db", `conectado en ${Date.now() - poolCreatedAt}ms`);
 });
 
 // Sin este handler, un cliente idle que muere (Supabase corta a ~60s) tumba
 // el proceso Node. Passenger lo reinicia en bucle y cPanel sirve 503 eterno.
 pool.on("error", (error) => {
-  console.error("[db] Error en cliente idle del pool:", error.message);
+  logger.error("db", error);
 });
 
+function warmPool() {
+  pool.query("SELECT 1").catch((error) => {
+    logger.error("db", error);
+  });
+}
+
 async function getClient() {
-  const client = await pool.connect();
-  try {
-    await applySearchPath(client);
-    return client;
-  } catch (error) {
-    client.release();
-    throw error;
-  }
+  return pool.connect();
 }
 
 async function query(text, params) {
-  const client = await getClient();
-  try {
-    return await client.query(text, params);
-  } finally {
-    client.release();
-  }
+  return pool.query(text, params);
 }
 
 async function queryRetryIdCollision(text, params, maxAttempts = 8) {
@@ -148,4 +149,6 @@ module.exports = {
   pool,
   applySearchPath,
   searchPathStatement,
+  postgresOptionsForCountry,
+  warmPool,
 };

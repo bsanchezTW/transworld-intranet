@@ -23,6 +23,8 @@ const FEATURE_KEYS = [
   "lunchMenu",
   "claudeAssistant",
   "supportTickets",
+  "homeQuickAccess",
+  "chileHrPortals",
 ];
 
 const FEATURE_MATRIX = {
@@ -37,6 +39,10 @@ const FEATURE_MATRIX = {
     claudeAssistant: true,
     // Ticketera / área de Soporte TI (/sistemas).
     supportTickets: true,
+    // Barra de accesos rápidos del home (sitio, Academy, Rex+, ACHS, Caja).
+    homeQuickAccess: true,
+    // Portales RRHH chilenos: Rex+, ACHS y Caja Los Andes (home, menú, footer).
+    chileHrPortals: true,
   },
   PE: {
     // Sin tabla linkedin_posts ni tokens; no se sincroniza el feed.
@@ -49,6 +55,10 @@ const FEATURE_MATRIX = {
     claudeAssistant: false,
     // Perú no opera ticketera ni mesa de ayuda en esta intranet.
     supportTickets: false,
+    // Sin barra de accesos rápidos en el home de Perú.
+    homeQuickAccess: false,
+    // Rex+, ACHS y Caja Los Andes son portales chilenos; no se ofrecen en Perú.
+    chileHrPortals: false,
   },
 };
 

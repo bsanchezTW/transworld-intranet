@@ -325,11 +325,13 @@ html[data-theme="dark"] .personal-chip.is-activo { color: var(--color-bg); }
 /* Chips por área de trabajo (ver src/constants/workAreas.js).
    Cada área solo declara su matiz: el fondo y el texto se derivan de él, así el
    modo oscuro se resuelve con dos reglas en lugar de doce pares de hex. */
+.pill.pill-area,
 .pill[class*="pill-area-"] {
   background: hsl(var(--pill-h) var(--pill-s) 92%);
   color: hsl(var(--pill-h) var(--pill-s) 28%);
 }
 
+html[data-theme="dark"] .pill.pill-area,
 html[data-theme="dark"] .pill[class*="pill-area-"] {
   background: hsl(var(--pill-h) var(--pill-s) 20%);
   color: hsl(var(--pill-h) calc(var(--pill-s) + 18%) 78%);
@@ -491,6 +493,11 @@ html[data-theme="dark"] .pill[class*="pill-area-"] {
   font-size: 0.95rem;
 }
 
+.modal-editar-colaborador .form-grid-2 {
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
 .modal-editar-colaborador .campo { margin-bottom: 16px; }
 .modal-editar-colaborador .campo label {
   display: block;
@@ -502,19 +509,54 @@ html[data-theme="dark"] .pill[class*="pill-area-"] {
 .modal-editar-colaborador .campo input,
 .modal-editar-colaborador .campo select {
   width: 100%;
-  padding: 10px 12px;
+  height: 42px;
+  padding: 0 12px;
   border: 1px solid var(--border2);
   border-radius: 8px;
   font-size: 0.95rem;
+  line-height: normal;
   color: var(--color-input-text);
   background: var(--color-input-bg);
   box-sizing: border-box;
+}
+.modal-editar-colaborador .campo input[type="hidden"] {
+  display: none;
+  width: auto;
+  height: auto;
+  padding: 0;
+  border: 0;
+}
+.modal-editar-colaborador .campo .phone-field {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+}
+.modal-editar-colaborador .campo .phone-field__local {
+  width: auto;
+  height: 100%;
+}
+.modal-editar-colaborador .campo .phone-field__prefix {
+  height: 100%;
+  border-color: var(--border2);
+  background: var(--surface2);
+  color: var(--color-text);
+  border-radius: 8px 0 0 8px;
 }
 .modal-editar-colaborador .campo input:focus,
 .modal-editar-colaborador .campo select:focus {
   outline: none;
   border-color: var(--brand);
   box-shadow: 0 0 0 3px var(--brand-soft);
+}
+.modal-editar-colaborador .campo .phone-field__local:focus {
+  box-shadow: none;
+}
+.modal-editar-colaborador .campo .phone-field:focus-within {
+  border-radius: 8px;
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+.modal-editar-colaborador .campo .phone-field:focus-within .phone-field__prefix {
+  border-color: var(--brand);
 }
 .modal-editar-colaborador .campo .hint {
   font-size: 0.8rem;

@@ -16,6 +16,7 @@ const {
   mapVacationPeriodForView,
 } = require("../utils/schemaMappers");
 const { countryLabel } = require("../constants/vacationStatuses");
+const { VACATION_MESSAGES } = require("../constants/vacationMessages");
 const {
   toDateOnly,
   addDays,
@@ -31,7 +32,7 @@ function redirectErr(res, path, msg) {
 }
 function readFlash(req) {
   return {
-    success: req.query.ok === "1" ? decodeURIComponent(req.query.msg || "Operación exitosa") : null,
+    success: req.query.ok === "1" ? decodeURIComponent(req.query.msg || VACATION_MESSAGES.defaultSuccess) : null,
     error: req.query.error ? decodeURIComponent(req.query.error) : null,
   };
 }
@@ -102,7 +103,7 @@ router.get("/mis-vacaciones", requireRole.intranetActivo(), async (req, res) => 
     });
   } catch (err) {
     console.error("Error en mis-vacaciones:", err);
-    res.status(500).send("Error cargando tus vacaciones");
+    res.status(500).send(VACATION_MESSAGES.loadMineFailed);
   }
 });
 
@@ -139,11 +140,11 @@ router.post("/mis-vacaciones/solicitar", requireRole.intranetActivo(), async (re
     return redirectOk(
       res,
       "/RRHH/vacaciones/mis-vacaciones",
-      "Solicitud enviada correctamente. Queda pendiente de aprobación.",
+      VACATION_MESSAGES.requestSent,
     );
   } catch (err) {
     console.error("Error creando solicitud:", err);
-    return redirectErr(res, "/RRHH/vacaciones/mis-vacaciones", "Error al enviar la solicitud.");
+    return redirectErr(res, "/RRHH/vacaciones/mis-vacaciones", VACATION_MESSAGES.sendFailed);
   }
 });
 
@@ -157,10 +158,10 @@ router.post("/mis-vacaciones/cancelar/:id", requireRole.intranetActivo(), async 
     if (!result.ok) {
       return redirectErr(res, "/RRHH/vacaciones/mis-vacaciones", result.error);
     }
-    return redirectOk(res, "/RRHH/vacaciones/mis-vacaciones", "Solicitud cancelada.");
+    return redirectOk(res, "/RRHH/vacaciones/mis-vacaciones", VACATION_MESSAGES.requestCancelled);
   } catch (err) {
     console.error("Error cancelando solicitud:", err);
-    return redirectErr(res, "/RRHH/vacaciones/mis-vacaciones", "Error al cancelar la solicitud.");
+    return redirectErr(res, "/RRHH/vacaciones/mis-vacaciones", VACATION_MESSAGES.cancelFailed);
   }
 });
 
@@ -188,7 +189,7 @@ router.get("/gestion", requireRole.administrador(), async (req, res) => {
     });
   } catch (err) {
     console.error("Error en gestión vacaciones:", err);
-    res.status(500).send("Error cargando la gestión de vacaciones");
+    res.status(500).send(VACATION_MESSAGES.loadGestionFailed);
   }
 });
 
@@ -196,12 +197,12 @@ router.get("/gestion/:userId", requireRole.administrador(), async (req, res) => 
   const { userId } = req.params;
   try {
     const profile = await balanceService.getUserVacationProfile(userId);
-    if (!profile) return res.status(404).send("Colaborador no encontrado");
+    if (!profile) return res.status(404).send(VACATION_MESSAGES.collaboratorNotFound);
     if (
       profile.employment_country &&
       profile.employment_country !== getCurrentCountry()
     ) {
-      return res.status(404).send("Colaborador no encontrado");
+      return res.status(404).send(VACATION_MESSAGES.collaboratorNotFound);
     }
     if (profile.hire_date) await balanceService.recalculatePeriods(userId);
 
@@ -226,7 +227,7 @@ router.get("/gestion/:userId", requireRole.administrador(), async (req, res) => 
     });
   } catch (err) {
     console.error("Error en detalle colaborador:", err);
-    res.status(500).send("Error cargando el detalle del colaborador");
+    res.status(500).send(VACATION_MESSAGES.loadDetailFailed);
   }
 });
 
@@ -241,14 +242,14 @@ router.post("/gestion/:userId/ajustar", requireRole.administrador(), async (req,
       (profile.employment_country &&
         profile.employment_country !== getCurrentCountry())
     ) {
-      return redirectErr(res, "/RRHH/vacaciones/gestion", "Colaborador no encontrado.");
+      return redirectErr(res, "/RRHH/vacaciones/gestion", VACATION_MESSAGES.collaboratorNotFound);
     }
     const delta = Number(days_delta);
     if (!period_id || !Number.isFinite(delta) || delta === 0) {
-      return redirectErr(res, backTo, "Indica un período y una cantidad de días distinta de cero.");
+      return redirectErr(res, backTo, VACATION_MESSAGES.adjustNeedPeriod);
     }
     if (!reason || !String(reason).trim()) {
-      return redirectErr(res, backTo, "Debes indicar el motivo del ajuste.");
+      return redirectErr(res, backTo, VACATION_MESSAGES.adjustNeedReason);
     }
 
     await balanceService.applyAdjustment({
@@ -259,10 +260,10 @@ router.post("/gestion/:userId/ajustar", requireRole.administrador(), async (req,
     });
     await logChange(req, "ajustó saldo de vacaciones", backTo);
 
-    return redirectOk(res, backTo, "Saldo ajustado correctamente.");
+    return redirectOk(res, backTo, VACATION_MESSAGES.adjustOk);
   } catch (err) {
     console.error("Error ajustando saldo:", err);
-    return redirectErr(res, backTo, "Error al ajustar el saldo.");
+    return redirectErr(res, backTo, VACATION_MESSAGES.adjustFailed);
   }
 });
 
@@ -277,11 +278,11 @@ router.post("/gestion/:userId/periodo/:periodId/record", requireRole.administrad
       (profile.employment_country &&
         profile.employment_country !== getCurrentCountry())
     ) {
-      return redirectErr(res, "/RRHH/vacaciones/gestion", "Colaborador no encontrado.");
+      return redirectErr(res, "/RRHH/vacaciones/gestion", VACATION_MESSAGES.collaboratorNotFound);
     }
     const met = record_met === "on" || record_met === "1" || record_met === "true";
     if (!met && (!record_notes || !String(record_notes).trim())) {
-      return redirectErr(res, backTo, "Indica el motivo cuando el récord no se cumple.");
+      return redirectErr(res, backTo, VACATION_MESSAGES.recordNeedReason);
     }
     await balanceService.updatePeriodRecord({
       periodId,
@@ -290,10 +291,10 @@ router.post("/gestion/:userId/periodo/:periodId/record", requireRole.administrad
       notes: record_notes,
     });
     await logChange(req, "actualizó récord vacacional", backTo);
-    return redirectOk(res, backTo, "Récord vacacional actualizado.");
+    return redirectOk(res, backTo, VACATION_MESSAGES.recordOk);
   } catch (err) {
     console.error("Error actualizando récord:", err);
-    return redirectErr(res, backTo, "Error al actualizar el récord vacacional.");
+    return redirectErr(res, backTo, VACATION_MESSAGES.recordFailed);
   }
 });
 
@@ -311,10 +312,10 @@ router.post("/gestion/solicitud/:id/aprobar", requireRole.administrador(), async
     notificationService.notifyApproved({ request: result.request, user: profile });
     await logChange(req, "aprobó una solicitud de vacaciones", backTo);
 
-    return redirectOk(res, backTo, "Solicitud aprobada.");
+    return redirectOk(res, backTo, VACATION_MESSAGES.requestApproved);
   } catch (err) {
     console.error("Error aprobando solicitud:", err);
-    return redirectErr(res, backTo, "Error al aprobar la solicitud.");
+    return redirectErr(res, backTo, VACATION_MESSAGES.approveFailed);
   }
 });
 
@@ -332,10 +333,10 @@ router.post("/gestion/solicitud/:id/rechazar", requireRole.administrador(), asyn
     notificationService.notifyRejected({ request: result.request, user: profile });
     await logChange(req, "rechazó una solicitud de vacaciones", backTo);
 
-    return redirectOk(res, backTo, "Solicitud rechazada.");
+    return redirectOk(res, backTo, VACATION_MESSAGES.requestRejected);
   } catch (err) {
     console.error("Error rechazando solicitud:", err);
-    return redirectErr(res, backTo, "Error al rechazar la solicitud.");
+    return redirectErr(res, backTo, VACATION_MESSAGES.rejectFailed);
   }
 });
 
@@ -365,7 +366,7 @@ router.get("/calendario", requireRole.intranetActivo(), async (req, res) => {
     });
   } catch (err) {
     console.error("Error en calendario:", err);
-    res.status(500).send("Error cargando el calendario");
+    res.status(500).send(VACATION_MESSAGES.loadCalendarFailed);
   }
 });
 
@@ -385,7 +386,7 @@ router.get("/feriados", requireRole.administrador(), async (req, res) => {
     });
   } catch (err) {
     console.error("Error cargando feriados:", err);
-    res.status(500).send("Error cargando feriados");
+    res.status(500).send(VACATION_MESSAGES.loadHolidaysFailed);
   }
 });
 
@@ -399,7 +400,7 @@ router.post("/feriados", requireRole.administrador(), async (req, res) => {
       return redirectErr(
         res,
         "/RRHH/vacaciones/feriados",
-        `Esta instancia solo administra feriados de ${instanceCountry}.`,
+        VACATION_MESSAGES.holidayCountry(instanceCountry),
       );
     }
     await holidayService.createHoliday({
@@ -409,10 +410,10 @@ router.post("/feriados", requireRole.administrador(), async (req, res) => {
       isRecurring: is_recurring === "on" || is_recurring === "1",
     });
     await logChange(req, "agregó un feriado", "/RRHH/vacaciones/feriados");
-    return redirectOk(res, "/RRHH/vacaciones/feriados", "Feriado agregado.");
+    return redirectOk(res, "/RRHH/vacaciones/feriados", VACATION_MESSAGES.holidayAdded);
   } catch (err) {
     console.error("Error creando feriado:", err);
-    return redirectErr(res, "/RRHH/vacaciones/feriados", err.message || "Error al agregar feriado.");
+    return redirectErr(res, "/RRHH/vacaciones/feriados", err.message || VACATION_MESSAGES.holidayAddFailed);
   }
 });
 
@@ -426,14 +427,14 @@ router.post("/feriados/:id/eliminar", requireRole.administrador(), async (req, r
       return redirectErr(
         res,
         "/RRHH/vacaciones/feriados",
-        "Feriado no encontrado en el calendario de esta instancia.",
+        VACATION_MESSAGES.holidayNotFound,
       );
     }
     await logChange(req, "eliminó un feriado", "/RRHH/vacaciones/feriados");
-    return redirectOk(res, "/RRHH/vacaciones/feriados", "Feriado eliminado.");
+    return redirectOk(res, "/RRHH/vacaciones/feriados", VACATION_MESSAGES.holidayDeleted);
   } catch (err) {
     console.error("Error eliminando feriado:", err);
-    return redirectErr(res, "/RRHH/vacaciones/feriados", "Error al eliminar feriado.");
+    return redirectErr(res, "/RRHH/vacaciones/feriados", VACATION_MESSAGES.holidayDeleteFailed);
   }
 });
 
@@ -447,7 +448,7 @@ router.get("/api/saldo", requireRole.intranetActivo(), async (req, res) => {
     res.json(summary);
   } catch (err) {
     console.error("Error api saldo:", err);
-    res.status(500).json({ error: "Error obteniendo saldo" });
+    res.status(500).json({ error: VACATION_MESSAGES.saldoApiFailed });
   }
 });
 
@@ -457,7 +458,7 @@ router.get("/api/preview-dias", requireRole.intranetActivo(), async (req, res) =
     const start = toDateOnly(start_date);
     const end = toDateOnly(end_date);
     if (!start || !end) {
-      return res.status(400).json({ error: "Fechas inválidas" });
+      return res.status(400).json({ error: VACATION_MESSAGES.invalidDates });
     }
 
     const preview = await requestService.previewRequest({
@@ -474,7 +475,7 @@ router.get("/api/preview-dias", requireRole.intranetActivo(), async (req, res) =
     res.json(preview);
   } catch (err) {
     console.error("Error api preview-dias:", err);
-    res.status(500).json({ error: "Error calculando días" });
+    res.status(500).json({ error: VACATION_MESSAGES.previewFailed });
   }
 });
 

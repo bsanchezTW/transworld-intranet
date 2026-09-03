@@ -17,9 +17,11 @@ const PROJECT_ROOT = path.join(__dirname, "..", "..");
 
 function loadEnvFiles() {
   // process.env (panel de cPanel / el lanzador dev:cl|dev:pe) nunca se pisa.
-  dotenv.config({ path: path.join(PROJECT_ROOT, ".env") });
-  dotenv.config({ path: path.join(PROJECT_ROOT, ".env.local") });
-  dotenv.config();
+  // quiet: dotenv 17 imprime un tip por cada archivo; al boot se veían 5 líneas.
+  const quiet = { quiet: true };
+  dotenv.config({ path: path.join(PROJECT_ROOT, ".env"), ...quiet });
+  dotenv.config({ path: path.join(PROJECT_ROOT, ".env.local"), ...quiet });
+  dotenv.config(quiet);
 }
 
 loadEnvFiles();

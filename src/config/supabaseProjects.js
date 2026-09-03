@@ -244,6 +244,13 @@ function searchPathStatement(countryValue) {
   return `SET search_path TO ${schema}`;
 }
 
+// Parámetro de arranque de Postgres: el pooler lo aplica al conectar.
+// Evita un SET search_path (un RTT a us-west-2) en cada consulta.
+function postgresStartupOptions(countryValue) {
+  const { schema } = getCountryDbBinding(countryValue);
+  return `-c search_path=${schema}`;
+}
+
 module.exports = {
   SHARED_INTRANET_PROJECT_REF,
   SHARED_POOLER_ROLE,
@@ -262,4 +269,5 @@ module.exports = {
   assertCountryStorageBucket,
   defaultStorageBucketForCountry,
   searchPathStatement,
+  postgresStartupOptions,
 };

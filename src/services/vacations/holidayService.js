@@ -1,5 +1,6 @@
 const db = require("../../db");
 const { toDateOnly } = require("../../utils/vacationDateUtils");
+const { VACATION_MESSAGES } = require("../../constants/vacationMessages");
 
 /**
  * Gestión de feriados por país (tabla public_holidays).
@@ -45,7 +46,7 @@ async function getHolidaySet(countryCode, startDate, endDate) {
 async function createHoliday({ countryCode, holidayDate, name, isRecurring = false }) {
   const date = toDateOnly(holidayDate);
   if (!countryCode || !date || !name) {
-    throw new Error("País, fecha y nombre del feriado son obligatorios.");
+    throw new Error(VACATION_MESSAGES.holidayRequired);
   }
   await db.query(
     `INSERT INTO public_holidays (country_code, holiday_date, name, is_recurring)

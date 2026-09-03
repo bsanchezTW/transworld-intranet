@@ -20,6 +20,7 @@
 const path = require("path");
 const fs = require("fs");
 const dotenv = require("dotenv");
+const logger = require("../src/utils/logger");
 const { getCountryConfig, isValidCountryCode } = require("../src/config/country");
 const {
   defaultStorageBucketForCountry,
@@ -39,17 +40,16 @@ function parseArgs(argv) {
 }
 
 function loadSharedEnv() {
-  dotenv.config({ path: path.join(ROOT, ".env") });
-  dotenv.config({ path: path.join(ROOT, ".env.local") });
+  const quiet = { quiet: true };
+  dotenv.config({ path: path.join(ROOT, ".env"), ...quiet });
+  dotenv.config({ path: path.join(ROOT, ".env.local"), ...quiet });
 }
 
 const args = parseArgs(process.argv);
 const country = String(args.country || "").trim().toUpperCase();
 
 if (!country || !isValidCountryCode(country)) {
-  console.error(
-    "Falta --country. Uso: npm run dev:cl   o   npm run dev:pe",
-  );
+  logger.error("dev", "Falta --country. Uso: npm run dev:cl   o   npm run dev:pe");
   process.exit(1);
 }
 
@@ -72,13 +72,12 @@ const dbBinding = getCountryDbBinding(country);
 applyCountryPoolerUser(process.env);
 
 if (!fs.existsSync(path.join(ROOT, ".env")) && !fs.existsSync(path.join(ROOT, ".env.local"))) {
-  console.warn(
-    "[dev] No hay .env en la raíz. Copia .env.example y completa las credenciales.",
-  );
+  logger.warn("dev", "No hay .env en la raíz. Copia .env.example y completa las credenciales.");
 }
 
-console.log(
-  `[dev] ${config.name} → ${baseUrl} · schema ${dbBinding.schema} · user ${process.env.DB_USER} · bucket ${process.env.SUPABASE_STORAGE_BUCKET}`,
+logger.info(
+  "dev",
+  `${config.name}  ${baseUrl}  schema=${dbBinding.schema}  bucket=${process.env.SUPABASE_STORAGE_BUCKET}`,
 );
 
 require(path.join(ROOT, "src", "app.js"));

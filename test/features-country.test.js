@@ -29,6 +29,8 @@ describe("config/features — capacidades por país", () => {
       "lunchMenu",
       "claudeAssistant",
       "supportTickets",
+      "homeQuickAccess",
+      "chileHrPortals",
     ]) {
       assert.ok(FEATURE_KEYS.includes(key));
       for (const code of Object.keys(FEATURE_MATRIX)) {
@@ -37,24 +39,28 @@ describe("config/features — capacidades por país", () => {
     }
   });
 
-  it("Chile tiene LinkedIn, UF, menú, Claude y tickets activos", () => {
+  it("Chile tiene LinkedIn, UF, menú, Claude, tickets, accesos del home y portales RRHH activos", () => {
     withCountry("CL", () => {
       assert.equal(isFeatureEnabled("linkedinFeed"), true);
       assert.equal(isFeatureEnabled("chileUfIndicator"), true);
       assert.equal(isFeatureEnabled("lunchMenu"), true);
       assert.equal(isFeatureEnabled("claudeAssistant"), true);
       assert.equal(isFeatureEnabled("supportTickets"), true);
+      assert.equal(isFeatureEnabled("homeQuickAccess"), true);
+      assert.equal(isFeatureEnabled("chileHrPortals"), true);
       assert.deepEqual(getFeatures().linkedinFeed, true);
     });
   });
 
-  it("Perú no incluye LinkedIn, UF, menú, Claude ni tickets", () => {
+  it("Perú no incluye LinkedIn, UF, menú, Claude, tickets, accesos del home ni portales RRHH chilenos", () => {
     withCountry("PE", () => {
       assert.equal(isFeatureEnabled("linkedinFeed"), false);
       assert.equal(isFeatureEnabled("chileUfIndicator"), false);
       assert.equal(isFeatureEnabled("lunchMenu"), false);
       assert.equal(isFeatureEnabled("claudeAssistant"), false);
       assert.equal(isFeatureEnabled("supportTickets"), false);
+      assert.equal(isFeatureEnabled("homeQuickAccess"), false);
+      assert.equal(isFeatureEnabled("chileHrPortals"), false);
     });
   });
 });
